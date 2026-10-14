@@ -25,7 +25,7 @@ export interface ReportResult {
 
 export async function runReportEngine(
     reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'list_corrections',
-    options?: { slot?: string; date?: string; excelPath?: string }
+    options?: { slot?: string; date?: string; shift?: 'Day' | 'Night'; excelPath?: string }
 ): Promise<ReportResult> {
     const pythonBin = config.pythonPath || 'python3';
     const args = ['-m', 'reports_engine.cli', '--report', reportType];
@@ -35,6 +35,9 @@ export async function runReportEngine(
     }
     if (options?.date) {
         args.push('--date', options.date);
+    }
+    if (options?.shift) {
+        args.push('--shift', options.shift);
     }
     if (options?.excelPath) {
         args.push('--excel', options.excelPath);

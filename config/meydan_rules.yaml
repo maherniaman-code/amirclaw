@@ -145,17 +145,47 @@ operations:
     - "rose garden"
     - "kone"
     - "imdaad"
+    - "al zawaya"
+    - "eurosec"
+  # Keywords match at the start of a word, so a root covers every form:
+  # "remov" -> remove/removed/removing/removal. Bare "shift" is avoided on purpose
+  # because guards write "night shift" in handovers.
+  # Derived from the Security Team messages of 11-14 Oct 2026.
   activities:
-    - "installing"
-    - "changes posters"
-    - "removing"
-    - "placing new chairs"
-    - "watering"
-    - "loading"
+    - "vendor"            # "Fit Movers vendors are installing", "Eurosec vendor is removing"
+    - "contractor"
+    - "install"
+    - "remov"
+    - "taking out"
+    - "shifted"
     - "shifting"
-    - "maintenance access"
+    - "moved"
+    - "moving"
+    - "placed"
+    - "placing"
+    - "deliver"
+    - "load"
+    - "unload"
+    - "dismantl"
+    - "assembl"
+    - "poster"
+    - "watering"
     - "sign-in"
     - "sign in"
+  # Guards' fault reports (lights, AC, gates, card readers) belong to maintenance, not operations.
+  # A message with one of these is left out unless it names a vendor AND an activity.
+  fault_markers:
+    - "not working"
+    - "out of service"
+    - "not closing"
+    - "not opening"
+    - "not fixed"
+    - "need to fix"
+    - "need to check"
+    - "require maintenance"
+    - "requires maintenance"
+    - "emergency light"
+    - "emergency exit light"
 
 parking_violation:
   keywords:

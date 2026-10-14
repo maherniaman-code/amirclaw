@@ -75,6 +75,18 @@ def find_nearest_open_ticket_by_proximity(
     return best
 
 
+def _keyword_at_word_start(text_lower: str, keywords: List[str]) -> Optional[str]:
+    """
+    First keyword that begins a word in text_lower, or None.
+    Keywords may be word roots: "remov" matches remove/removed/removing,
+    while "arki" no longer matches inside "parking".
+    """
+    for kw in keywords:
+        if re.search(r"(?<![a-z0-9])" + re.escape(kw.lower()), text_lower):
+            return kw
+    return None
+
+
 class ReportsManager:
     def __init__(self, excel_path: Optional[Path] = None):
         self.excel_path = excel_path or (BASE_DIR / "workspace" / "whatsapp_messages.xlsx")
@@ -759,6 +771,7 @@ class ReportsManager:
 
         vendors_list = self.config.get("operations", {}).get("vendors", [])
         activities_list = self.config.get("operations", {}).get("activities", [])
+        fault_markers = self.config.get("operations", {}).get("fault_markers", [])
         completion_kws = ["completed", "done", "left", "finished", "cleared"]
 
         active_vendors_set = set()
@@ -779,13 +792,16 @@ class ReportsManager:
                     continue
 
             # Identify if it is an operational activity
-            has_vendor = any(v in t_low for v in vendors_list)
-            has_act = any(a in t_low for a in activities_list)
+            vendor_hit = _keyword_at_word_start(t_low, vendors_list)
+            has_act = _keyword_at_word_start(t_low, activities_list) is not None
+            # Fault reports go to maintenance unless clearly vendor work ("Kone vendor installing ... out of service")
+            is_fault = _keyword_at_word_start(t_low, fault_markers) is not None and not (vendor_hit and has_act)
 
-            if not (has_vendor or has_act):
+            if is_fault or not (vendor_hit or has_act):
                 needs_review.append({
                     "message_id": msg_id,
-                    "reason": "Security message without matching operational keywords",
+                    "reason": "Fault report, not an operational activity" if is_fault
+                    else "Security message without matching operational keywords",
                     "text": text,
                     "sender": ev["sender"],
                     "raw_datetime": ev["raw_datetime"],
@@ -794,11 +810,9 @@ class ReportsManager:
 
             # Find matching vendor
             vendor_name = "Operations Team"
-            for v in vendors_list:
-                if v in t_low:
-                    vendor_name = v.title()
-                    active_vendors_set.add(vendor_name)
-                    break
+            if vendor_hit:
+                vendor_name = vendor_hit.title()
+                active_vendors_set.add(vendor_name)
 
             bld, floor, heading = self.parser.extract_building_and_floor(text)
             if not heading:
