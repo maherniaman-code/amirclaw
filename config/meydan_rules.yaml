@@ -1,0 +1,255 @@
+# Meydan Reports Automation Rules Configuration
+# All configurations are editable without changing code.
+
+groups:
+  parking_multistory: "Multistory Parking Building Meydan"
+  parking_team: "Parking Team at Meydan"
+  fm: "Meydan FM Team💪"
+  fire_safety: "Fire & Safety Team Meydan"
+  operations: "Meydan - Security Team"
+  cleaning: "cleaning matters at meydan"
+
+# Parking capacities
+capacities:
+  buildings:
+    P: 71
+    N: 77
+    M: 165
+    Q: 146
+    total: 459
+  ramp: 127
+  service_road: 127 # Fixed at 127. Any other value reported in WA is flagged in diagnostics.
+  smart_parking: 887
+
+# Time settings (Asia/Dubai)
+timing:
+  timezone: "Asia/Dubai"
+  parking_slots: ["10:00", "12:00", "14:00"]
+  freshness_window_minutes: 60
+  email_slot_tolerance_minutes: 5 # Configurable tolerance for matching email timestamp to slot (±5 mins)
+  email_poll_interval_seconds: 60
+  email_poll_timeout_minutes: 5
+  shifts:
+    day:
+      start: "05:00"
+      end: "17:00"
+      report_time: "17:00"
+    night:
+      start: "17:00"
+      end: "05:00"
+      report_time: "05:00"
+
+exclude:
+  senders:
+    - "Me (Bot Account)"
+    - "أنا (حساب البوت)"
+  exact_replies:
+    - "noted"
+    - "noted sir"
+    - "ok"
+    - "recorded"
+    - "received"
+    - "again"
+    - "thanks sir"
+    - "👍"
+    - "clear"
+    - "all clear"
+  leave_markers:
+    - "leave details"
+    - "start date"
+    - "staff id"
+    - "staff is"
+    - "emp id"
+    - "total days"
+    - "annual leave"
+    - "taking leave"
+    - "on leave"
+    - "leave request"
+
+fault:
+  - "not working"
+  - "not opening"
+  - "not closing"
+  - "not cold"
+  - "not stable"
+  - "blinking"
+  - "shaking"
+  - "hanging"
+  - "loose"
+  - "need to check"
+  - "need to fix"
+  - "need to rectify"
+  - "need to increase"
+  - "require maintenance"
+  - "electrical power issue"
+  - "cooling is very low"
+
+closure:
+  - "done"
+  - "resolved"
+  - "light replaced"
+  - "replaced"
+  - "rectified"
+  - "cleaned"
+  - "mopped"
+  - "cleared"
+  - "area cleared"
+  - "spill removed"
+  - "all clear"
+
+in_progress:
+  - "checking"
+  - "notified to"
+  - "will replace"
+  - "pls check and update"
+  - "is on going"
+  - "is ongoing"
+  - "in progress"
+  - "will clean"
+  - "will mop"
+  - "team is checking"
+
+followup_not_ticket:
+  - "follow up"
+  - "is it restored"
+  - "urgent action required"
+  - "daily issues"
+
+building_regex: "\\b(?:(?:building|bldg|block|gate|tower|zone)\\s*[:-]?\\s*([PNMQ])|([PNMQ])\\s*[:-]?\\s*(?:building|bldg|block|gate|tower|zone|level))\\b"
+floor_regex: "(ground floor|\\bgf\\b|\\d+(?:st|nd|rd|th)?\\s*floor|level\\s*\\d+)"
+
+teams:
+  - "imdaad"
+  - "imdad"
+  - "avs"
+  - "kone"
+
+safety_priority:
+  - "emergency exit"
+  - "exit light"
+  - "fire exit"
+  - "fire fighting"
+  - "fire pump"
+  - "barrier"
+  - "gate"
+  - "hanging"
+  - "loose"
+  - "hazard"
+
+operations:
+  vendors:
+    - "telecon"
+    - "fit movers"
+    - "arki"
+    - "housekeeping"
+    - "rose garden"
+    - "kone"
+    - "imdaad"
+  activities:
+    - "installing"
+    - "changes posters"
+    - "removing"
+    - "placing new chairs"
+    - "watering"
+    - "loading"
+    - "shifting"
+    - "maintenance access"
+    - "sign-in"
+    - "sign in"
+
+parking_violation:
+  keywords:
+    - "ev fast charging"
+    - "non-electric"
+    - "remove his car"
+    - "notify concern department"
+    - "charging slot"
+    - "wrong parking"
+
+vehicle_permission:
+  keywords:
+    - "kindly allow this vehicle"
+    - "plate no"
+    - "car make"
+    - "vip parking slot"
+    - "smart parking"
+  replies:
+    - "parked in vip slot"
+    - "noted"
+
+dedupe:
+  method: "difflib"
+  similarity_threshold: 0.85
+  match_on:
+    - "text_similarity"
+    - "building"
+    - "floor"
+    - "time_proximity"
+  uncertain_action: "flag_for_review"
+
+violations_excel:
+  thumbnail_max_side: 160   # pixels, longest side (configurable)
+  thumbnail_quality: 70     # JPEG quality 0-95 (configurable)
+
+cleaning_keywords:
+  - "clean"
+  - "sweep"
+  - "mop"
+  - "spill"
+  - "spilled"
+  - "dirty"
+  - "waste"
+  - "trash"
+  - "garbage"
+  - "housekeeping"
+  - "house keeping"
+  - "stain"
+  - "leak"
+  - "leaking"
+  - "wet floor"
+  - "puddle"
+  - "sanitize"
+  - "sanitise"
+  - "disinfect"
+  - "hygiene"
+  - "نظاف"
+  - "تنظيف"
+  - "كنس"
+  - "سكب"
+  - "قمامة"
+  - "نفايات"
+  - "مسح"
+  - "تعقيم"
+
+cleaning_priority_high:
+  - "blood"
+  - "vomit"
+  - "feces"
+  - "biohazard"
+  - "urgent clean"
+  - "hazardous spill"
+  - "chemical spill"
+
+cleaning_locations:
+  - "washroom"
+  - "male washroom"
+  - "female washroom"
+  - "lobby"
+  - "corridor"
+  - "pantry"
+  - "lift"
+  - "elevator"
+  - "gsu room"
+  - "pump room"
+  - "parking"
+  - "staircase"
+  - "reception"
+  - "entrance"
+
+cleaning_exclude_if_also:
+  - vendor: "rose garden"
+    keyword: "watering"
+    reason: "scheduled landscaping visit, not a cleaning incident"
+  - vendor: "fit movers"
+    keyword: "installing"
+    reason: "vendor operation, not cleaning"

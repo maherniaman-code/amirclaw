@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.DS_Store
+
+# Do NOT push sensitive keys or session data to git repository!
+.env
+service-account.json
+memory.db
+workspace/
+backups/
+.venv/
+*.tar.gz
+__pycache__/
+*.pyc

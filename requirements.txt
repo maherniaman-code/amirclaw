@@ -1,0 +1,6 @@
+# Meydan Reports Automation - Python Dependencies
+openpyxl==3.1.5
+PyYAML==6.0.3
+python-dateutil==2.9.0.post0
+Pillow==11.3.0
+tzdata==2026.5
