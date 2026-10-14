@@ -24,6 +24,7 @@ from reports_engine.whatsapp_parser import WhatsAppParser
 from reports_engine.report_generators import (
     generate_parking_report_text,
     generate_maintenance_report_text,
+    generate_fire_safety_report_text,
     generate_operations_report_text,
     generate_parking_violations_report_text,
     generate_vehicle_permissions_report_text,
@@ -361,6 +362,24 @@ class TestOperationsKeywordMatching(unittest.TestCase):
         # Vendor work on a faulty asset still counts
         t = "kone vendor installing new rope on the lift that is out of service"
         self.assertTrue(_keyword_at_word_start(t, self.vendors) and _keyword_at_word_start(t, self.activities))
+
+
+class TestSlaHiddenFromReports(unittest.TestCase):
+    def test_sla_breach_not_rendered_in_report_text(self):
+        item = {
+            "text": "N building emergency exit light is not working",
+            "datetime": datetime(2026, 10, 12, 19, 39, tzinfo=DUBAI_TZ),
+            "status": "Pending",
+            "hours_open": 50.0,
+            "sla_breach": True,
+            "location_heading": "Building N",
+        }
+        stats = {"completed": 0, "total": 1, "open": 1, "sla_breaches": 1,
+                 "safety_priority": "N/A", "teams": "N/A", "shift_info": "Day Shift (14-10-2026)"}
+        for render in (generate_maintenance_report_text, generate_fire_safety_report_text):
+            text = render([dict(item)], dict(stats))
+            self.assertNotIn("SLA", text, render.__name__)
+            self.assertIn("🕐 Open: 2.1d", text, render.__name__)
 
 
 class TestTicketsSla(unittest.TestCase):

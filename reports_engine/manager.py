@@ -541,6 +541,7 @@ class ReportsManager:
             "total": total,
             "open": open_count,
             "completed": completed,
+            "sla_breaches": sla_breaches,
             "unlinked_count": len(unlinked),
             "link_stats": self._link_stats(source_audit, unlinked, unique_tickets, shift_start, shift_end),
         }
@@ -741,6 +742,7 @@ class ReportsManager:
             "total": total,
             "open": open_count,
             "completed": completed,
+            "sla_breaches": sla_breaches,
             "unlinked_count": len(unlinked),
             "link_stats": self._link_stats(source_audit, unlinked, unique_tickets, shift_start, shift_end),
         }
