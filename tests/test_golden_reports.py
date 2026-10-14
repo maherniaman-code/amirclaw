@@ -74,10 +74,13 @@ class TestGoldenReportsSuite(unittest.TestCase):
         self.assertIn("• Completed: 0 of 3", text)
         self.assertIn("• Open: 3", text)
         # "not yet Rectified" follow-up must not close the 11:25 ticket
-        # (scan only that ticket's block; it may also carry an "🕐 Open: …" SLA line)
+        # (scan only that ticket's block; it may also carry an "🕐 Open: …" line)
         ticket_block = re.split(r"\n(?=\d+\. |\n)", text.split("13-10-2026 11:25")[1])[0]
         self.assertIn("⚠️ Pending", ticket_block)
         self.assertIn("• Safety priority: 2 high-risk tickets", text)
+        # SLA is tracked in the backend only: present in the JSON, never in the report text
+        self.assertNotIn("SLA", text)
+        self.assertGreater(res["sla_breaches"], 0)
 
     def test_report_4_operations_night_shift_golden_output(self):
         """Case 4: Operations Summary (Night Shift 12-10-2026)."""

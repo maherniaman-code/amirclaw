@@ -157,8 +157,8 @@ def generate_maintenance_report_text(events: List[Dict[str, Any]], summary_stats
             hours = item.get("hours_open")
             if hours is not None and hours > 0:
                 h_label = f"{int(hours)}h" if hours < 48 else f"{hours/24:.1f}d"
-                sla_tag = " ❗SLA BREACH" if item.get("sla_breach") else ""
-                lines.append(f"   🕐 Open: {h_label}{sla_tag}")
+                # sla_breach is tracked in the backend (tickets.db / JSON) but not shown in the report
+                lines.append(f"   🕐 Open: {h_label}")
 
             st = item.get("status", "Pending")
             if "done" in st.lower() or "resolved" in st.lower():
@@ -205,8 +205,6 @@ def generate_maintenance_report_text(events: List[Dict[str, Any]], summary_stats
     lines.append("🎯 Summary")
     lines.append(f"• Completed: {summary_stats.get('completed', 0)} of {summary_stats.get('total', 0)}")
     lines.append(f"• Open: {summary_stats.get('open', 0)}")
-    if summary_stats.get("sla_breaches", 0) > 0:
-        lines.append(f"• ❗ SLA Breaches (>24h): {summary_stats['sla_breaches']}")
     if chronic_events:
         lines.append(f"• 🔴 Chronic Issues (>48h): {len(chronic_events)}")
     lines.append(f"• Safety priority: {summary_stats.get('safety_priority', 'N/A')}")
@@ -246,8 +244,8 @@ def generate_fire_safety_report_text(events: List[Dict[str, Any]], summary_stats
             hours = item.get("hours_open")
             if hours is not None and hours > 0:
                 h_label = f"{int(hours)}h" if hours < 48 else f"{hours/24:.1f}d"
-                sla_tag = " ❗SLA BREACH" if item.get("sla_breach") else ""
-                lines.append(f"   🕐 Open: {h_label}{sla_tag}")
+                # sla_breach is tracked in the backend (tickets.db / JSON) but not shown in the report
+                lines.append(f"   🕐 Open: {h_label}")
 
             st = item.get("status", "Pending")
             if "done" in st.lower() or "resolved" in st.lower():
@@ -292,8 +290,6 @@ def generate_fire_safety_report_text(events: List[Dict[str, Any]], summary_stats
     lines.append("🎯 Summary")
     lines.append(f"• Completed: {summary_stats.get('completed', 0)} of {summary_stats.get('total', 0)}")
     lines.append(f"• Open: {summary_stats.get('open', 0)}")
-    if summary_stats.get("sla_breaches", 0) > 0:
-        lines.append(f"• ❗ SLA Breaches (>24h): {summary_stats['sla_breaches']}")
     if chronic_events:
         lines.append(f"• 🔴 Chronic Issues (>48h): {len(chronic_events)}")
     lines.append(f"• Safety priority: {summary_stats.get('safety_priority', 'N/A')}")
