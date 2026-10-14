@@ -47,7 +47,17 @@ class TestDateUtils(unittest.TestCase):
         dt = parse_datetime(raw)
         self.assertIsNotNone(dt)
         self.assertEqual(dt.year, 2026)
+        self.assertEqual(dt.month, 10)
+        self.assertEqual(dt.day, 11)
         self.assertEqual(dt.hour, 14)
+
+    def test_parse_datetime_bot_us_format_day_le_12(self):
+        dt = parse_datetime("10/12/2026, 06:12:22 AM")
+        self.assertEqual((dt.month, dt.day, dt.hour), (10, 12, 6))
+
+    def test_parse_datetime_24h_is_day_first(self):
+        dt = parse_datetime("10/12/2026, 18:12")
+        self.assertEqual((dt.month, dt.day), (12, 10))
 
     def test_shift_assignment(self):
         # Day shift: 05:00 to 16:59:59

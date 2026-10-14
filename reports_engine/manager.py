@@ -25,6 +25,19 @@ from .report_generators import (
 from .excel_exporter import generate_parking_excel, generate_generic_report_excel, generate_violations_excel
 
 
+def is_closure_text(text: str, closure_kws: List[str]) -> bool:
+    """True if a closure keyword appears and is not negated (e.g. 'not yet rectified')."""
+    t = text.lower()
+    for kw in closure_kws:
+        kw_re = re.escape(kw.lower())
+        if not re.search(rf"\b{kw_re}\b", t):
+            continue
+        if re.search(rf"\b(?:not|never|yet to be|pending)\s+(?:\w+\s+){{0,2}}{kw_re}\b", t):
+            continue
+        return True
+    return False
+
+
 def find_ticket_by_id(tickets_dict: Dict[str, Dict[str, Any]], q_id: str) -> Optional[Dict[str, Any]]:
     if not q_id:
         return None
@@ -323,10 +336,10 @@ class ReportsManager:
                 continue
 
             # Check if this is a short reply / closure / follow-up / ack
-            is_closure = any(c in t_low for c in closure_kws)
+            is_closure = is_closure_text(t_low, closure_kws)
             is_progress = any(p in t_low for p in progress_kws)
             is_ack = self.parser.is_non_operational(text)
-            is_followup = any(f in t_low for f in followup_kws)
+            is_followup = any(f in t_low for f in followup_kws) or (not is_closure and any(re.search(rf"\b{re.escape(k.lower())}\b", t_low) for k in closure_kws))
             is_empty_or_image = text.strip() in ["(Image)", ""] or (len(text.strip()) <= 4 and not re.search(r"\w{3,}", text))
 
             if is_closure or is_progress or is_ack or is_followup or is_empty_or_image:
@@ -535,10 +548,10 @@ class ReportsManager:
             if corr and corr.get("target_report") == "ignore":
                 continue
 
-            is_closure = any(c in t_low for c in closure_kws)
+            is_closure = is_closure_text(t_low, closure_kws)
             is_progress = any(p in t_low for p in progress_kws)
             is_ack = self.parser.is_non_operational(text)
-            is_followup = any(f in t_low for f in followup_kws)
+            is_followup = any(f in t_low for f in followup_kws) or (not is_closure and any(re.search(rf"\b{re.escape(k.lower())}\b", t_low) for k in closure_kws))
             is_fyi = bool(re.search(r"\bfyi\b", t_low))
             is_empty_or_image = text.strip() in ["(Image)", ""] or (len(text.strip()) <= 4 and not re.search(r"\w{3,}", text))
 
@@ -862,7 +875,7 @@ class ReportsManager:
             closure_kws = self.config.get("closure", ["done", "resolved", "replaced", "rectified", "cleared", "removed"])
             progress_kws = self.config.get("in_progress", ["checking", "notified to", "will replace"])
             t_low = text.lower()
-            is_closure_reply = any(c in t_low for c in closure_kws)
+            is_closure_reply = is_closure_text(t_low, closure_kws)
             is_progress_reply = any(p in t_low for p in progress_kws)
             is_reply = is_closure_reply or is_progress_reply or self.parser.is_non_operational(text) or "updated:" in t_low
             if is_reply:
@@ -1133,7 +1146,7 @@ class ReportsManager:
                 continue
 
             is_reply = bool(quoted_id)
-            is_closure = any(re.search(r'\b' + re.escape(k) + r'\b', text_lower) for k in closure_kws)
+            is_closure = is_closure_text(text_lower, closure_kws)
             is_progress = any(k in text_lower for k in in_progress_kws)
 
             if is_reply and (is_closure or is_progress):

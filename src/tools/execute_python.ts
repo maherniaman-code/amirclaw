@@ -12,8 +12,9 @@ if (!fs.existsSync(WORKSPACE_DIR)) {
     fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
 }
 
-// Find best python executable
-const PYTHON_BIN = '/Library/Frameworks/Python.framework/Versions/3.13/bin/python3';
+// Find best python executable - prefer venv, fallback to system python3
+const VENV_PYTHON = path.resolve(process.cwd(), '.venv/bin/python3');
+const PYTHON_BIN = fs.existsSync(VENV_PYTHON) ? VENV_PYTHON : '/Library/Frameworks/Python.framework/Versions/3.13/bin/python3';
 
 export const executePythonTool = {
     name: 'execute_python',

@@ -36,19 +36,25 @@ def parse_datetime(raw: str) -> Optional[datetime]:
     if not raw:
         return None
     normalized = normalize_datetime_string(raw)
-    
-    # Common format patterns — DD/MM first (UAE standard), MM/DD as fallback
-    patterns = [
-        # DD/MM/YYYY, HH:MM:SS (UAE / Dubai standard)
+
+    day_first = [
         "%d/%m/%Y, %I:%M:%S %p",
         "%d/%m/%Y, %I:%M %p",
         "%d/%m/%Y, %H:%M:%S",
         "%d/%m/%Y, %H:%M",
-        # MM/DD/YYYY (en-US fallback)
+    ]
+    month_first = [
         "%m/%d/%Y, %I:%M:%S %p",
         "%m/%d/%Y, %I:%M %p",
         "%m/%d/%Y, %H:%M:%S",
         "%m/%d/%Y, %H:%M",
+    ]
+    # The WhatsApp client writes Western-digit AM/PM timestamps with toLocaleString('en-US') (MM/DD);
+    # Arabic-digit (ar-EG) and 24h timestamps are DD/MM.
+    is_arabic = bool(re.search(r"[٠-٩]", str(raw)))
+    is_us_12h = not is_arabic and bool(re.search(r"\b(?:AM|PM)\b", normalized))
+    patterns = (month_first + day_first) if is_us_12h else (day_first + month_first)
+    patterns += [
         # DD-MM-YYYY HH:MM:SS
         "%d-%m-%Y %H:%M:%S",
         "%d-%m-%Y %H:%M",

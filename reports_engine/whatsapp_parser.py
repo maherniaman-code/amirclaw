@@ -511,17 +511,25 @@ class WhatsAppParser:
         if not any(k in t_low for k in perm_kws):
             return None
 
+        # WhatsApp bold/italic markers (e.g. "*Plate No:* X 25854") break the field regexes
+        plain = re.sub(r"[*_~]", "", text)
+
         # Plate No: e.g. "Plate no : 4 / 69888" or "Plate no. EE 80743"
-        plate_m = re.search(r"plate\s*(?:no\.?|number)?\s*[:\-]?\s*([A-Za-z0-9\s/]+?)(?=\s*car\s*make|\s*valid|\s*only|\s*$|\n)", text, re.IGNORECASE)
+        plate_m = re.search(r"plate\s*(?:no\.?|number)?\s*[:\-]?\s*([A-Za-z0-9\s/]+?)(?=\s*car\s*make|\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
         plate_no = plate_m.group(1).strip() if plate_m else "N/A"
 
         # Car Make: e.g. "Car make :GMC" or "Car make: Mitsubishi Pajero"
-        make_m = re.search(r"car\s*make\s*[:\-]?\s*([A-Za-z0-9\s]+?)(?=\s*valid|\s*only|\s*$|\n)", text, re.IGNORECASE)
+        make_m = re.search(r"car\s*make\s*[:\-]?\s*([A-Za-z0-9\s]+?)(?=\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
         car_make = make_m.group(1).strip() if make_m else "N/A"
 
         # Validity: e.g. "only for 3 days from today 13/10/2026 until 15/10/2026", "only for today", "only today"
-        valid_m = re.search(r"(only\s+for\s+\d+\s+days[^\n\.]*|only\s+for\s+today[^\n\.]*|only\s+today[^\n\.]*|today\s+only[^\n\.]*|from\s+\d+/\d+/\d+\s+until\s+\d+/\d+/\d+)", text, re.IGNORECASE)
-        validity = valid_m.group(1).strip().rstrip(".").strip() if valid_m else "N/A"
+        valid_m = re.search(r"(only\s+for\s+\d+\s+days[^\n\.]*|only\s+for\s+today[^\n\.]*|only\s+today[^\n\.]*|today\s+only[^\n\.]*|from\s+\d+/\d+/\d+\s+until\s+\d+/\d+/\d+)", plain, re.IGNORECASE)
+        if valid_m:
+            validity = valid_m.group(1).strip().rstrip(".").strip()
+        elif "permanent" in t_low:
+            validity = "Permanent"
+        else:
+            validity = "N/A"
 
         # Requester
         requester = event.get("sender", "Requester")

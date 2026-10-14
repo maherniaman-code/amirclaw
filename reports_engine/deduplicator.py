@@ -58,6 +58,11 @@ def deduplicate_events(
             same_floor = (floor == u_floor) if (floor or u_floor) else True
             same_loc = same_bld and same_floor
 
+            # Vehicle permissions: different plates are different requests even with identical wording
+            plate, u_plate = event.get("plate_no"), u.get("plate_no")
+            if plate and u_plate and "N/A" not in (plate, u_plate) and plate.replace(" ", "").upper() != u_plate.replace(" ", "").upper():
+                continue
+
             # Check time proximity if datetimes available
             time_close = True
             same_group = event.get("group_name") == u.get("group_name")

@@ -57,9 +57,10 @@ class TestGoldenReportsSuite(unittest.TestCase):
         self.assertNotIn("2. AVS?", text)
         self.assertNotIn("Working", text.split("\n")[4:])
 
-        # Verify summary counts
-        self.assertIn("• Completed: 0 of 11", text)
-        self.assertIn("• Open: 11", text)
+        # 12-10 07:54 AC ticket is closed by the unquoted "Resolved" reply at 07:58 (proximity link),
+        # so it is not carried over; its recurrence on 13-10 is flagged as a repeat instead.
+        self.assertIn("• Completed: 0 of 10", text)
+        self.assertIn("• Open: 10", text)
         self.assertIn("• Safety priority: 4 tickets", text)
 
     def test_report_3_fire_safety_day_shift_golden_output(self):
@@ -71,7 +72,9 @@ class TestGoldenReportsSuite(unittest.TestCase):
         self.assertIn("📅 Shift: Day Shift (13-10-2026)", text)
         self.assertIn("• Completed: 0 of 3", text)
         self.assertIn("• Open: 3", text)
-        self.assertIn("• Safety priority: 3 tickets", text)
+        # "not yet Rectified" follow-up must not close the 11:25 ticket
+        self.assertIn("⚠️ Pending", text.split("13-10-2026 11:25")[1][:40])
+        self.assertIn("• Safety priority: 2 high-risk tickets", text)
 
     def test_report_4_operations_night_shift_golden_output(self):
         """Case 4: Operations Summary (Night Shift 12-10-2026)."""
@@ -109,8 +112,12 @@ class TestGoldenReportsSuite(unittest.TestCase):
         self.assertIn("Plate: EE 80743", text)
         self.assertIn("Plate: V 65372 | Make: Mitsubishi Pajero", text)
         self.assertIn("Plate: FF 71016", text)
-        self.assertIn("• Total Requests: 4", text)
-        self.assertIn("• Pending: 4", text)
+        # Two permanent-access requests with bold "*Plate No:*" fields and near-identical wording
+        self.assertIn("Plate: X 25854 | Make: Audi A5", text)
+        self.assertIn("Plate: AA 59845 | Make: Porsche", text)
+        self.assertIn("📅 Validity: Permanent", text)
+        self.assertIn("• Total Requests: 6", text)
+        self.assertIn("• Pending: 6", text)
 
 
 if __name__ == "__main__":
