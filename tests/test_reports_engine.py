@@ -1,5 +1,6 @@
 """Comprehensive automated test suite for Meydan Reports Automation Engine."""
 
+import tempfile
 import unittest
 from datetime import datetime, time, timedelta
 from pathlib import Path
@@ -12,6 +13,8 @@ from reports_engine.date_utils import (
     get_shift_for_timestamp,
     is_within_freshness,
 )
+from reports_engine import tickets_db
+from reports_engine.repair_tickets import repair_tickets
 from reports_engine.email_reader import parse_parking_email_body
 from reports_engine.sender_resolver import SenderResolver
 from reports_engine.deduplicator import deduplicate_events, calculate_similarity
@@ -313,6 +316,76 @@ class TestReportFormatting(unittest.TestCase):
         self.assertIn("🅿️ *Ramp Area Location*\n\n• Total Slots Designated : 127", report)
         self.assertIn("🛣️ *Service Road*\n\n• Total Slots : 127", report)
         self.assertIn("🏁 *Rumble Area*", report)
+
+
+class TestTicketsSla(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.db_path = str(Path(self._tmp.name) / "tickets.db")
+        tickets_db.init_tickets_table(self.db_path)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_hours_open_uses_parsed_datetime_not_raw_text(self):
+        created = datetime(2026, 10, 12, 6, 12, 22, tzinfo=DUBAI_TZ)
+        now_iso = (created + timedelta(hours=30)).isoformat()
+        ticket = {
+            "message_id": "msg-sla-1",
+            "datetime": created,
+            "raw_datetime": "10/12/2026, 06:12:22 AM",
+            "status": "Pending",
+            "text": "AC not working",
+        }
+        tickets_db.enrich_ticket(ticket, "maintenance", "FM", "Morning", now_iso, db_path=self.db_path)
+
+        self.assertGreater(ticket["hours_open"], 0)
+        self.assertAlmostEqual(ticket["hours_open"], 30.0, places=1)
+        self.assertTrue(ticket["sla_breach"])
+        stored = tickets_db.get_first_seen("msg-sla-1", self.db_path)
+        self.assertEqual(datetime.fromisoformat(stored), created)
+
+    def test_legacy_non_iso_first_seen_is_reparsed_and_repaired(self):
+        legacy_raw = "١١‏/١٠‏/٢٠٢٦، ١٠:٢٩:٤٥ ص"  # 11 Oct 2026 10:29:45 (DD/MM)
+        tickets_db.upsert_ticket(
+            "msg-sla-2", "maintenance", "FM", None, None, "Leak", "Pending", None,
+            first_seen=legacy_raw, last_seen=legacy_raw, shift_label="Morning", db_path=self.db_path,
+        )
+        now_iso = datetime(2026, 10, 12, 16, 29, 45, tzinfo=DUBAI_TZ).isoformat()
+        ticket = {"message_id": "msg-sla-2", "status": "Pending", "text": "Leak"}
+        tickets_db.enrich_ticket(ticket, "maintenance", "FM", "Morning", now_iso, db_path=self.db_path)
+
+        self.assertAlmostEqual(ticket["hours_open"], 30.0, places=1)
+        self.assertTrue(ticket["sla_breach"])
+        stored = tickets_db.get_first_seen("msg-sla-2", self.db_path)
+        self.assertEqual(datetime.fromisoformat(stored), datetime(2026, 10, 11, 10, 29, 45, tzinfo=DUBAI_TZ))
+
+    def test_repair_script_rewrites_legacy_rows(self):
+        iso = datetime(2026, 10, 12, 9, 0, tzinfo=DUBAI_TZ).isoformat()
+        rows = {
+            "msg-us": "10/12/2026, 06:12:22 AM",      # en-US MM/DD -> 12 Oct
+            "msg-ar": "١١‏/١٠‏/٢٠٢٦، ١٠:٢٩:٤٥ ص",     # Arabic DD/MM -> 11 Oct
+            "msg-iso": iso,
+            "msg-bad": "not a date",
+        }
+        for mid, fs in rows.items():
+            tickets_db.upsert_ticket(
+                mid, "maintenance", "FM", None, None, "x", "Pending", None,
+                first_seen=fs, last_seen=iso, shift_label="Morning", db_path=self.db_path,
+            )
+
+        dry = repair_tickets(self.db_path, apply=False)
+        self.assertEqual({e["message_id"] for e in dry["fixed"]}, {"msg-us", "msg-ar"})
+        self.assertEqual([e["message_id"] for e in dry["unparseable"]], ["msg-bad"])
+        self.assertEqual(tickets_db.get_first_seen("msg-us", self.db_path), rows["msg-us"])  # dry run wrote nothing
+
+        repair_tickets(self.db_path, apply=True)
+        get = lambda mid: datetime.fromisoformat(tickets_db.get_first_seen(mid, self.db_path))
+        self.assertEqual(get("msg-us"), datetime(2026, 10, 12, 6, 12, 22, tzinfo=DUBAI_TZ))
+        self.assertEqual(get("msg-ar"), datetime(2026, 10, 11, 10, 29, 45, tzinfo=DUBAI_TZ))
+        self.assertEqual(tickets_db.get_first_seen("msg-iso", self.db_path), iso)
+        self.assertEqual(tickets_db.get_first_seen("msg-bad", self.db_path), "not a date")
+        self.assertEqual(repair_tickets(self.db_path)["fixed"], [])  # idempotent
 
 
 if __name__ == "__main__":

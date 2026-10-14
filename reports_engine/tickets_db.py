@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 
 from .config_loader import BASE_DIR
+from .date_utils import DUBAI_TZ, parse_datetime
 
 DEFAULT_DB_PATH = os.environ.get("TICKETS_DB_PATH") or str(BASE_DIR / "workspace" / "tickets.db")
 
@@ -93,6 +94,28 @@ def get_first_seen(message_id: str, db_path: str = DEFAULT_DB_PATH) -> Optional[
         return row["first_seen"] if row else None
 
 
+def set_first_seen(message_id: str, first_seen: str, db_path: str = DEFAULT_DB_PATH) -> None:
+    with _conn(db_path) as c:
+        c.execute("UPDATE tickets SET first_seen=? WHERE message_id=?", (first_seen, message_id))
+        c.commit()
+
+
+def _to_datetime(value: Any) -> Optional[datetime]:
+    """Coerce a datetime, ISO string, or WhatsApp-style timestamp text to a tz-aware datetime."""
+    if isinstance(value, datetime):
+        dt = value
+    elif value:
+        try:
+            dt = datetime.fromisoformat(str(value))
+        except ValueError:
+            dt = parse_datetime(str(value))
+    else:
+        dt = None
+    if dt is not None and dt.tzinfo is None:
+        dt = dt.replace(tzinfo=DUBAI_TZ)
+    return dt
+
+
 def get_building_occurrences(
     building: str, days: int = TREND_DAYS, db_path: str = DEFAULT_DB_PATH
 ) -> List[Dict[str, Any]]:
@@ -123,26 +146,29 @@ def enrich_ticket(
     status = ticket.get("status", "Pending")
     resolved_by = ticket.get("resolved_by")
 
-    # Determine first_seen: prefer DB record (persists across reports)
-    db_first = get_first_seen(msg_id, db_path)
-    ticket_dt = ticket.get("raw_datetime") or ticket.get("datetime")
-    if isinstance(ticket_dt, datetime):
-        ticket_dt_iso = ticket_dt.isoformat()
-    else:
-        ticket_dt_iso = str(ticket_dt) if ticket_dt else now_iso
+    # Determine first_seen: prefer DB record (persists across reports).
+    # Prefer the parsed tz-aware ticket["datetime"]; raw_datetime is WhatsApp display text.
+    ticket_dt = _to_datetime(ticket.get("datetime")) or _to_datetime(ticket.get("raw_datetime"))
+    ticket_dt_iso = ticket_dt.isoformat() if ticket_dt else now_iso
 
-    first_seen = db_first or ticket_dt_iso
+    db_first = get_first_seen(msg_id, db_path)
+    first_seen = ticket_dt_iso
+    if db_first:
+        try:
+            datetime.fromisoformat(db_first)
+            first_seen = db_first
+        except ValueError:
+            # Legacy rows stored raw WhatsApp text; re-parse and repair in place.
+            repaired = parse_datetime(db_first)
+            if repaired:
+                first_seen = repaired.isoformat()
+            set_first_seen(msg_id, first_seen, db_path)
 
     # hours_open
     try:
-        fs = datetime.fromisoformat(first_seen)
-        now_dt = datetime.fromisoformat(now_iso)
-        # Make both offset-naive for subtraction safety
-        if fs.tzinfo:
-            fs = fs.replace(tzinfo=None)
-        if now_dt.tzinfo:
-            now_dt = now_dt.replace(tzinfo=None)
-        hours_open = (now_dt - fs).total_seconds() / 3600
+        fs = _to_datetime(first_seen)
+        now_dt = _to_datetime(now_iso)
+        hours_open = max((now_dt - fs).total_seconds() / 3600, 0.0)
     except Exception:
         hours_open = 0.0
 
