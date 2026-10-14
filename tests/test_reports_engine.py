@@ -14,6 +14,8 @@ from reports_engine.date_utils import (
     is_within_freshness,
 )
 from reports_engine import tickets_db
+from reports_engine.config_loader import get_config
+from reports_engine.manager import _keyword_at_word_start
 from reports_engine.repair_tickets import repair_tickets
 from reports_engine.email_reader import parse_parking_email_body
 from reports_engine.sender_resolver import SenderResolver
@@ -316,6 +318,49 @@ class TestReportFormatting(unittest.TestCase):
         self.assertIn("🅿️ *Ramp Area Location*\n\n• Total Slots Designated : 127", report)
         self.assertIn("🛣️ *Service Road*\n\n• Total Slots : 127", report)
         self.assertIn("🏁 *Rumble Area*", report)
+
+
+class TestOperationsKeywordMatching(unittest.TestCase):
+    def setUp(self):
+        ops = get_config()["operations"]
+        self.vendors, self.activities = ops["vendors"], ops["activities"]
+
+    def _included(self, text):
+        t = text.lower()
+        return bool(_keyword_at_word_start(t, self.vendors) or _keyword_at_word_start(t, self.activities))
+
+    def test_word_forms_and_new_vendors_are_included(self):
+        # Real Security Team messages from 14-10-2026 that the exact-word list missed
+        self.assertTrue(self._included("These two sofa are shifted from p building to N building"))
+        self.assertTrue(self._included("Al zawaya company staff remove 6 damaged chairs in m building 4th floor"))
+        self.assertEqual(_keyword_at_word_start("al zawaya company staff remove", self.vendors), "al zawaya")
+        self.assertEqual(_keyword_at_word_start("eurosec vendor is removing the 1 camera", self.vendors), "eurosec")
+        for text in ("Table installation work done", "Chairs removed", "Boxes delivered to Q building"):
+            self.assertTrue(self._included(text), text)
+
+    def test_keywords_only_match_at_word_start(self):
+        # "arki" used to match inside "parking"; bare "shift" is not a keyword (handover chatter)
+        self.assertIsNone(_keyword_at_word_start("m building back side parking barrier", self.vendors))
+        self.assertFalse(self._included("Night shift guard reporting, all clear"))
+        self.assertFalse(self._included("Download the attendance sheet"))
+
+    def test_guard_fault_reports_are_not_operations(self):
+        # Real fault reports from 11-14 Oct 2026; they belong to maintenance, not operations
+        ops = get_config()["operations"]
+        faults = ops["fault_markers"]
+        for text in (
+            "The light near the Q Building Ground Floor near exit door is not working. Kindly inform Imdaad",
+            "Two external lights installed above the elevators are not working and require maintenance.",
+            "Q building first floor Speed Gate is out of service",
+        ):
+            t = text.lower()
+            vendor = _keyword_at_word_start(t, self.vendors)
+            act = _keyword_at_word_start(t, self.activities)
+            self.assertIsNotNone(_keyword_at_word_start(t, faults), text)
+            self.assertFalse(vendor and act, text)  # fault wins unless vendor AND activity both match
+        # Vendor work on a faulty asset still counts
+        t = "kone vendor installing new rope on the lift that is out of service"
+        self.assertTrue(_keyword_at_word_start(t, self.vendors) and _keyword_at_word_start(t, self.activities))
 
 
 class TestTicketsSla(unittest.TestCase):

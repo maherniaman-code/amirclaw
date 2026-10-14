@@ -15,6 +15,7 @@ def main():
     parser.add_argument("--report", choices=["parking", "maintenance", "fire_safety", "operations", "violations", "permissions", "cleaning", "data_quality", "list_corrections"], required=True)
     parser.add_argument("--slot", default="latest", help="Parking slot time (e.g. 10:00, 12:00, 14:00, latest)")
     parser.add_argument("--date", default=None, help="Target report date (DD-MM-YYYY)")
+    parser.add_argument("--shift", choices=["Day", "Night"], default=None, help="Shift for maintenance/fire_safety/operations (default: shift in progress)")
     parser.add_argument("--excel", default=None, help="Path to whatsapp_messages.xlsx file")
 
     # Correction options
@@ -43,13 +44,13 @@ def main():
             res = manager.generate_parking(slot_request=args.slot, report_date=args.date)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "maintenance":
-            res = manager.generate_maintenance(target_date=args.date)
+            res = manager.generate_maintenance(target_date=args.date, target_shift=args.shift)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "fire_safety":
-            res = manager.generate_fire_safety(target_date=args.date)
+            res = manager.generate_fire_safety(target_date=args.date, target_shift=args.shift)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "operations":
-            res = manager.generate_operations(target_date=args.date)
+            res = manager.generate_operations(target_date=args.date, target_shift=args.shift)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "violations":
             res = manager.generate_parking_violations()

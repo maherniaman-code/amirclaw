@@ -67,6 +67,14 @@ export function clearPollTracker(slotKey: string, customDb?: any): void {
     }
 }
 
+// DD-MM-YYYY for a Dubai calendar date shifted by dayOffset (calendar arithmetic, no timezone involved).
+export function formatDubaiDate(year: string, month: string, day: string, dayOffset = 0): string {
+    const d = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day) + dayOffset));
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    return `${dd}-${mm}-${d.getUTCFullYear()}`;
+}
+
 export function startMeydanScheduler(bot: Bot) {
     console.log('⏰ Starting Meydan Reports Automation Scheduler (Asia/Dubai timezone)...');
 
@@ -116,16 +124,21 @@ export function startMeydanScheduler(bot: Bot) {
                 const shiftKey = `shift_${shiftName}_${dateStr}_${hour}`;
 
                 if (!hasReportBeenSent(shiftKey)) {
-                    console.log(`🚀 Triggering automated ${shiftName} Shift reports for ${dateStr} at ${timeSlotStr}...`);
+                    // Report the shift that just ended: 17:00 → today's Day shift, 05:00 → yesterday's Night shift.
+                    // Without an explicit shift the engine would pick the shift that is just starting (empty).
+                    const shiftDate = shiftName === 'Day' ? dateStr : formatDubaiDate(year, month, day, -1);
+                    console.log(`🚀 Triggering automated ${shiftName} Shift reports for ${shiftDate} at ${timeSlotStr}...`);
 
                     const reportsToRun = ['maintenance', 'fire_safety', 'operations'] as const;
                     for (const rType of reportsToRun) {
                         try {
-                            const res = await runReportEngine(rType);
+                            const res = await runReportEngine(rType, { date: shiftDate, shift: shiftName });
                             if (res.success && res.text) {
                                 for (const userId of config.reportChatIds) {
                                     await sendTelegramReport(bot, userId, res.text, res.excelPath);
                                 }
+                            } else {
+                                console.error(`Scheduled ${rType} report failed:`, res.error);
                             }
                         } catch (rErr: any) {
                             console.error(`Error generating scheduled ${rType} report:`, rErr.message);

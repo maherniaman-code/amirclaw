@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
-import { getSchedulerDb, hasReportBeenSent, markReportAsSent, getOrCreatePollTracker, clearPollTracker } from '../src/reports/scheduler.js';
+import { getSchedulerDb, hasReportBeenSent, markReportAsSent, getOrCreatePollTracker, clearPollTracker, formatDubaiDate } from '../src/reports/scheduler.js';
 import { generateParkingReportText } from './test_helpers.js';
 
 const SCRATCH_DIR = path.resolve('workspace', 'test_scratch');
@@ -217,6 +217,25 @@ function runSchedulerTests() {
     if (!t6.isParkingSlot) throw new Error('Assertion failed: 14:00 must trigger parking');
 
     console.log('Result for Test (C): PASS ✅\n');
+
+    // ─────────────────────────────────────────────────────────────
+    // TEST (D): Shift reports cover the shift that just ended
+    // 17:00 → today's Day shift; 05:00 → yesterday's Night shift (incl. month/year rollover)
+    // ─────────────────────────────────────────────────────────────
+    console.log('[TEST D: ended-shift date resolution]');
+    const cases: [string, string, string, number, string][] = [
+        ['2026', '10', '14', 0, '14-10-2026'],
+        ['2026', '10', '14', -1, '13-10-2026'],
+        ['2026', '11', '01', -1, '31-10-2026'],
+        ['2027', '01', '01', -1, '31-12-2026'],
+        ['2028', '03', '01', -1, '29-02-2028'],
+    ];
+    for (const [y, m, d, off, expected] of cases) {
+        const got = formatDubaiDate(y, m, d, off);
+        console.log(`formatDubaiDate(${y}-${m}-${d}, ${off}) = ${got}`);
+        if (got !== expected) throw new Error(`Assertion failed: expected ${expected}, got ${got}`);
+    }
+    console.log('Result for Test (D): PASS ✅\n');
     console.log('ALL SCHEDULER & BOT TESTS PASSED SUCCESSFULLY.');
 
     // Cleanup
