@@ -137,6 +137,13 @@ safety_priority:
   - "hazard"
 
 operations:
+  # Every keyword list below matches at the START of a word, so a root
+  # covers every form: "remov" -> remove/removed/removing/removal. Matching is case-insensitive.
+  # Seeded from the Security Team messages of 11-14 Oct 2026, then widened to common
+  # contractor / facility scenarios. tests/test_reports_engine.py has a scenario table:
+  # add a case there whenever you add a keyword.
+
+  # Named companies. The first match becomes the "vendor" shown in the report.
   vendors:
     - "telecon"
     - "fit movers"
@@ -147,45 +154,219 @@ operations:
     - "imdaad"
     - "al zawaya"
     - "eurosec"
-  # Keywords match at the start of a word, so a root covers every form:
-  # "remov" -> remove/removed/removing/removal. Bare "shift" is avoided on purpose
-  # because guards write "night shift" in handovers.
-  # Derived from the Security Team messages of 11-14 Oct 2026.
-  activities:
-    - "vendor"            # "Fit Movers vendors are installing", "Eurosec vendor is removing"
+    # Common Dubai FM / lift / utility / pest-control providers
+    - "emrill"
+    - "farnek"
+    - "transguard"
+    - "enova"
+    - "khidmah"
+    - "serco"
+    - "otis"
+    - "schindler"
+    - "mitsubishi elevator"
+    - "dewa"
+    - "etisalat"
+    - "rentokil"
+    - "g4s"
+    - "honeywell"
+    - "johnson controls"
+    - "siemens"
+  # Other spellings guards use -> canonical vendor name above
+  vendor_aliases:
+    "house keeping": "housekeeping"
+    "house-keeping": "housekeeping"
+    "alzawaya": "al zawaya"
+    "al-zawaya": "al zawaya"
+    "al zawiya": "al zawaya"
+    "imdad ": "imdaad"
+    "rose garden team": "rose garden"
+    "e&": "etisalat"
+
+  # Someone doing work without a company name. Counts like a vendor for the fault rule
+  # but is shown as "Operations Team".
+  parties:
+    - "vendor"            # vendor / vendors
     - "contractor"
+    - "subcontractor"
+    - "supplier"
+    - "courier"
+    - "technician"
+    - "workers"
+    - "labour"
+    - "labor"
+    - "company staff"
+    - "maintenance team"
+    - "cleaning team"
+    - "pest control"
+
+  # What is being done
+  activities:
+    # install / remove / replace
     - "install"
+    - "uninstall"
     - "remov"
     - "taking out"
+    - "took out"
+    - "replac"
+    - "dismantl"
+    - "assembl"
+    - "mounting"
+    - "mounted"
+    - "fixing"
+    - "fixed"
+    - "repair"
+    - "upgrad"
+    # moving goods and furniture
     - "shifted"
     - "shifting"
+    - "move "
     - "moved"
     - "moving"
+    - "relocat"
+    - "transferr"
     - "placed"
     - "placing"
+    - "carrying"
+    - "carried"
     - "deliver"
     - "load"
     - "unload"
-    - "dismantl"
-    - "assembl"
+    - "offload"
+    - "pick up"
+    - "picked up"
+    - "pickup"
+    - "drop off"
+    - "dropped off"
+    - "collect"
+    - "dispos"
+    - "taking away"
+    # fit-out and civil work
+    - "paint"
+    - "drilling"
+    - "welding"
+    - "hot work"
+    - "cutting"
+    - "cabling"
+    - "wiring"
+    - "carpet"
+    - "partition"
+    - "plaster"
+    - "tiling"
+    # signage and events
     - "poster"
+    - "sticker"
+    - "signage"
+    - "banner"
+    - "branding"
+    - "setup"
+    - "set up"
+    - "setting up"
+    - "arranging"
+    - "decorat"
+    # cleaning, pest control, landscaping
+    - "cleaning"
+    - "deep clean"
+    - "fumigat"
+    - "spraying"
     - "watering"
+    - "landscap"
+    - "trimming"
+    - "pruning"
+    - "planting"
+    - "grass cutting"
+    # servicing, testing, visits
+    - "servicing"
+    - "serviced"
+    - "testing"
+    - "inspection"
+    - "auditing"          # not bare "audit": it would match "auditorium"
+    - "audit by"
+    - "audit team"
+    - "site visit"
+    - "meter reading"
+    - "escorting"
+    - "work permit"
+    - "permit to work"
+    - "ptw"
     - "sign-in"
     - "sign in"
-  # Guards' fault reports (lights, AC, gates, card readers) belong to maintenance, not operations.
-  # A message with one of these is left out unless it names a vendor AND an activity.
+
+  # Marks an activity Completed (ignored when negated: "not yet completed").
+  # A completion message closes the earlier activity it refers to (quoted, or sharing a word).
+  completion:
+    - "complet"
+    - "done"
+    - "finish"
+    - "work is over"
+    - "wrapped up"
+    - "handed over"
+    - "vendors left"
+    - "vendor left"
+    - "vendor has left"
+    - "team left"
+    - "staff left"
+    - "workers left"
+    - "they left"
+    - "has left"
+    - "have left"
+    - "left the site"
+    - "left the premises"
+    - "left the building"
+    - "left the area"
+    - "cleared"
+
+  # Guards' fault reports (lights, AC, gates, card readers, leaks) belong to maintenance.
+  # A message with one of these is left out unless it names a vendor/party AND an activity.
   fault_markers:
     - "not working"
+    - "not work"
+    - "not functioning"
+    - "malfunction"
+    - "faulty"
     - "out of service"
+    - "out of order"
     - "not closing"
     - "not opening"
+    - "not responding"
+    - "not stable"
+    - "not cooling"
+    - "not cold"
+    - "low cooling"
+    - "no power"
+    - "power cut"
+    - "power failure"
+    - "power outage"
+    - "tripped"
     - "not fixed"
     - "need to fix"
     - "need to check"
+    - "need to replace"
+    - "needs replacement"
+    - "need repair"
+    - "needs repair"
+    - "need to rectify"
     - "require maintenance"
     - "requires maintenance"
+    - "require repair"
+    - "to be fixed"
+    - "to be checked"
+    - "please check"
+    - "kindly check"
+    - "inform the concern"
+    - "broken"
+    - "damage"
+    - "leak"
+    - "crack"
+    - "peeling"
+    - "stuck"
+    - "jammed"
+    - "blinking"
+    - "flickering"
+    - "glowing"
     - "emergency light"
     - "emergency exit light"
+    - "bad smell"
+    - "not clean"
 
 parking_violation:
   keywords:
@@ -259,6 +440,11 @@ cleaning_priority_high:
   - "urgent clean"
   - "hazardous spill"
   - "chemical spill"
+
+# Shown upper-case in location headings ("gsu room" -> "GSU Room")
+location_acronyms:
+  - "gsu"
+  - "gf"
 
 cleaning_locations:
   - "washroom"

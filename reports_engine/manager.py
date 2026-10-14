@@ -82,9 +82,83 @@ def _keyword_at_word_start(text_lower: str, keywords: List[str]) -> Optional[str
     while "arki" no longer matches inside "parking".
     """
     for kw in keywords:
-        if re.search(r"(?<![a-z0-9])" + re.escape(kw.lower()), text_lower):
+        if re.search(r"(?<!\w)" + re.escape(kw.lower()), text_lower):  # \w covers Arabic letters too
             return kw
     return None
+
+
+def classify_operations_message(text: str, ops_cfg: Dict[str, Any]) -> Tuple[str, Optional[str]]:
+    """
+    Classify a Security Team message for the operations report.
+    Returns (category, vendor): category is "activity", "fault" or "none"; vendor is the
+    canonical vendor name (aliases resolved) or None.
+    A fault marker wins unless the message names a vendor/party AND an activity
+    ("Kone technician repairing the lift that is out of service" is still vendor work).
+    """
+    t_low = text.lower()
+    aliases = {k.lower(): v.lower() for k, v in ops_cfg.get("vendor_aliases", {}).items()}
+    vendor = _keyword_at_word_start(t_low, ops_cfg.get("vendors", []) + list(aliases))
+    vendor = aliases.get(vendor, vendor)
+    # Generic parties ("workers", "contractor", "technician") count as someone doing the work
+    party = vendor or _keyword_at_word_start(t_low, ops_cfg.get("parties", []))
+    has_act = _keyword_at_word_start(t_low, ops_cfg.get("activities", [])) is not None
+    if _keyword_at_word_start(t_low, ops_cfg.get("fault_markers", [])) is not None and not (party and has_act):
+        return "fault", vendor
+    if party or has_act:
+        return "activity", vendor
+    return "none", vendor
+
+
+# Words too generic to tie a completion message to an earlier activity
+_LINK_STOPWORDS = {
+    "building", "floor", "ground", "vendor", "vendors", "work", "team", "staff", "company",
+    "with", "from", "that", "this", "there", "have", "will", "they", "their", "been", "were",
+    "today", "near", "side", "inside", "outside", "done", "left", "completed", "complete", "finished",
+}
+
+
+def _is_completion(text_lower: str, completion_kws: List[str]) -> bool:
+    """A completion keyword at a word start that is not negated ("not yet completed")."""
+    for kw in completion_kws:
+        kw_re = re.escape(kw.lower())
+        if not re.search(r"(?<!\w)" + kw_re, text_lower):
+            continue
+        if re.search(r"\b(?:not|never|yet to be|pending)\s+(?:\w+\s+){0,2}" + kw_re, text_lower):
+            continue
+        return True
+    return False
+
+
+def _content_words(text_lower: str) -> set:
+    return {w for w in re.findall(r"[a-z]{4,}", text_lower) if w not in _LINK_STOPWORDS}
+
+
+def _find_activity_to_complete(
+    events: List[Dict[str, Any]], ev: Dict[str, Any], max_hours: int = 12
+) -> Tuple[Optional[Dict[str, Any]], str]:
+    """
+    The open activity a completion message refers to: the quoted one if WhatsApp recorded a
+    Reply, else the most recent open activity within max_hours sharing a content word
+    ("Table installation work done" -> "Fit Movers vendors are installing a new ... table").
+    """
+    open_events = [e for e in events if e["status"] != "Completed"]
+    q_id = ev.get("quoted_message_id", "")
+    if q_id:
+        for e in open_events:
+            if q_id == e["message_id"] or q_id in e.get("source_message_ids", []):
+                return e, "quoted"
+    ev_dt = ev.get("datetime")
+    words = _content_words(ev["text"].lower())
+    if not ev_dt or not words:
+        return None, ""
+    best = None
+    for e in open_events:
+        e_dt = e.get("datetime")
+        if not isinstance(e_dt, datetime) or not (0 < (ev_dt - e_dt).total_seconds() <= max_hours * 3600):
+            continue
+        if words & _content_words(e["text"].lower()) and (best is None or e_dt > best["datetime"]):
+            best = e
+    return (best, "similar") if best else (None, "")
 
 
 class ReportsManager:
@@ -270,6 +344,11 @@ class ReportsManager:
 
     def _get_shift_range(self, date_str: str, shift_name: str) -> Tuple[datetime, datetime]:
         d = datetime.strptime(date_str, "%d-%m-%Y").date()
+        if shift_name.lower() == "full":
+            # Whole operational day: Day shift + following Night shift (05:00 → 05:00 next day)
+            start = datetime.combine(d, time(5, 0), tzinfo=DUBAI_TZ)
+            end = datetime.combine(d + timedelta(days=1), time(5, 0), tzinfo=DUBAI_TZ)
+            return start, end
         if shift_name.lower() == "day":
             start = datetime.combine(d, time(5, 0), tzinfo=DUBAI_TZ)
             end = datetime.combine(d, time(17, 0), tzinfo=DUBAI_TZ)
@@ -313,15 +392,33 @@ class ReportsManager:
 
     def _date_range_label(self, target_date: Optional[str], target_shift: Optional[str]) -> str:
         if target_date == "week":
-            return "آخر 7 أيام (Last 7 Days)"
+            return "Last 7 Days"
         if target_date == "month":
             return datetime.now(DUBAI_TZ).strftime("%B %Y — Full Month")
+        if target_date and target_shift and target_shift.lower() == "full":
+            return f"Full Day ({target_date})"
         if target_date and target_shift:
             return f"{target_shift.title()} Shift ({target_date})"
         now = datetime.now(DUBAI_TZ)
         shift = target_shift or ("Day" if 5 <= now.hour < 17 else "Night")
         date = target_date or now.strftime("%d-%m-%Y")
         return f"{shift.title()} Shift ({date})"
+
+    @staticmethod
+    def _default_period(target_date: Optional[str], target_shift: Optional[str]) -> Tuple[str, Optional[str]]:
+        """
+        No date → the shift in progress. A specific date without a shift (Telegram date
+        buttons) → that whole operational day, 05:00 → 05:00 next day.
+        """
+        now = datetime.now(DUBAI_TZ)
+        if target_date in ("week", "month") or target_shift:
+            return target_date, target_shift
+        if not target_date:
+            return now.strftime("%d-%m-%Y"), ("Day" if 5 <= now.hour < 17 else "Night")
+        # Before 05:00 the operational day is still yesterday's (its night shift is running)
+        if target_date == now.strftime("%d-%m-%Y") and now.hour < 5:
+            target_date = (now - timedelta(days=1)).strftime("%d-%m-%Y")
+        return target_date, "Full"
 
     # ─────────────────────────────────────────────────────────────
     # REPORT 2: MAINTENANCE REPORT (Meydan FM Team💪)
@@ -331,13 +428,7 @@ class ReportsManager:
         target_date: Optional[str] = None,
         target_shift: Optional[str] = None,
     ) -> Dict[str, Any]:
-        # Auto-detect current Dubai shift when not specified (skip for range queries)
-        now_dubai = datetime.now(DUBAI_TZ)
-        if not target_date:
-            target_date = now_dubai.strftime("%d-%m-%Y")
-        if target_date not in ("week", "month") and not target_shift:
-            h = now_dubai.hour
-            target_shift = "day" if 5 <= h < 17 else "night"
+        target_date, target_shift = self._default_period(target_date, target_shift)
 
         all_msgs = self.parser.load_messages()
         fm_grp = self.config.get("groups", {}).get("fm", "Meydan FM Team💪")
@@ -422,7 +513,8 @@ class ReportsManager:
 
             bld, floor, heading = self.parser.extract_building_and_floor(text)
             if not heading:
-                heading = text.split("\n")[0][:45]
+                # Named place ("GSU Room", "Lobby"…) or the report's generic heading, never message text
+                heading = self._extract_named_location(text) or ""
 
             status = "Pending"
             if corr and corr.get("target_status"):
@@ -554,12 +646,7 @@ class ReportsManager:
         target_date: Optional[str] = None,
         target_shift: Optional[str] = None,
     ) -> Dict[str, Any]:
-        now_dubai = datetime.now(DUBAI_TZ)
-        if not target_date:
-            target_date = now_dubai.strftime("%d-%m-%Y")
-        if target_date not in ("week", "month") and not target_shift:
-            h = now_dubai.hour
-            target_shift = "day" if 5 <= h < 17 else "night"
+        target_date, target_shift = self._default_period(target_date, target_shift)
 
         all_msgs = self.parser.load_messages()
         fs_grp = self.config.get("groups", {}).get("fire_safety", "Fire & Safety Team Meydan")
@@ -625,7 +712,8 @@ class ReportsManager:
 
             bld, floor, heading = self.parser.extract_building_and_floor(text)
             if not heading:
-                heading = text.split("\n")[0][:45]
+                # Named place ("GSU Room", "Lobby"…) or the report's generic heading, never message text
+                heading = self._extract_named_location(text) or ""
 
             status = "Pending"
             if corr and corr.get("target_status"):
@@ -755,14 +843,9 @@ class ReportsManager:
         target_date: Optional[str] = None,
         target_shift: Optional[str] = None,
     ) -> Dict[str, Any]:
-        now_dubai = datetime.now(DUBAI_TZ)
-        if not target_date:
-            target_date = now_dubai.strftime("%d-%m-%Y")
-        if target_date not in ("week", "month") and not target_shift:
-            h = now_dubai.hour
-            target_shift = "Day" if 5 <= h < 17 else "Night"
+        target_date, target_shift = self._default_period(target_date, target_shift)
 
-        all_msgs = self.parser.load_messages()
+        all_msgs = self.parser.load_messages(load_images=True)  # photos for the 📷 line and Photos sheet
         sec_grp = self.config.get("groups", {}).get("operations", "Meydan - Security Team")
         sec_msgs = [m for m in all_msgs if m["group_name"] == sec_grp]
         grouped_events = self.parser.group_media_events(sec_msgs)
@@ -771,10 +854,10 @@ class ReportsManager:
         source_audit: List[Dict[str, Any]] = []
         needs_review: List[Dict[str, Any]] = []
 
-        vendors_list = self.config.get("operations", {}).get("vendors", [])
-        activities_list = self.config.get("operations", {}).get("activities", [])
-        fault_markers = self.config.get("operations", {}).get("fault_markers", [])
-        completion_kws = ["completed", "done", "left", "finished", "cleared"]
+        ops_cfg = self.config.get("operations", {})
+        completion_kws = ops_cfg.get(
+            "completion", ["complet", "done", "finish", "vendors left", "cleared"]
+        )
 
         active_vendors_set = set()
 
@@ -783,9 +866,6 @@ class ReportsManager:
             t_low = text.lower()
             msg_id = ev["message_id"]
 
-            if self.parser.is_non_operational(text):
-                continue
-
             # Apply date-range filtering
             ev_dt = ev.get("datetime")
             if ev_dt:
@@ -793,16 +873,34 @@ class ReportsManager:
                 if not (_s <= ev_dt < _e):
                     continue
 
-            # Identify if it is an operational activity
-            vendor_hit = _keyword_at_word_start(t_low, vendors_list)
-            has_act = _keyword_at_word_start(t_low, activities_list) is not None
-            # Fault reports go to maintenance unless clearly vendor work ("Kone vendor installing ... out of service")
-            is_fault = _keyword_at_word_start(t_low, fault_markers) is not None and not (vendor_hit and has_act)
+            # A completion update closes the activity it refers to instead of becoming a new item
+            is_completion = _is_completion(t_low, completion_kws)
+            if is_completion:
+                target, link_method = _find_activity_to_complete(events, ev)
+                if target:
+                    target["status"] = "Completed"
+                    target["completed_by"] = ev["sender"]
+                    target["source_message_ids"].append(msg_id)
+                    source_audit.append({
+                        "message_id": msg_id,
+                        "group_name": sec_grp,
+                        "sender": ev["sender"],
+                        "raw_datetime": ev["raw_datetime"],
+                        "quoted_message_id": ev.get("quoted_message_id", ""),
+                        "audit_status": f"Linked ({link_method}) completion -> Event {target['message_id']}",
+                    })
+                    continue
 
-            if is_fault or not (vendor_hit or has_act):
+            if self.parser.is_non_operational(text):
+                continue
+
+            # Identify if it is an operational activity (faults belong to maintenance)
+            category, vendor_hit = classify_operations_message(text, ops_cfg)
+
+            if category != "activity":
                 needs_review.append({
                     "message_id": msg_id,
-                    "reason": "Fault report, not an operational activity" if is_fault
+                    "reason": "Fault report, not an operational activity" if category == "fault"
                     else "Security message without matching operational keywords",
                     "text": text,
                     "sender": ev["sender"],
@@ -818,14 +916,11 @@ class ReportsManager:
 
             bld, floor, heading = self.parser.extract_building_and_floor(text)
             if not heading:
-                # Use location text e.g. GSU room
-                heading = text.split("\n")[0][:45]
+                # Named place ("GSU Room", "Lobby"…) or the report's generic heading, never message text
+                heading = self._extract_named_location(text) or ""
 
-            # Status rule: default is "Reported"
-            # Change to "Completed" ONLY if explicit completion keyword or linked reply says so
-            status = "Reported"
-            if any(ck in t_low for ck in completion_kws):
-                status = "Completed"
+            # "Reported" until its own text or a later linked update says it is complete
+            status = "Completed" if is_completion else "Reported"
 
             time_str = ev["datetime"].strftime("%I:%M %p") if ev["datetime"] else "N/A"
             photos_data = ev.get("photos_data", [])
@@ -1117,7 +1212,7 @@ class ReportsManager:
         t_low = text.lower()
         for loc in self.config.get("cleaning_locations", []):
             if loc in t_low:
-                return loc.title()
+                return " ".join(w.upper() if w in self.config.get("location_acronyms", []) else w.title() for w in loc.split())
         return None
 
     # ─────────────────────────────────────────────────────────────

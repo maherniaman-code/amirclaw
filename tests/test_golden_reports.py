@@ -94,6 +94,8 @@ class TestGoldenReportsSuite(unittest.TestCase):
         self.assertIn("Arki – Arki group vendors is working in M building", text)
         self.assertIn("• Total Activities: 3", text)
         self.assertIn("• Active Vendors: Arki, Housekeeping, Telecon", text)
+        # Embedded WhatsApp photos are picked up for the 📷 line
+        self.assertIn("📷 Photo: Attached in Excel (Sheet: Photos)", text)
 
     def test_report_5_parking_violations_golden_output(self):
         """Case 5: Parking Violations Summary (Multistory Parking Building Meydan)."""
