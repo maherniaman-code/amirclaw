@@ -13,6 +13,7 @@ import path from 'path';
 import sharp from 'sharp';
 import { appendWhatsAppMessage, ensureExcelInitialized, flushWhatsAppMessages, EXCEL_PATH } from './excel.js';
 import { config } from '../config.js';
+import { mirrorWhatsAppMessage } from '../cloud/messages.js';
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
 const SESSION_DIR = path.join(WORKSPACE_DIR, 'whatsapp_session');
@@ -238,6 +239,19 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
                 mediaLocalPath,
                 thumbnailPath,
                 quotedMessageId: quotedMessageId || undefined,
+            });
+            mirrorWhatsAppMessage({
+                messageId,
+                groupJid: jid,
+                groupName,
+                sender: senderDisplay,
+                senderId: msg.key.fromMe ? undefined : (msg.key.participant || undefined),
+                text: effectiveText,
+                mediaType,
+                mediaFileName,
+                quotedMessageId: quotedMessageId || undefined,
+                rawTimestamp: dateStr,
+                timestampMs: tsSeconds * 1000,
             });
         }
     } catch (err: any) {

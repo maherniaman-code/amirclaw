@@ -61,13 +61,17 @@ function initFirestore() {
                 });
             }
             firestoreDb = getFirestore();
-            console.log('🔥 Firebase Cloud Firestore connected successfully! All messages are syncing to the cloud.');
+            console.log('🔥 Firebase Cloud Firestore connected (Telegram chats, WhatsApp messages and backups sync to the cloud).');
         } catch (error: any) {
             console.error('⚠️ Failed to initialize Firebase:', error.message);
         }
     } else {
         console.log('ℹ️ Firebase credentials file (service-account.json) not found yet. Using local database until provided.');
     }
+}
+
+export function getFirestoreDb(): Firestore | null {
+    return firestoreDb;
 }
 
 export function getMessages(userId: number, limit = config.conversationHistoryLimit ?? 50) {

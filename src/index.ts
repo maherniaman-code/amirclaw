@@ -12,6 +12,7 @@ import { textToSpeech, getUserVoiceSettings, setUserAlwaysVoice, setUserVoiceKey
 import { startReminderScheduler, listUserReminders } from './reminders.js';
 import { startMeydanScheduler } from './reports/scheduler.js';
 import { handleReportAction, handleReportCallback } from './reports/telegram_handlers.js';
+import { startCloudBackupScheduler } from './cloud/backup.js';
 
 // Validate configuration and initialize database
 validateConfig();
@@ -40,6 +41,8 @@ const groq = new Groq({ apiKey: config.groqApiKey || 'placeholder' });
 startReminderScheduler(bot);
 // Start Meydan Reports Automation Scheduler (Dubai shifts & parking slots)
 startMeydanScheduler(bot);
+// Daily Firestore backup of session, databases and media
+startCloudBackupScheduler();
 
 // Map tools to standard OpenAI function calling format
 const llmTools = availableTools.map((t) => ({

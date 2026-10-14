@@ -12,3 +12,4 @@ backups/
 *.tar.gz
 __pycache__/
 *.pyc
+restore/
