@@ -182,6 +182,10 @@ operations:
     "rose garden team": "rose garden"
     "e&": "etisalat"
 
+  # An activity that names no company takes the vendor of the latest activity that does,
+  # within this many minutes (follow-up posts of the same job). 0 disables it.
+  vendor_inherit_minutes: 60
+
   # Someone doing work without a company name. Counts like a vendor for the fault rule
   # but is shown as "Operations Team".
   parties:

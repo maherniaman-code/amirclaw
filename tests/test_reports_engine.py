@@ -17,7 +17,7 @@ from reports_engine.date_utils import (
 from reports_engine import tickets_db
 from reports_engine.config_loader import get_config
 from reports_engine import manager as manager_mod
-from reports_engine.manager import ReportsManager, _keyword_at_word_start, _is_completion, _find_activity_to_complete, classify_operations_message
+from reports_engine.manager import ReportsManager, _keyword_at_word_start, _is_completion, _find_activity_to_complete, classify_operations_message, _vendor_from_recent_activity
 from reports_engine.repair_tickets import repair_tickets
 from reports_engine.email_reader import parse_parking_email_body
 from reports_engine.sender_resolver import SenderResolver
@@ -497,6 +497,29 @@ class TestReportPeriodAndOperationsFixes(unittest.TestCase):
         self.assertIsNone(_find_activity_to_complete([other], done)[0])
         late = dict(done, datetime=datetime(2026, 10, 12, 4, 0, tzinfo=DUBAI_TZ))
         self.assertIsNone(_find_activity_to_complete([install], late)[0])
+
+
+class TestOperationsVendorInference(unittest.TestCase):
+    def _ev(self, mid, h, m, vendor, source):
+        return {"message_id": mid, "datetime": datetime(2026, 10, 14, h, m, tzinfo=DUBAI_TZ),
+                "vendor": vendor, "vendor_source": source}
+
+    def test_unnamed_activity_takes_vendor_of_recent_named_one(self):
+        # Real case 14-10-2026: Al Zawaya chairs at 18:08, sofa shifted (no company named) at 18:18
+        drawers = self._ev("Z1", 17, 1, "Al Zawaya", "named")
+        chairs = self._ev("Z2", 18, 8, "Al Zawaya", "named")
+        sofa_time = datetime(2026, 10, 14, 18, 18, tzinfo=DUBAI_TZ)
+        self.assertEqual(_vendor_from_recent_activity([drawers, chairs], sofa_time, 60)["message_id"], "Z2")
+
+    def test_no_inference_when_too_old_inferred_or_disabled(self):
+        old = self._ev("T1", 15, 0, "Telecon", "named")
+        inferred = self._ev("I1", 18, 10, "Telecon", "inferred")
+        later = self._ev("L1", 19, 0, "Arki", "named")
+        t = datetime(2026, 10, 14, 18, 18, tzinfo=DUBAI_TZ)
+        self.assertIsNone(_vendor_from_recent_activity([old], t, 60))          # 3h earlier
+        self.assertIsNone(_vendor_from_recent_activity([inferred], t, 60))     # never chain inferences
+        self.assertIsNone(_vendor_from_recent_activity([later], t, 60))        # only earlier messages
+        self.assertIsNone(_vendor_from_recent_activity([self._ev("Z", 18, 8, "Al Zawaya", "named")], t, 0))
 
 
 class TestSlaHiddenFromReports(unittest.TestCase):

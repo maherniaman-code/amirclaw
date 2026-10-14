@@ -161,6 +161,26 @@ def _find_activity_to_complete(
     return (best, "similar") if best else (None, "")
 
 
+def _vendor_from_recent_activity(
+    events: List[Dict[str, Any]], ev_dt: Optional[datetime], max_minutes: int
+) -> Optional[Dict[str, Any]]:
+    """
+    Most recent earlier activity within max_minutes that names a vendor. Guards often post
+    follow-up photos of the same job without repeating the company
+    ("Al zawaya ... remove 6 chairs" 18:08 -> "These two sofa are shifted ..." 18:18).
+    """
+    if not isinstance(ev_dt, datetime) or max_minutes <= 0:
+        return None
+    best = None
+    for e in events:
+        e_dt = e.get("datetime")
+        if e.get("vendor_source") != "named" or not isinstance(e_dt, datetime):
+            continue
+        if 0 <= (ev_dt - e_dt).total_seconds() <= max_minutes * 60 and (best is None or e_dt > best["datetime"]):
+            best = e
+    return best
+
+
 class ReportsManager:
     def __init__(self, excel_path: Optional[Path] = None):
         self.excel_path = excel_path or (BASE_DIR / "workspace" / "whatsapp_messages.xlsx")
@@ -910,8 +930,15 @@ class ReportsManager:
 
             # Find matching vendor
             vendor_name = "Operations Team"
+            vendor_source = None
+            inferred_from = None
             if vendor_hit:
-                vendor_name = vendor_hit.title()
+                vendor_name, vendor_source = vendor_hit.title(), "named"
+            else:
+                inferred_from = _vendor_from_recent_activity(events, ev.get("datetime"), ops_cfg.get("vendor_inherit_minutes", 60))
+                if inferred_from:
+                    vendor_name, vendor_source = inferred_from["vendor"], "inferred"
+            if vendor_source:
                 active_vendors_set.add(vendor_name)
 
             bld, floor, heading = self.parser.extract_building_and_floor(text)
@@ -945,6 +972,7 @@ class ReportsManager:
                 "photo_ref": photo_ref,
                 "quoted_message_id": ev.get("quoted_message_id", ""),
                 "source_message_ids": [msg_id],
+                "vendor_source": vendor_source,
             }
             events.append(item)
             source_audit.append({
@@ -953,7 +981,8 @@ class ReportsManager:
                 "sender": ev["sender"],
                 "raw_datetime": ev["raw_datetime"],
                 "quoted_message_id": ev.get("quoted_message_id", ""),
-                "audit_status": "Operational Event",
+                "audit_status": f"Operational Event (vendor inferred from {inferred_from['message_id']})"
+                if inferred_from else "Operational Event",
             })
 
         unique_events, flagged_dups = deduplicate_events(events)
