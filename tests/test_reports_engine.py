@@ -2,6 +2,7 @@
 
 import tempfile
 import unittest
+from unittest import mock
 from datetime import datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -15,7 +16,8 @@ from reports_engine.date_utils import (
 )
 from reports_engine import tickets_db
 from reports_engine.config_loader import get_config
-from reports_engine.manager import _keyword_at_word_start
+from reports_engine import manager as manager_mod
+from reports_engine.manager import ReportsManager, _keyword_at_word_start, _is_completion, _find_activity_to_complete, classify_operations_message
 from reports_engine.repair_tickets import repair_tickets
 from reports_engine.email_reader import parse_parking_email_body
 from reports_engine.sender_resolver import SenderResolver
@@ -362,6 +364,139 @@ class TestOperationsKeywordMatching(unittest.TestCase):
         # Vendor work on a faulty asset still counts
         t = "kone vendor installing new rope on the lift that is out of service"
         self.assertTrue(_keyword_at_word_start(t, self.vendors) and _keyword_at_word_start(t, self.activities))
+
+
+# (message, expected category, expected vendor or None). Add a row whenever a keyword is added.
+OPERATIONS_SCENARIOS = [
+    # Real messages, 11-14 Oct 2026
+    ("Al zawaya company staff remove 6 damaged chairs in m building 4th floor", "activity", "al zawaya"),
+    ("These two sofa are shifted from p building to N building", "activity", None),
+    ("M Building 1st Floor Group Engineering Dep, Eurosec vendor is Removing the 1 Camera.", "activity", "eurosec"),
+    ("Q-Building, GF, House keeping kept office chairs and they will remove this today evening", "activity", "housekeeping"),
+    ("GSU room flower watering is on going by Rose garden team", "activity", "rose garden"),
+    ("Q building first floor Speed Gate is out of service", "fault", None),
+    ("The light near the Q Building Ground Floor near exit door is not working. Kindly inform Imdaad", "fault", "imdaad"),
+    ("Two external lights installed above the elevators are not working and require maintenance.", "fault", None),
+    ("P building ground floor inside service lift one light not working need to check by technician", "fault", None),
+    ("Leave Details : Full name : X Staff Id :104059 Start Date : 27 September 2027", "none", None),
+    # Moving, delivery, waste
+    ("Workers are loading old furniture into the truck at M building basement", "activity", None),
+    ("Courier delivered 20 boxes of printer paper to Q building reception", "activity", None),
+    ("Emrill staff collected the garbage bags from N building ground floor", "activity", "emrill"),
+    ("IT team relocated 4 desktops from P building 2nd floor to 3rd floor", "activity", None),
+    ("Supplier dropped off new water dispensers at the pantry", "activity", None),
+    ("Pickup of old cartons by Farnek done", "activity", "farnek"),
+    # Fit-out, civil, signage, events
+    ("Contractor painting the corridor walls in M building 1st floor", "activity", None),
+    ("Arki workers drilling the wall for new partition in Q building", "activity", "arki"),
+    ("Hot work permit issued, welding work ongoing at service area", "activity", None),
+    ("Telecon team changing branding stickers on P building lobby glass", "activity", "telecon"),
+    ("Event setup in N building auditorium, chairs arranging by housekeeping", "activity", "housekeeping"),
+    ("Workers removing damaged ceiling tiles in Q building corridor", "activity", None),
+    # Servicing, testing, visits
+    ("Kone technician repairing the lift in M building which is out of service", "activity", "kone"),
+    ("Fire alarm testing by Honeywell in N building, alarms may sound", "activity", "honeywell"),
+    ("DEWA meter reading visit at Q building electrical room", "activity", "dewa"),
+    ("Rentokil pest control fumigation in all pantries tonight", "activity", "rentokil"),
+    ("Landscaping team trimming the trees near the main gate", "activity", None),
+    ("Civil defence inspection in P building, escorted by security", "activity", None),
+    # Faults reported by guards
+    ("Water leakage from the ceiling in M building 2nd floor washroom", "fault", None),
+    ("N building main door is stuck and not closing", "fault", None),
+    ("Power cut in Q building 3rd floor since 10 pm", "fault", None),
+    ("AC is not cooling in the security cabin, please check", "fault", None),
+    ("Glass door broken at P building entrance", "fault", None),
+    ("Paint peeling off the wall near the lift lobby", "fault", None),
+    ("Emergency lights are blinking in the parking area", "fault", None),
+    # Chatter that must stay out
+    ("Good morning team, night shift handover done, all clear", "none", None),
+    ("Please everyone submit your annual leave plan", "none", None),
+    ("Event in the auditorium tomorrow at 10", "none", None),
+    ("Download the attendance sheet from the group", "none", None),
+]
+
+COMPLETION_SCENARIOS = [
+    ("Table installation work done, vendors left.", True),
+    ("Painting work completed in M building corridor", True),
+    ("Arki vendor has left the site", True),
+    ("Delivery finished, truck left the premises", True),
+    ("Area cleared after fumigation", True),
+    ("Work not yet completed, vendors will come tomorrow", False),
+    ("Fumigation is pending, not done", False),
+    ("Barrier on the left side not opening", False),
+    ("Shift handover to night team", False),
+]
+
+
+class TestOperationsScenarios(unittest.TestCase):
+    def setUp(self):
+        self.ops = get_config()["operations"]
+
+    def test_classification_scenarios(self):
+        for text, expected_cat, expected_vendor in OPERATIONS_SCENARIOS:
+            with self.subTest(text=text):
+                self.assertEqual(classify_operations_message(text, self.ops), (expected_cat, expected_vendor))
+
+    def test_completion_scenarios(self):
+        for text, expected in COMPLETION_SCENARIOS:
+            with self.subTest(text=text):
+                self.assertEqual(_is_completion(text.lower(), self.ops["completion"]), expected)
+
+
+class _FixedNow(datetime):
+    fixed = datetime(2026, 10, 15, 10, 0, tzinfo=DUBAI_TZ)
+
+    @classmethod
+    def now(cls, tz=None):
+        return cls.fixed
+
+
+class TestReportPeriodAndOperationsFixes(unittest.TestCase):
+    def test_date_without_shift_is_full_operational_day(self):
+        with mock.patch.object(manager_mod, "datetime", _FixedNow):
+            self.assertEqual(ReportsManager._default_period("14-10-2026", None), ("14-10-2026", "Full"))
+            self.assertEqual(ReportsManager._default_period(None, None), ("15-10-2026", "Day"))
+            self.assertEqual(ReportsManager._default_period("14-10-2026", "Night"), ("14-10-2026", "Night"))
+            self.assertEqual(ReportsManager._default_period("week", None), ("week", None))
+            # 02:00 on the 15th: "today" still means the 14th's operational day
+            _FixedNow.fixed = datetime(2026, 10, 15, 2, 0, tzinfo=DUBAI_TZ)
+            try:
+                self.assertEqual(ReportsManager._default_period("15-10-2026", None), ("14-10-2026", "Full"))
+            finally:
+                _FixedNow.fixed = datetime(2026, 10, 15, 10, 0, tzinfo=DUBAI_TZ)
+        start, end = ReportsManager._get_shift_range(None, "14-10-2026", "Full")
+        self.assertEqual((start.hour, start.day, end.hour, end.day), (5, 14, 5, 15))
+
+    def test_named_location_heading_and_vendor_alias(self):
+        m = ReportsManager()
+        self.assertEqual(m._extract_named_location("GSU room flower watering is on going"), "GSU Room")
+        aliases = get_config()["operations"]["vendor_aliases"]
+        hit = _keyword_at_word_start("q-building, gf, house keeping kept office chairs", get_config()["operations"]["vendors"] + list(aliases))
+        self.assertEqual(aliases.get(hit, hit), "housekeeping")
+
+    def test_completion_detection_ignores_negation(self):
+        kws = get_config()["operations"]["completion"]
+        self.assertTrue(_is_completion("table installation work done, vendors left.", kws))
+        self.assertTrue(_is_completion("camera removal completed", kws))
+        self.assertFalse(_is_completion("work not yet completed", kws))
+        self.assertFalse(_is_completion("right side barrier on the left", kws))
+
+    def test_completion_links_to_related_open_activity(self):
+        install = {"message_id": "A1", "status": "Reported", "source_message_ids": ["A1"],
+                   "datetime": datetime(2026, 10, 11, 15, 1, tzinfo=DUBAI_TZ),
+                   "text": "Fit Movers vendors are installing a new height-adjustable table, work is ongoing."}
+        other = {"message_id": "A2", "status": "Reported", "source_message_ids": ["A2"],
+                 "datetime": datetime(2026, 10, 11, 14, 59, tzinfo=DUBAI_TZ),
+                 "text": "GSU room flower watering is on going by Rose garden team"}
+        done = {"message_id": "C1", "quoted_message_id": "", "text": "Table installation work done, vendors left.",
+                "datetime": datetime(2026, 10, 11, 16, 21, tzinfo=DUBAI_TZ)}
+        target, method = _find_activity_to_complete([other, install], done)
+        self.assertEqual((target["message_id"], method), ("A1", "similar"))
+        # Quoted reply wins; nothing shared and no quote -> no link; older than 12h -> no link
+        self.assertEqual(_find_activity_to_complete([other, install], dict(done, quoted_message_id="A2"))[0]["message_id"], "A2")
+        self.assertIsNone(_find_activity_to_complete([other], done)[0])
+        late = dict(done, datetime=datetime(2026, 10, 12, 4, 0, tzinfo=DUBAI_TZ))
+        self.assertIsNone(_find_activity_to_complete([install], late)[0])
 
 
 class TestSlaHiddenFromReports(unittest.TestCase):
