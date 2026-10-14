@@ -7,11 +7,12 @@ from pathlib import Path
 
 from .manager import ReportsManager
 from .corrections_db import save_correction, list_corrections
+from .data_quality import generate_data_quality
 
 
 def main():
     parser = argparse.ArgumentParser(description="Meydan Reports Generator CLI")
-    parser.add_argument("--report", choices=["parking", "maintenance", "fire_safety", "operations", "violations", "permissions", "cleaning", "list_corrections"], required=True)
+    parser.add_argument("--report", choices=["parking", "maintenance", "fire_safety", "operations", "violations", "permissions", "cleaning", "data_quality", "list_corrections"], required=True)
     parser.add_argument("--slot", default="latest", help="Parking slot time (e.g. 10:00, 12:00, 14:00, latest)")
     parser.add_argument("--date", default=None, help="Target report date (DD-MM-YYYY)")
     parser.add_argument("--excel", default=None, help="Path to whatsapp_messages.xlsx file")
@@ -58,6 +59,9 @@ def main():
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "cleaning":
             res = manager.generate_cleaning()
+            print(json.dumps(res, ensure_ascii=False))
+        elif args.report == "data_quality":
+            res = generate_data_quality(manager)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "list_corrections":
             corrs = list_corrections()

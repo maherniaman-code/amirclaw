@@ -60,6 +60,7 @@ export const REPORT_BUTTONS = {
     violations: '🚫 Parking Violations Report',
     permissions: '📋 Vehicle Permissions Report',
     cleaning: '🧹 Cleaning Report (Meydan)',
+    dataQuality: '🩺 Data Quality — Last 7 Days',
 };
 
 export function getMeydanReportsKeyboard(): Keyboard {
@@ -85,6 +86,8 @@ export function getMeydanReportsKeyboard(): Keyboard {
         .text(REPORT_BUTTONS.permissions)
         .row()
         .text(REPORT_BUTTONS.cleaning)
+        .row()
+        .text(REPORT_BUTTONS.dataQuality)
         .row()
         .text(REPORT_BUTTONS.correctClassification)
         .resized();
@@ -250,6 +253,17 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
     // 16. Cleaning Report
     if (trimmed === REPORT_BUTTONS.cleaning || trimmed === '/cleaning') {
         await ctx.reply('🧹 اختر تاريخ تقرير النظافة:', { reply_markup: datePicker('cleaning', 'النظافة') });
+        return true;
+    }
+
+    if (trimmed === REPORT_BUTTONS.dataQuality || trimmed === '/dataquality') {
+        await ctx.reply('🩺 جاري فحص جودة الداتا لآخر 7 أيام...');
+        const res = await runReportEngine('data_quality');
+        if (res.success && res.text) {
+            await replyReportTextAndExcel(ctx, res.text);
+        } else {
+            await ctx.reply(`❌ فشل تقرير جودة الداتا: ${res.error || 'خطأ غير معروف'}`);
+        }
         return true;
     }
 

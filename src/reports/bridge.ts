@@ -24,7 +24,7 @@ export interface ReportResult {
 }
 
 export async function runReportEngine(
-    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'list_corrections',
+    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'list_corrections',
     options?: { slot?: string; date?: string; excelPath?: string }
 ): Promise<ReportResult> {
     const pythonBin = config.pythonPath || 'python3';

@@ -177,6 +177,43 @@ export function startMeydanScheduler(bot: Bot) {
             console.error('Error in Meydan scheduler tick:', err.message);
         }
     }, 60000); // Check every minute
+
+    startWeeklyDataQualityReport(bot);
+}
+
+// Owner-only health report; separate from ENABLE_AUTOMATED_REPORTS, which governs operational reports.
+function startWeeklyDataQualityReport(bot: Bot) {
+    if (process.env.ENABLE_WEEKLY_QUALITY_REPORT === 'false') return;
+    const sendDay = process.env.QUALITY_REPORT_WEEKDAY || 'Mon';
+    const sendHour = Number(process.env.QUALITY_REPORT_HOUR ?? 9);
+
+    setInterval(async () => {
+        try {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: config.timeZone, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
+            }).formatToParts(new Date());
+            const get = (t: string) => parts.find((p) => p.type === t)?.value || '';
+            if (get('weekday') !== sendDay || Number(get('hour')) !== sendHour) return;
+
+            const key = `data_quality_${get('day')}-${get('month')}-${get('year')}`;
+            if (hasReportBeenSent(key)) return;
+            markReportAsSent(key);
+
+            const res = await runReportEngine('data_quality');
+            if (!res.success || !res.text) {
+                console.error('Weekly data quality report failed:', res.error);
+                return;
+            }
+            for (const userId of config.allowedUserIds) {
+                await sendTelegramReport(bot, userId, res.text);
+            }
+            console.log(`🩺 Weekly data quality report sent to ${config.allowedUserIds.length} owner(s).`);
+        } catch (err: any) {
+            console.error('Error in weekly data quality report:', err.message);
+        }
+    }, 5 * 60 * 1000);
+
+    console.log(`🩺 Weekly data quality report scheduled (${sendDay} ${String(sendHour).padStart(2, '0')}:00 ${config.timeZone}, owner only).`);
 }
 
 const TELEGRAM_MAX_CHARS = 4000;

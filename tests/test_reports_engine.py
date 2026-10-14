@@ -317,3 +317,25 @@ class TestReportFormatting(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDataQualityReport(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from reports_engine.manager import ReportsManager
+        from reports_engine.data_quality import generate_data_quality
+        cls.res = generate_data_quality(ReportsManager())
+
+    def test_metrics_are_internally_consistent(self):
+        m = self.res["metrics"]
+        self.assertEqual(sum(m["per_group"].values()), m["messages"])
+        self.assertLessEqual(m["reply_used"], m["reply_captured"])
+        self.assertLessEqual(m["reply_captured"], m["messages"])
+        self.assertLessEqual(m["tickets_without_building"], m["tickets"])
+        self.assertLessEqual(m["permissions_without_plate"], m["permissions"])
+
+    def test_reply_warning_needs_recorded_reply_info(self):
+        m = self.res["metrics"]
+        if m["messages"] and m["reply_captured"] / m["messages"] < 0.8:
+            self.assertNotIn("أكتر من الربط بالـ Reply", self.res["text"])
+            self.assertIn("مش دقيقة لسه", self.res["text"])

@@ -112,6 +112,8 @@ class WhatsAppParser:
             media_type = str(row[5] or "").strip() if len(row) > 5 else "Text"
             photo_preview = str(row[6] or "").strip() if len(row) > 6 else ""
             quoted_id = str(row[7] or "").strip() if len(row) > 7 else ""
+            # None = the bot did not record reply info yet; "" = recorded, message was not a Reply
+            quoted_captured = len(row) > 7 and row[7] is not None
 
             if not msg_id or not group_name:
                 continue
@@ -137,6 +139,7 @@ class WhatsAppParser:
                 "photos_data": row_photos,
                 "photo_ref": "Attached in Excel (Sheet: Photos)" if row_photos else "N/A",
                 "quoted_message_id": quoted_id,
+                "quoted_captured": quoted_captured,
             })
 
         # Sort chronologically by parsed datetime

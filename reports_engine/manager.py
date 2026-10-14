@@ -277,6 +277,28 @@ class ReportsManager:
         shift = target_shift or ("day" if 5 <= now.hour < 17 else "night")
         return self._get_shift_range(date, shift)
 
+    @staticmethod
+    def _link_stats(
+        source_audit: List[Dict[str, Any]],
+        unlinked: List[Dict[str, Any]],
+        tickets: List[Dict[str, Any]],
+        start: datetime,
+        end: datetime,
+    ) -> Dict[str, int]:
+        """How replies inside [start, end) were linked to tickets, and ticket location coverage."""
+        def in_range(raw: str) -> bool:
+            dt = parse_datetime(raw)
+            return bool(dt and start <= dt < end)
+
+        period_tickets = [t for t in tickets if not t.get("is_carry_over")]
+        return {
+            "replies_quoted": sum(1 for a in source_audit if a["audit_status"].startswith("Linked (quoted)") and in_range(a["raw_datetime"])),
+            "replies_proximity": sum(1 for a in source_audit if a["audit_status"].startswith("Linked (proximity)") and in_range(a["raw_datetime"])),
+            "replies_unlinked": sum(1 for u in unlinked if u["reason"].startswith("Unlinked reply") and in_range(u["raw_datetime"])),
+            "tickets": len(period_tickets),
+            "tickets_without_building": sum(1 for t in period_tickets if not t.get("building")),
+        }
+
     def _date_range_label(self, target_date: Optional[str], target_shift: Optional[str]) -> str:
         if target_date == "week":
             return "آخر 7 أيام (Last 7 Days)"
@@ -508,6 +530,7 @@ class ReportsManager:
             "open": open_count,
             "completed": completed,
             "unlinked_count": len(unlinked),
+            "link_stats": self._link_stats(source_audit, unlinked, unique_tickets, shift_start, shift_end),
         }
 
     # ─────────────────────────────────────────────────────────────
@@ -707,6 +730,7 @@ class ReportsManager:
             "open": open_count,
             "completed": completed,
             "unlinked_count": len(unlinked),
+            "link_stats": self._link_stats(source_audit, unlinked, unique_tickets, shift_start, shift_end),
         }
 
     # ─────────────────────────────────────────────────────────────
