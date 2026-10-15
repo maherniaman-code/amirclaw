@@ -2,8 +2,8 @@
 📅 15-10-2026 — since yesterday 17:00
 
 🔧 *Maintenance*
-   • Open now: 12 — new overnight: 2, closed overnight: 0
-   ⚠️ Open more than 48 h: 9
+   • Open now: 11 — new overnight: 2, closed overnight: 0
+   ⚠️ Open more than 48 h: 8
 
 🧯 *Fire & Safety*
    • Open now: 4 — new overnight: 0, closed overnight: 0
@@ -13,6 +13,6 @@
 📋 *Permissions today:* 7 — parked 0, noted 6, no reply 1
 
 🔴 *Oldest open tickets:*
-   - 3.2 days | 12-10-2026 06:12 | M Building back side right side barrier is not opening 
    - 3.2 days | 12-10-2026 07:05 | N Building 2nd Floor Procurment pantry Electrical Power
    - 3.2 days | 12-10-2026 07:26 | Location: N Building, 3rd Floor, Reception Area Observa
+   - 3.1 days | 12-10-2026 08:46 | M Building Inside Service Lift, Steel Holder is Shaking

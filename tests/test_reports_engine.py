@@ -519,7 +519,8 @@ class TestMaintenanceRepliesAndPhotos(unittest.TestCase):
             self.assertFalse(_is_exact_closure(text, exact), text)
         # "working ..." phrases must stay out of the substring closure list (see meydan_rules.yaml)
         self.assertFalse(is_closure_text("one of the lights not working properly", get_config()["closure"]))
-        self.assertFalse(any("working" in k for k in get_config()["closure"]))
+        # Only "now working ..." is allowed: it can never be part of a negated fault ("not working normal")
+        self.assertTrue(all(k.startswith("now working") for k in get_config()["closure"] if "working" in k))
 
     def test_missing_fault_words_are_now_faults(self):
         faults = get_config()["fault"]
@@ -1050,6 +1051,111 @@ class TestRealMessages15Oct(unittest.TestCase):
                 mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
             m.generate_vehicle_permissions(target_date="15-10-2026")
         self.assertEqual(m.last_items["permissions"][0]["status"], "Pending")
+
+
+class TestRealMessages15OctEvening(unittest.TestCase):
+    """Cases from the 15-10 evening export (whatsapp_messages (38).xlsx)."""
+
+    def _run(self, fn, msgs):
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            getattr(m, fn)(target_date="15-10-2026")
+        return m
+
+    def test_fix_reported_in_another_building_does_not_close_this_ticket(self):
+        g = "Meydan FM Team💪"
+        msgs = [
+            _wa_msg("Q6", 15, 12, 54, 53, g, "Sunil", "Q-Building, 6th floor, infront of Harvard meeting room this sound came from AC grill need to check ASAP"),
+            _wa_msg("N3", 15, 19, 0, 13, g, "Shahid", "N building 3 floor meeting room value leakage issue resolved", media="📷 Image"),
+        ]
+        items = {t["message_id"]: t for t in self._run("generate_maintenance", msgs).last_items["maintenance"]}
+        self.assertEqual(items["Q6"]["status"], "Pending")
+        # reported and fixed in one message: a ticket that is already Done
+        self.assertEqual((items["N3"]["status"], items["N3"]["resolved_by"]), ("Done", "Shahid"))
+
+    def test_lift_moving_on_its_own_is_a_ticket_closed_by_now_working_normal(self):
+        g = "Meydan FM Team💪"
+        msgs = [
+            _wa_msg("L7", 15, 16, 55, 33, g, "Junior", "@Mohan\n\nService lift no 7 is opening and closing on its own\n\n@Prakash\n\n"
+                    "Kindly note and send your team to check the issue to prevent any entrapment", media="🎬 Video"),
+            _wa_msg("R1", 15, 17, 24, 25, g, "Raja", "Car multistorey building service lift now working normal"),
+            _wa_msg("A1", 15, 17, 29, 17, g, "Prakash", "Appreciated for the update", quoted="R1"),
+        ]
+        items = self._run("generate_maintenance", msgs).last_items["maintenance"]
+        self.assertEqual([(t["message_id"], t["status"]) for t in items], [("L7", "Done")])
+
+    def test_ok_with_photo_closes_the_ticket_through_a_reply_chain(self):
+        g = "Meydan FM Team💪"
+        photo = [{"media_path": "x", "bytes": b"jpg"}]
+        msgs = [
+            _wa_msg("T1", 15, 9, 0, 0, g, "Sunil", "M Building 2nd floor pantry tap is leaking need to check"),
+            _wa_msg("F1", 15, 10, 8, 21, g, "Sunil", "Follow up please @Prakash", quoted="T1"),
+            _wa_msg("W1", 15, 10, 30, 3, g, "Chauthi", "Work in progress", media="📷 Image", quoted="F1"),
+            _wa_msg("K1", 15, 19, 0, 36, g, "Chauthi", "Ok", media="📷 Image", quoted="W1"),
+        ]
+        for mm in msgs[2:]:
+            mm["photos_data"] = photo
+        items = self._run("generate_maintenance", msgs).last_items["maintenance"]
+        self.assertEqual([(t["message_id"], t["status"], t.get("resolved_by")) for t in items], [("T1", "Done", "Chauthi")])
+
+    def test_reply_ok_or_done_means_fixed_but_a_loose_ok_does_not(self):
+        """Owner 15-10: a Reply "Ok" / "Done" to a ticket means it is fixed; "Ok" not sent as a Reply closes nothing."""
+        g = "Meydan FM Team💪"
+        tap = "M Building 2nd floor pantry tap is leaking need to check"
+        for reply, quoted, expected in (("Ok", "T1", "Done"), ("Done", "T1", "Done"), ("👍", "T1", "Done"),
+                                        ("Ok sir", "T1", "Done"), ("Ok", "", "Pending"), ("Ok will check", "T1", "Pending")):
+            with self.subTest(reply=reply, quoted=bool(quoted)):
+                msgs = [_wa_msg("T1", 15, 9, 0, 0, g, "Sunil", tap), _wa_msg("K1", 15, 9, 5, 0, g, "Tech", reply, quoted=quoted)]
+                self.assertEqual(self._run("generate_maintenance", msgs).last_items["maintenance"][0]["status"], expected)
+
+    def test_more_fix_wording_and_what_is_not_a_fix(self):
+        from reports_engine.manager import is_closure_text
+        closure = get_config()["closure"]
+        for text in ("AC repaired", "work completed", "new tube light installed", "door lock changed", "now ok",
+                     "issue solved", "power restored", "job done", "has been fixed"):
+            with self.subTest(fix=text):
+                self.assertTrue(is_closure_text(text, closure))
+        for text in ("light needs to be replaced", "will be fixed tomorrow", "yet to be repaired", "not yet completed",
+                     "card reader cover is not fixed need to fix this", "Is it restored?", "Done?"):
+            with self.subTest(not_fix=text):
+                self.assertFalse(is_closure_text(text.lower(), closure))
+
+    def test_fault_with_negated_fix_word_is_still_a_ticket(self):
+        g = "Meydan FM Team💪"
+        msgs = [_wa_msg("C1", 14, 16, 43, 0, g, "Sunil", "Q-Building, 3rd floor, Dispatch room card reader access control device cover is not fixed need to fix this")]
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            m.generate_maintenance(target_date="14-10-2026")
+        self.assertEqual([t["message_id"] for t in m.last_items["maintenance"]], ["C1"])
+
+    def test_fix_of_a_ticket_sent_before_recording_is_still_reported(self):
+        """Real 15-10 chain: the ticket A5D8A1AD is older than the recorded data."""
+        g = "Meydan FM Team💪"
+        msgs = [
+            _wa_msg("F1", 15, 10, 8, 21, g, "$unil j0hn (16)", "Follow up please @Prakash", quoted="A5D8A1AD"),
+            _wa_msg("W1", 15, 10, 30, 3, g, "Chauthi", "Work in progress", media="📷 Image", quoted="F1"),
+            _wa_msg("K1", 15, 19, 0, 36, g, "Chauthi", "Ok", media="📷 Image", quoted="W1"),
+        ]
+        msgs[1]["photos_data"] = msgs[2]["photos_data"] = [{"media_path": "x", "bytes": b"jpg"}]
+        m = self._run("generate_maintenance", msgs)
+        item = m.last_items["maintenance"][0]
+        self.assertEqual((item["message_id"], item["status"], item["resolved_by"]), ("A5D8A1AD", "Done", "Chauthi"))
+        self.assertIn("followed up by $unil j0hn", item["text"])
+        self.assertEqual(len(item["photos_data"]), 2)
+        self.assertEqual(m.last_review["maintenance"], [])
+
+    def test_not_working_normal_is_still_a_fault(self):
+        from reports_engine.manager import is_closure_text
+        closure = get_config()["closure"]
+        self.assertFalse(is_closure_text("q building lift not working normal", closure))
+        self.assertTrue(is_closure_text("service lift now working normal", closure))
+
+    def test_follow_up_is_not_an_operations_activity(self):
+        g = "Meydan - Security Team"
+        msgs = [_wa_msg("F1", 15, 19, 50, 5, g, "Shail", "Follow-up please inform to imdaad @35253125156942", media="🎬 Video", quoted="X")]
+        self.assertEqual(self._run("generate_operations", msgs).last_items.get("operations", []), [])
 
 
 class TestSlaHiddenFromReports(unittest.TestCase):

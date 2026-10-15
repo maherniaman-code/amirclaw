@@ -2,57 +2,53 @@
 
 📅 Shift: Day Shift (13-10-2026)
 
-📍 Building M
-1. M Building back side right side barrier is not opening or closing, inform the concerned team to come and work on it ⏳ [Carried over]
-   ⏰ Reported: 12-10-2026 06:12
-   🕐 Open: 3.2d
-   ⚠️ Pending
-2. M Building Inside Service Lift, Steel Holder is Shaking and not Stable. Need to Fix. ⏳ [Carried over]
-   ⏰ Reported: 12-10-2026 08:46
-   🕐 Open: 3.1d
-   ⚠️ Pending
-3. M Building Ground Floor Inside Fire Fighting Pump Room, 1 Hanging Light is not Working. Need to Check and Rectify. ⏳ [Carried over]
-   ⏰ Reported: 12-10-2026 08:47
-   🕐 Open: 3.1d
-   ⚠️ Pending
-
 📍 Building N
-4. N Building 2nd Floor Procurment pantry Electrical Power issue reported need to checke ⏳ [Carried over]
+1. N Building 2nd Floor Procurment pantry Electrical Power issue reported need to checke ⏳ [Carried over]
    ⏰ Reported: 12-10-2026 07:05
    🕐 Open: 3.2d
-   🔍 In Progress (This is about barrier and ele )
-5. Location: N Building, 3rd Floor, Reception Area Observation: One ceiling light bulb is hanging loose from its holder and needs to be properly secured to prevent a potential safety hazard. ⏳ [Carried over]
+   ⚠️ Pending
+2. Location: N Building, 3rd Floor, Reception Area Observation: One ceiling light bulb is hanging loose from its holder and needs to be properly secured to prevent a potential safety hazard. ⏳ [Carried over]
    ⏰ Reported: 12-10-2026 07:26
    🕐 Open: 3.2d
    🔍 In Progress (IMDAD Team Is checking)
-6. N Building 2nd Floor Male Washroom Muslim shower water control Push Button is free need to Rectify ⏳ [Carried over]
+3. N Building 2nd Floor Male Washroom Muslim shower water control Push Button is free need to Rectify ⏳ [Carried over]
    ⏰ Reported: 12-10-2026 13:13
    🕐 Open: 2.9d
    ⚠️ Pending
-7. N Building Ground Floor Lift Loby Area infront Of Reception one Cielling light is Blinking need to check
+4. N Building Ground Floor Lift Loby Area infront Of Reception one Cielling light is Blinking need to check
    ⏰ Reported: 13-10-2026 06:31
    🕐 Open: 2.2d
    🔍 In Progress (Currently light off condition.)
-8. N building 1st Floor Security Control Room AC is not Cold need to Increase AC ⚠️ [Possible repeat of ticket from 12-10-2026 07:54]
+5. N building 1st Floor Security Control Room AC is not Cold need to Increase AC ⚠️ [Possible repeat of ticket from 12-10-2026 07:54]
    ⏰ Reported: 13-10-2026 07:52
    🕐 Open: 2.2d
    ✅ Done — Person 49
 
+📍 Building M
+6. M Building Inside Service Lift, Steel Holder is Shaking and not Stable. Need to Fix. ⏳ [Carried over]
+   ⏰ Reported: 12-10-2026 08:46
+   🕐 Open: 3.1d
+   ⚠️ Pending
+7. M Building Ground Floor Inside Fire Fighting Pump Room, 1 Hanging Light is not Working. Need to Check and Rectify. ⏳ [Carried over]
+   ⏰ Reported: 12-10-2026 08:47
+   🕐 Open: 3.1d
+   ⚠️ Pending
+
 📍 Building P
-9. P building ground floor inside service lift there is one of the lights not working properly need to check by technician ⏳ [Carried over]
+8. P building ground floor inside service lift there is one of the lights not working properly need to check by technician ⏳ [Carried over]
    ⏰ Reported: 13-10-2026 03:20
    🕐 Open: 2.4d
    ⚠️ Pending
 
 📍 Building Q
-10. Q building first floor Speed Gate is out of service
+9. Q building first floor Speed Gate is out of service
    ⏰ Reported: 13-10-2026 10:52
    🕐 Open: 2.0d
    ⚠️ Pending
 
 ━━━━━━━━━━
 🎯 Summary
-• Completed: 1 of 10
-• Open: 9
-• Safety priority: 4 tickets
+• Completed: 1 of 9
+• Open: 8
+• Safety priority: 3 tickets
 • Teams: N/A
