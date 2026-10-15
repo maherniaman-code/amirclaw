@@ -8,8 +8,10 @@ Any change that alters rendered outputs will immediately fail the build.
 import re
 import unittest
 from reports_engine.manager import ReportsManager
+from live_data import requires_live_data
 
 
+@requires_live_data
 class TestGoldenReportsSuite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

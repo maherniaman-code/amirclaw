@@ -13,3 +13,6 @@ backups/
 __pycache__/
 *.pyc
 restore/
+
+# Draft staff directory from real WhatsApp senders (names + numbers) - never commit
+config/master_data.suggested.yaml

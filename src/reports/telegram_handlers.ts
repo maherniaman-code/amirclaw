@@ -1,7 +1,7 @@
 import { Keyboard, InlineKeyboard, InputFile } from 'grammy';
 import path from 'path';
 import fs from 'fs';
-import { runReportEngine, saveCorrection, type OverdueTicket } from './bridge.js';
+import { runReportEngine, saveCorrection, exportMessagesExcel, type OverdueTicket } from './bridge.js';
 import { config } from '../config.js';
 import { EXCEL_PATH, ensureExcelInitialized, flushWhatsAppMessages } from '../whatsapp/excel.js';
 
@@ -66,6 +66,7 @@ export const REPORT_BUTTONS = {
     whatsappExcel: '📊 WhatsApp Messages Excel',
     ownerKpis: '📈 Weekly KPIs (Owner)',
     morningDigest: '🌅 Morning Digest',
+    dashboard: '📊 Dashboard (Owner)',
 };
 
 export function getMeydanReportsKeyboard(): Keyboard {
@@ -96,6 +97,7 @@ export function getMeydanReportsKeyboard(): Keyboard {
         .text(REPORT_BUTTONS.ownerKpis)
         .row()
         .text(REPORT_BUTTONS.morningDigest)
+        .text(REPORT_BUTTONS.dashboard)
         .text(REPORT_BUTTONS.whatsappExcel)
         .row()
         .text(REPORT_BUTTONS.correctClassification)
@@ -155,14 +157,19 @@ async function replyReportTextAndExcel(ctx: any, text: string, excelPath?: strin
 export async function sendWhatsAppExcel(ctx: any): Promise<void> {
     await ctx.replyWithChatAction('upload_document');
 
-    // Flush any pending messages and ensure file exists
+    // Built on demand from the SQLite store (always complete); the live workbook is the fallback
     await flushWhatsAppMessages();
-    await ensureExcelInitialized();
+    const exported = await exportMessagesExcel(path.join(process.cwd(), 'workspace', 'downloads', 'whatsapp_messages_export.xlsx'));
+    let filePath = exported;
+    if (!filePath) {
+        await ensureExcelInitialized();
+        filePath = EXCEL_PATH;
+    }
 
-    const stats = fs.statSync(EXCEL_PATH);
+    const stats = fs.statSync(filePath);
     const sizeKB = (stats.size / 1024).toFixed(1);
 
-    await ctx.replyWithDocument(new InputFile(EXCEL_PATH, 'whatsapp_messages.xlsx'), {
+    await ctx.replyWithDocument(new InputFile(filePath, 'whatsapp_messages.xlsx'), {
         caption: `📊 ملف إكسل رسائل الواتساب\nالحجم: ${sizeKB} KB\nآخر تحديث: ${stats.mtime.toLocaleString('ar-EG', { timeZone: config.timeZone })}`,
     });
 }
@@ -373,6 +380,17 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
             await replyReportTextAndExcel(ctx, res.text);
         } else {
             await ctx.reply(`❌ فشل ملخص الصباح: ${res.error || 'خطأ غير معروف'}`);
+        }
+        return true;
+    }
+
+    if (trimmed === REPORT_BUTTONS.dashboard || trimmed === '/dashboard') {
+        await ctx.reply('📊 جاري تجهيز اللوحة...');
+        const res = await runReportEngine('dashboard');
+        if (res.success && res.htmlPath && fs.existsSync(res.htmlPath)) {
+            await ctx.replyWithDocument(new InputFile(res.htmlPath, path.basename(res.htmlPath)), { caption: res.text });
+        } else {
+            await ctx.reply(`❌ فشل تجهيز اللوحة: ${res.error || 'خطأ غير معروف'}`);
         }
         return true;
     }

@@ -7,6 +7,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { FieldValue, type DocumentReference, type Firestore } from 'firebase-admin/firestore';
 import { getFirestoreDb } from '../db/index.js';
+import { HR_MARKERS } from '../privacy.js';
 import { config } from '../config.js';
 
 const execFileAsync = promisify(execFile);
@@ -30,7 +31,10 @@ const SQLITE_FILES = [
     'workspace/reports.db',
     'workspace/whatsapp_messages.db', // SQLite message store read by the reports engine
 ];
-const PLAIN_FILES = ['workspace/whatsapp_messages.xlsx', 'workspace/whatsapp_messages.json'];
+// The messages workbook and the legacy JSON are not uploaded: the SQLite store is complete,
+// the workbook can be rebuilt from it (messages_db --export-excel), and both files contain
+// HR / leave messages that must stay on the server.
+const PLAIN_FILES: string[] = [];
 const DIRS = ['workspace/whatsapp_session'];
 
 function requireFirestore(): Firestore {
@@ -58,6 +62,18 @@ async function downloadChunks(parent: DocumentReference): Promise<Buffer> {
     return Buffer.concat(docs.map((d) => Buffer.from(d.get('data'))));
 }
 
+// Removes HR / leave messages from the staged (uploaded) copy only; the live database keeps them.
+function scrubHrRows(stagedDbPath: string): void {
+    const db = new Database(stagedDbPath);
+    try {
+        const where = HR_MARKERS.map(() => 'lower(text) LIKE ?').join(' OR ');
+        db.prepare(`DELETE FROM messages WHERE ${where}`).run(...HR_MARKERS.map((m) => `%${m}%`));
+        db.exec('VACUUM');
+    } finally {
+        db.close();
+    }
+}
+
 async function stageFiles(stageDir: string): Promise<string[]> {
     const included: string[] = [];
     for (const rel of [...new Set(SQLITE_FILES.map((f) => path.normalize(f)))]) {
@@ -72,6 +88,7 @@ async function stageFiles(stageDir: string): Promise<string[]> {
         } finally {
             db.close();
         }
+        if (rel.endsWith('whatsapp_messages.db')) scrubHrRows(dest);
         included.push(rel);
     }
     for (const rel of PLAIN_FILES) {

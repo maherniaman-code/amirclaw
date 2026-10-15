@@ -7,13 +7,14 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 from .config_loader import get_config, BASE_DIR
-from .date_utils import DUBAI_TZ, parse_datetime, is_within_freshness, get_shift_for_timestamp, format_report_timestamp
+from .date_utils import DUBAI_TZ, now_dubai, parse_datetime, is_within_freshness, get_shift_for_timestamp, format_report_timestamp
 from .whatsapp_parser import WhatsAppParser
 from .deduplicator import deduplicate_events
 from .email_reader import fetch_parking_email_from_imap
 from .corrections_db import get_correction_for_message
 from .corrections_db import get_correction_for_message as _correction_for
 from .tickets_db import enrich_ticket, CHRONIC_HOURS
+from . import warehouse
 from .report_generators import (
     generate_parking_report_text,
     generate_maintenance_report_text,
@@ -216,14 +217,17 @@ class ReportsManager:
         self.parser = WhatsAppParser(self.excel_path)
         # Items behind the last generated report of each type (used by owner KPIs; not in JSON output)
         self.last_items: Dict[str, List[Dict[str, Any]]] = {}
+        # Excluded messages and link decisions of the last run per report (classification evaluation)
+        self.last_review: Dict[str, List[Dict[str, Any]]] = {}
+        self.last_audit: Dict[str, List[Dict[str, Any]]] = {}
 
     # ─────────────────────────────────────────────────────────────
     # REPORT 1: PARKING REPORT
     # ─────────────────────────────────────────────────────────────
     def generate_parking(self, slot_request: str = "latest", report_date: Optional[str] = None) -> Dict[str, Any]:
         messages = self.parser.load_messages()
-        now_dubai = datetime.now(DUBAI_TZ)
-        date_str = report_date or now_dubai.strftime("%d-%m-%Y")
+        dubai_now = now_dubai()
+        date_str = report_date or dubai_now.strftime("%d-%m-%Y")
 
         slots = self.config.get("timing", {}).get("parking_slots", ["10:00", "12:00", "14:00"])
         freshness_mins = self.config.get("timing", {}).get("freshness_window_minutes", 60)
@@ -243,7 +247,7 @@ class ReportsManager:
             target_slot = "14:00"
             for s in slots:
                 sh, sm = map(int, s.split(":"))
-                if now_dubai.time() >= time(sh, sm):
+                if dubai_now.time() >= time(sh, sm):
                     target_slot = s
 
         # Build slot datetime for freshness checking
@@ -252,7 +256,7 @@ class ReportsManager:
         try:
             d_obj = datetime.strptime(date_str, "%d-%m-%Y").date()
         except Exception:
-            d_obj = now_dubai.date()
+            d_obj = dubai_now.date()
         slot_dt = datetime.combine(d_obj, time(sh, sm), tzinfo=DUBAI_TZ)
 
         diagnostics: List[str] = []
@@ -408,7 +412,9 @@ class ReportsManager:
         return start, end
 
     def _resolve_date_range(self, target_date: Optional[str], target_shift: Optional[str]) -> Tuple[datetime, datetime]:
-        now = datetime.now(DUBAI_TZ)
+        now = now_dubai()
+        if target_date == "all":
+            return datetime(2000, 1, 1, tzinfo=DUBAI_TZ), now + timedelta(days=1)
         if target_date == "week":
             return now - timedelta(days=7), now
         if target_date == "month":
@@ -434,22 +440,26 @@ class ReportsManager:
         period_tickets = [t for t in tickets if not t.get("is_carry_over")]
         return {
             "replies_quoted": sum(1 for a in source_audit if a["audit_status"].startswith("Linked (quoted)") and in_range(a["raw_datetime"])),
-            "replies_proximity": sum(1 for a in source_audit if a["audit_status"].startswith("Linked (proximity)") and in_range(a["raw_datetime"])),
+            # Every non-quoted link (time proximity, shared word, repeat confirmation) is an inferred link
+            "replies_proximity": sum(1 for a in source_audit if a["audit_status"].startswith("Linked (")
+                                     and not a["audit_status"].startswith("Linked (quoted)") and in_range(a["raw_datetime"])),
             "replies_unlinked": sum(1 for u in unlinked if u["reason"].startswith("Unlinked reply") and in_range(u["raw_datetime"])),
             "tickets": len(period_tickets),
             "tickets_without_building": sum(1 for t in period_tickets if not t.get("building")),
         }
 
     def _date_range_label(self, target_date: Optional[str], target_shift: Optional[str]) -> str:
+        if target_date == "all":
+            return "All Time"
         if target_date == "week":
             return "Last 7 Days"
         if target_date == "month":
-            return datetime.now(DUBAI_TZ).strftime("%B %Y — Full Month")
+            return now_dubai().strftime("%B %Y — Full Month")
         if target_date and target_shift and target_shift.lower() == "full":
             return f"Full Day ({target_date})"
         if target_date and target_shift:
             return f"{target_shift.title()} Shift ({target_date})"
-        now = datetime.now(DUBAI_TZ)
+        now = now_dubai()
         shift = target_shift or ("Day" if 5 <= now.hour < 17 else "Night")
         date = target_date or now.strftime("%d-%m-%Y")
         return f"{shift.title()} Shift ({date})"
@@ -545,8 +555,8 @@ class ReportsManager:
         No date → the shift in progress. A specific date without a shift (Telegram date
         buttons) → that whole operational day, 05:00 → 05:00 next day.
         """
-        now = datetime.now(DUBAI_TZ)
-        if target_date in ("week", "month") or target_shift:
+        now = now_dubai()
+        if target_date in ("week", "month", "all") or target_shift:
             return target_date, target_shift
         if not target_date:
             return now.strftime("%d-%m-%Y"), ("Day" if 5 <= now.hour < 17 else "Night")
@@ -698,7 +708,7 @@ class ReportsManager:
         shift_start, shift_end = self._resolve_date_range(target_date, target_shift)
         filtered = []
         chronic_tickets = []
-        is_range_query = target_date in ("week", "month")
+        is_range_query = target_date in ("week", "month", "all")
         for t in unique_tickets:
             t_dt = t.get("datetime")
             if not t_dt:
@@ -718,7 +728,7 @@ class ReportsManager:
         unique_tickets = filtered + chronic_tickets
 
         # Enrich tickets: hours_open, sla_breach, chronic_building_flag, persist to DB
-        now_iso = datetime.now(DUBAI_TZ).isoformat()
+        now_iso = now_dubai().isoformat()
         shift_label = self._date_range_label(target_date, target_shift)
         for t in unique_tickets:
             enrich_ticket(t, "maintenance", fm_grp, shift_label, now_iso)
@@ -754,6 +764,8 @@ class ReportsManager:
 
         self.last_items["maintenance"] = unique_tickets
         report_text = generate_maintenance_report_text(unique_tickets, summary_stats)
+        self.last_review["maintenance"], self.last_audit["maintenance"] = unlinked + flagged_dups, source_audit
+        warehouse.record_run("maintenance", shift_label, self.last_items.get("maintenance", []), self.last_review["maintenance"], self.last_audit["maintenance"])
         excel_path = generate_generic_report_excel(
             report_title="Maintenance Summary – Meydan FM",
             report_text=report_text,
@@ -898,7 +910,7 @@ class ReportsManager:
 
         # Date-range filtering & carry-over (chronic split at CHRONIC_HOURS)
         shift_start, shift_end = self._resolve_date_range(target_date, target_shift)
-        is_range_query = target_date in ("week", "month")
+        is_range_query = target_date in ("week", "month", "all")
         filtered = []
         chronic_tickets = []
         for t in unique_tickets:
@@ -920,7 +932,7 @@ class ReportsManager:
         unique_tickets = filtered + chronic_tickets
 
         # Enrich: hours_open, sla_breach, chronic_building_flag, persist to DB
-        now_iso = datetime.now(DUBAI_TZ).isoformat()
+        now_iso = now_dubai().isoformat()
         shift_label = self._date_range_label(target_date, target_shift)
         for t in unique_tickets:
             enrich_ticket(t, "fire_safety", fs_grp, shift_label, now_iso)
@@ -953,6 +965,8 @@ class ReportsManager:
 
         self.last_items["fire_safety"] = unique_tickets
         report_text = generate_fire_safety_report_text(unique_tickets, summary_stats)
+        self.last_review["fire_safety"], self.last_audit["fire_safety"] = unlinked + flagged_dups, source_audit
+        warehouse.record_run("fire_safety", shift_label, self.last_items.get("fire_safety", []), self.last_review["fire_safety"], self.last_audit["fire_safety"])
         excel_path = generate_generic_report_excel(
             report_title="Fire & Safety Summary – Meydan",
             report_text=report_text,
@@ -1120,6 +1134,8 @@ class ReportsManager:
 
         self.last_items["operations"] = unique_events
         report_text = generate_operations_report_text(unique_events, summary_stats)
+        self.last_review["operations"], self.last_audit["operations"] = needs_review + flagged_dups, source_audit
+        warehouse.record_run("operations", shift_info, self.last_items.get("operations", []), self.last_review["operations"], self.last_audit["operations"])
         excel_path = generate_generic_report_excel(
             report_title="Operations Summary – Meydan Security",
             report_text=report_text,
@@ -1249,6 +1265,8 @@ class ReportsManager:
         )
 
         thumb_cfg = self.config.get("violations_excel", {})
+        self.last_review["violations"], self.last_audit["violations"] = unlinked + flagged_dups, source_audit
+        warehouse.record_run("violations", period_label or "All", self.last_items.get("violations", []), self.last_review["violations"], self.last_audit["violations"])
         excel_result = generate_violations_excel(
             report_title="Parking Violations Summary – Meydan",
             report_text=report_text,
@@ -1386,6 +1404,8 @@ class ReportsManager:
         report_text = self._with_period_line(
             generate_vehicle_permissions_report_text(unique_perms, summary_stats), period_label
         )
+        self.last_review["permissions"], self.last_audit["permissions"] = unlinked + flagged_dups, source_audit
+        warehouse.record_run("permissions", period_label or "All", self.last_items.get("permissions", []), self.last_review["permissions"], self.last_audit["permissions"])
         excel_path = generate_generic_report_excel(
             report_title="Vehicle Permission Requests – Meydan",
             report_text=report_text,
@@ -1558,7 +1578,7 @@ class ReportsManager:
         unique_tickets, flagged_dups = deduplicate_events(ticket_list)
 
         unique_tickets, period_label = self._filter_to_period(unique_tickets, target_date)
-        shift_label = period_label or self._get_shift_label(datetime.now(tz=DUBAI_TZ))
+        shift_label = period_label or self._get_shift_label(now_dubai())
 
         total = len(unique_tickets)
         completed = sum(1 for t in unique_tickets if "done" in t["status"].lower())

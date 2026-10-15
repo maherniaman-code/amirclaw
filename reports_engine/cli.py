@@ -10,11 +10,13 @@ from .corrections_db import save_correction, list_corrections
 from .data_quality import generate_data_quality
 from .owner_kpis import generate_owner_kpis
 from .owner_digest import generate_morning_digest, generate_overdue
+from .dq_metrics import generate_dq_daily
+from .dashboard import generate_dashboard
 
 
 def main():
     parser = argparse.ArgumentParser(description="Meydan Reports Generator CLI")
-    parser.add_argument("--report", choices=["parking", "maintenance", "fire_safety", "operations", "violations", "permissions", "cleaning", "data_quality", "owner_kpis", "morning_digest", "overdue", "list_corrections"], required=True)
+    parser.add_argument("--report", choices=["parking", "maintenance", "fire_safety", "operations", "violations", "permissions", "cleaning", "data_quality", "owner_kpis", "morning_digest", "overdue", "dq_daily", "dashboard", "list_corrections"], required=True)
     parser.add_argument("--slot", default="latest", help="Parking slot time (e.g. 10:00, 12:00, 14:00, latest)")
     parser.add_argument("--date", default=None, help="Target report date (DD-MM-YYYY)")
     parser.add_argument("--shift", choices=["Day", "Night"], default=None, help="Shift for maintenance/fire_safety/operations (default: shift in progress)")
@@ -77,6 +79,12 @@ def main():
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "overdue":
             res = generate_overdue(manager)
+            print(json.dumps(res, ensure_ascii=False))
+        elif args.report == "dq_daily":
+            res = generate_dq_daily(manager, args.date)
+            print(json.dumps(res, ensure_ascii=False))
+        elif args.report == "dashboard":
+            res = generate_dashboard(manager)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "list_corrections":
             corrs = list_corrections()

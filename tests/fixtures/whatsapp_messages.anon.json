@@ -1,0 +1,2352 @@
+[
+ {
+  "message_id": "test_msg_photo_1",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ١٠:٢٩:٤٥ ص",
+  "ts_utc_ms": 1791700185000,
+  "group_name": "مجموعة تجريبية (Oyp)",
+  "sender": "Person 1 (100001)",
+  "text": "صورة تجريبية من المجموعة",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACB78E320B61CC690D199236C3DC0E6F",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ١٠:٣٦:٠٤ ص",
+  "ts_utc_ms": 1791700564000,
+  "group_name": "Oyp",
+  "sender": "Person 2 (100002)",
+  "text": "برومبت تصميم..غير الاسم او الألوان أو الايقونات بما تحب..\n\nصمّم ورقة كتابة عربية مدرسية أنيقة بحجم A4 عمودي، بخلفية بيضاء نظيفة. في أعلى اليمين خانة بعنوان \"العنوان:\" واسفلها \"التاريخ:\" بخط عربي واضح. أضف في أعلى اليسار رسماً صغيراً لأيقونات الذكاء الاصطناعي وساعة تعليمية بأسلوب بسيط وهادئ. اجعل الصفحة تحتوي على العديد من الأسطر الأفقية المتقطعة والمنتظمة للكتابة اليدوية، موزعة بشكل متناسق من أعلى الصفحة إلى أسفلها. في الزاوية السفلية اليمنى أضف زخرفة دائرية من الخط العربي الإسلامي باللونين الأخضر والأسود \"Alaa Fares\". استخدم ألواناً هادئة (أزرق فاتح، ذهبي، أسود)، مع تصميم نظيف ومناسب للتلاميذ والمعلمين. جودة عالية للطباعة 300 DPI، مظهر احترافي، Minimalist Educational Worksheet، Arabic Calligraphy Decoration، Stationery Design، Printable A4 Template.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A565908B960836BCFD4F44DAD6FF65A4",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ١٠:٤٠:٥٨ ص",
+  "ts_utc_ms": 1791700858000,
+  "group_name": "Oyp",
+  "sender": "Person 3 (100003)",
+  "text": "لا نستطيع أن نعبر عن مدى سعادتنا وخروج اليوم الأول من من مؤتمر العقلية الدولية 2 بعظمة والهام وأثر .. جاهزين اليوم من 6 الى 9 ويوم من العلم  والمفاجآت مع قامات 💪💪",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACA953155EADD48B7358235F46C5CD97",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ١:٤٩:٣٢ م",
+  "ts_utc_ms": 1791712172000,
+  "group_name": "Oyp",
+  "sender": "Person 4 (100004)",
+  "text": "حباية الضغط من ع الجمل بسرعه 🤣",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACF121F03873FAFC3EC033CF3AF6FA8E",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ١:٤٩:٣٣ م",
+  "ts_utc_ms": 1791712173000,
+  "group_name": "Oyp",
+  "sender": "Person 4 (100004)",
+  "text": "علشان الحق اخلص السيشن علشان بكره🤣",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC581F3AFC5C699152B5A3353A5FC66C",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ١:٤٩:٣٣ م",
+  "ts_utc_ms": 1791712173000,
+  "group_name": "Oyp",
+  "sender": "Person 4 (100004)",
+  "text": "هتلحق لما تركز وتفهم كويس\nمش لما تجري \nبالتوفيق ان شاء الله",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC13F20D95EE99BE528C3AB52EAC96F3",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ١:٤٩:٣٣ م",
+  "ts_utc_ms": 1791712173000,
+  "group_name": "Oyp",
+  "sender": "Person 4 (100004)",
+  "text": "شكرا جداً لحضرتك",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC6BD1CEC43F62A47EBCC9A023DB9FB9",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ١:٥١:٠٠ م",
+  "ts_utc_ms": 1791712260000,
+  "group_name": "Oyp",
+  "sender": "Person 4 (100004)",
+  "text": "M-Building, 1st Floor, Event Area near Starbucks – Furniture loading has been completed and Fit Movers team is now shifting the same to the warehouse.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC33BB6C4E56CDB85D7C4A0DC6CD6354",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ١:٥١:١٣ م",
+  "ts_utc_ms": 1791712273000,
+  "group_name": "Oyp",
+  "sender": "Person 4 (100004)",
+  "text": "Q Building ground floor \nInside LV room AC cooling is very low need to increase",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3A3F01E2D109B5FB22F4",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ٢:٢٢:٣٤ م",
+  "ts_utc_ms": 1791714154000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 5 (100005)",
+  "text": "هل انتم مستعدون لمحاضرة اليوم\nان شاء الله تكون محاضره دسمة \n\nهنبدا بال deep string\nنفهمه بشكل اعمق \nونشوف الـ methods بتاعته وعمليات التلاعب بيه \nثم نكمل ال structural data types \nزي \nList\nTuple\nSet\nDictionary \nبخصائصهم وعملياتهم \nوال control flow statements\nIf, loop\nعاوزكم تكونوا مستعدين \nومجهزين نفسكم \nوشاربين قهوتكم \nومركزين \nوبالتوفيق للجميع يارب 🤲🏼",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3A018FACCD025092617D",
+  "timestamp_text": "١١‏/١٠‏/٢٠٢٦، ٢:٢٥:١٦ م",
+  "ts_utc_ms": 1791714316000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 5 (100005)",
+  "text": "المحاضره ف كل قسم اليوم \nهيكون على طريقتين\nPresentation \nنشوف الدنيا بشكل visual \nوبعد ما نفهمها \nنطبق live code\nوهكذا لحد ما نخلص كل اقسام المحاضرة \nان شاء الله",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5ABD1B560299A2DE172A91CCF194496",
+  "timestamp_text": "10/11/2026, 02:59:22 PM",
+  "ts_utc_ms": 1791716362000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 6 (100006)",
+  "text": "GSU room flower 🌼 watering is on going  by  Rose garden  team",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5DEBFF5663ABFCCB44419E982186E44",
+  "timestamp_text": "10/11/2026, 02:59:22 PM",
+  "ts_utc_ms": 1791716362000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 6 (100006)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC30EC6D51AFF1C2A0275B2832F661B6",
+  "timestamp_text": "10/11/2026, 03:01:44 PM",
+  "ts_utc_ms": 1791716504000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 7 (100007)",
+  "text": "N-Building, 1st Floor, Inside Room No. 2 – Fit Movers vendors are installing a new height-adjustable table, work is ongoing.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACA1DC22F6DE79955C9C638D035EDCC9",
+  "timestamp_text": "10/11/2026, 03:01:44 PM",
+  "ts_utc_ms": 1791716504000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 7 (100007)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC53AC7D12F13F90A4A5BD1D04A81D14",
+  "timestamp_text": "10/11/2026, 03:20:16 PM",
+  "ts_utc_ms": 1791717616000,
+  "group_name": "Oyp",
+  "sender": "Person 8 (100008)",
+  "text": "N-Building, 1st Floor, Inside Room No. 2 – Fit Movers vendors are installing a new height-adjustable table, work is ongoing.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC91FEE6689D0DD86BF56D0CCF55FD8A",
+  "timestamp_text": "10/11/2026, 03:20:16 PM",
+  "ts_utc_ms": 1791717616000,
+  "group_name": "Oyp",
+  "sender": "Person 8 (100008)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC0860CDE1BF0110F6CBC27448EB804C",
+  "timestamp_text": "10/11/2026, 04:05:00 PM",
+  "ts_utc_ms": 1791720300000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 7 (100007)",
+  "text": "Q-Building, Ground Floor – Maintenance access glass door is not closing properly / staying open. Kindly informed the concerned person @185674016026565",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC971FBB81DD329CF27F73151549C578",
+  "timestamp_text": "10/11/2026, 04:21:30 PM",
+  "ts_utc_ms": 1791721290000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 7 (100007)",
+  "text": "Table installation work done, vendors left.",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A599AA3F929A5F4040B86A59385745FF",
+  "timestamp_text": "10/11/2026, 06:09:57 PM",
+  "ts_utc_ms": 1791727797000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "The light near the Q Building Ground Floor near  exit door is not working. Kindly inform Imdaad",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACB67475B9B69C6FD203A161FDF3542C",
+  "timestamp_text": "10/11/2026, 06:11:33 PM",
+  "ts_utc_ms": 1791727893000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3A59D2E948EAF5F6379D",
+  "timestamp_text": "10/11/2026, 06:17:03 PM",
+  "ts_utc_ms": 1791728223000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 11 (100011)",
+  "text": "مستعدين ومتحمسين جدًا 👍✨",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3A4DBDB45B4BB909EFC1",
+  "timestamp_text": "10/11/2026, 06:20:09 PM",
+  "ts_utc_ms": 1791728409000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 12 (100012)",
+  "text": "In N building ground floor electrical room emergency light is on please inform the concern team",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACAAB5967F984487BE7408D2153C25C7",
+  "timestamp_text": "10/11/2026, 06:21:07 PM",
+  "ts_utc_ms": 1791728467000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "👍",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACC3A6FA544694C77910E91D6A044A2C",
+  "timestamp_text": "10/11/2026, 07:37:17 PM",
+  "ts_utc_ms": 1791733037000,
+  "group_name": "Oyp",
+  "sender": "Person 8 (100008)",
+  "text": "*✅﷽🇸🇦* \nhttps://chat.whatsapp.com/Ekd08yJ6LME3lcz7qFA4j0?s=cl&p=a&mlu=4&ilr=4\n*🇸🇦 نستــــــــقبل الآن* \n *اعــــــذار طبية \"سكليف\" 🩺* \n *اجــــــازات مرضية معتمدة 📄* \n *تقـــــارير طبيـــــة 🏥* \n *مـــــرافق مريـــض 👨‍⚕️* \n *مشهـــــد مراجعــة 📋* \n *للتواصل مع المشرفين💬* \n    *3907658445*",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC5A0D2FECB32BF3ACC02C8DE201505F",
+  "timestamp_text": "10/11/2026, 07:56:34 PM",
+  "ts_utc_ms": 1791734194000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 13 (100013)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC0A19E18D9499BBF23C2C0AB164B8EE",
+  "timestamp_text": "10/11/2026, 07:56:42 PM",
+  "ts_utc_ms": 1791734202000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 13 (100013)",
+  "text": "ده تمام كده ياهندسه",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACEE12605F61E9D82F71DF902719057A",
+  "timestamp_text": "10/11/2026, 09:57:23 PM",
+  "ts_utc_ms": 1791741443000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 14 (100014)",
+  "text": "المحاضرة الساعة 9 النهاردة",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A38538E4EA3ADF5CE80",
+  "timestamp_text": "10/11/2026, 10:02:49 PM",
+  "ts_utc_ms": 1791741769000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 15 (100015)",
+  "text": "https://us06web.zoom.us/j/88359824526\n\nتوكلنا على الله",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC9EC2BC781F46AE8B3A76AD9DBFC76B",
+  "timestamp_text": "10/11/2026, 11:03:03 PM",
+  "ts_utc_ms": 1791745383000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 14 (100014)",
+  "text": "هو الكومنت علي الzoom بيبقي فين",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC448847530BE3F0FB1183E5DE840298",
+  "timestamp_text": "10/11/2026, 11:05:21 PM",
+  "ts_utc_ms": 1791745521000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 14 (100014)",
+  "text": "ده للسؤال",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC0719E3E24CABBA8DBFF0850F66A133",
+  "timestamp_text": "10/11/2026, 11:05:53 PM",
+  "ts_utc_ms": 1791745553000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 14 (100014)",
+  "text": "انا مش بشوف التعليقات بتاعت الناس التانية ليه",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC37955DF1E67B1302D478CCE264015C",
+  "timestamp_text": "10/12/2026, 12:57:05 AM",
+  "ts_utc_ms": 1791752225000,
+  "group_name": "Projects Group",
+  "sender": "Person 16 (100016)",
+  "text": "https://docs.google.com/forms/d/e/1FAIpQLSfiOfKWsF4TropACi0pyhFSQyaopfPIsDTMVYb3AvJtW96Cyg/viewform",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC93F6E9EACCFB8BBD4279980E81212A",
+  "timestamp_text": "10/12/2026, 12:57:07 AM",
+  "ts_utc_ms": 1791752227000,
+  "group_name": "Projects Group",
+  "sender": "Person 16 (100016)",
+  "text": "افعل الخير وليقع حيث يقع، فأن وقع في أهله فهم أهله، وإن وقع في غير أهله فأنتَ أهله.\n\n‏- *الإمام علي بن أبي طالب*\n\n‏",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC7DABF72F26ECCB6B8ED6A4906787CA",
+  "timestamp_text": "10/12/2026, 02:04:46 AM",
+  "ts_utc_ms": 1791756286000,
+  "group_name": "منح ماجستير طلال أبو غزالة",
+  "sender": "Person 17 (100017)",
+  "text": "شو بديل الامتحان الإنجليزي يلي عملتو ؟",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5E746247F4DB4F13A20857C36E5EE51",
+  "timestamp_text": "10/12/2026, 02:11:28 AM",
+  "ts_utc_ms": 1791756688000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5E66871AB1E6DE27919C49D0B70DA49",
+  "timestamp_text": "10/12/2026, 02:11:30 AM",
+  "ts_utc_ms": 1791756690000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "Two external lights installed above the elevators near Imdad’s old store are not working and require maintenance.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC37E8E2939A270DAB32ADF9FF7B56FF",
+  "timestamp_text": "10/12/2026, 02:12:02 AM",
+  "ts_utc_ms": 1791756722000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC3ECB28BCE9888BDE584CF146425E79",
+  "timestamp_text": "10/12/2026, 03:13:39 AM",
+  "ts_utc_ms": 1791760419000,
+  "group_name": "Job and Internship opportunities",
+  "sender": "Person 18 (100018)",
+  "text": "إخواتنا السوريين، حد يعرف الجامعة السورية الافتراضية تعترف بجامعة الشعب",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC7EA6001442A49EACA56569C797DD28",
+  "timestamp_text": "10/12/2026, 03:13:46 AM",
+  "ts_utc_ms": 1791760426000,
+  "group_name": "Job and Internship opportunities",
+  "sender": "Person 18 (100018)",
+  "text": "يعني لو حابة أقدم ماجستير فيها، يقبلوا جامعة الشعب",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC61834B06DD8F5B7244DDC4918FC3E6",
+  "timestamp_text": "10/12/2026, 03:17:16 AM",
+  "ts_utc_ms": 1791760636000,
+  "group_name": "منح ماجستير طلال أبو غزالة",
+  "sender": "Person 18 (100018)",
+  "text": "يا جماعه كنت عايزه اقدم في الجامعه السوريه الافتراضيه هل تقبل شهاده جامعه الشعب؟",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACA10231B484FDBAB22C96108874EAEE",
+  "timestamp_text": "10/12/2026, 04:49:35 AM",
+  "ts_utc_ms": 1791766175000,
+  "group_name": "Job and Internship opportunities",
+  "sender": "Person 19 (100019)",
+  "text": "لا ما تعترف",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC87506840F6A4A6E3D336CCBFD54BFB",
+  "timestamp_text": "10/12/2026, 05:24:42 AM",
+  "ts_utc_ms": 1791768282000,
+  "group_name": "Job and Internship opportunities",
+  "sender": "Person 18 (100018)",
+  "text": "طب لو معايا شهادة ليسانس آداب وعايزة أدرس ماجستير معلومات حيوية يقبلوا؟",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACB24EF816DC6882DD8D12B8EF102809",
+  "timestamp_text": "10/12/2026, 06:07:55 AM",
+  "ts_utc_ms": 1791770875000,
+  "group_name": "منح ماجستير طلال أبو غزالة",
+  "sender": "Person 20 (100020)",
+  "text": "لالا غير معترف بها",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACB3BEFFAF8B347207F64AECCDB2C645",
+  "timestamp_text": "10/12/2026, 06:12:22 AM",
+  "ts_utc_ms": 1791771142000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 21 (100021)",
+  "text": "M Building back side right side barrier is not opening  or closing,  inform the concerned team to come and work on it",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A71FDAC5DE5FA664BD5",
+  "timestamp_text": "10/12/2026, 06:20:36 AM",
+  "ts_utc_ms": 1791771636000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 22 (100022)",
+  "text": "Urgent action required",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACE7A965EFCFB8D71D37D79B2B01DBC7",
+  "timestamp_text": "10/12/2026, 06:20:50 AM",
+  "ts_utc_ms": 1791771650000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 23 (100023)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5DBDEEC203E9995DC0525F5BEC7D59B",
+  "timestamp_text": "10/12/2026, 07:05:58 AM",
+  "ts_utc_ms": 1791774358000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 24 (100024)",
+  "text": "N Building 2nd Floor Procurment pantry Electrical Power issue reported need to checke @109884809226867",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC2C19EEDAAB9E54C3C263C4F4AA66F4",
+  "timestamp_text": "10/12/2026, 07:16:20 AM",
+  "ts_utc_ms": 1791774980000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 23 (100023)",
+  "text": "Ok",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5BC9B66144965A2D99A5D6882D42273",
+  "timestamp_text": "10/12/2026, 07:20:02 AM",
+  "ts_utc_ms": 1791775202000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 6 (100006)",
+  "text": "M Building back side parking ,right side barrier is not opening  or closing,  inform the concerned team to come and work on it",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5367A3DDE3CF178F88FA438678DB55F",
+  "timestamp_text": "10/12/2026, 07:26:50 AM",
+  "ts_utc_ms": 1791775610000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 24 (100024)",
+  "text": "Location: N Building, 3rd Floor, Reception Area\n\nObservation: One ceiling light bulb is hanging loose from its holder and needs to be properly secured to prevent a potential safety hazard.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A662FFEBEA5810A547A",
+  "timestamp_text": "10/12/2026, 07:33:28 AM",
+  "ts_utc_ms": 1791776008000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 22 (100022)",
+  "text": "Is it restored?",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC8174CAE64340A3AB27ECEE518F495E",
+  "timestamp_text": "10/12/2026, 07:34:19 AM",
+  "ts_utc_ms": 1791776059000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 23 (100023)",
+  "text": "We checked from our end ok so same has been notified to AVS",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2ACB7A12005FF8800AA7",
+  "timestamp_text": "10/12/2026, 07:34:50 AM",
+  "ts_utc_ms": 1791776090000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 22 (100022)",
+  "text": "AVS?",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACFC3521D45DDD1EE14AF7E86214BDA4",
+  "timestamp_text": "10/12/2026, 07:38:12 AM",
+  "ts_utc_ms": 1791776292000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 23 (100023)",
+  "text": "This is about barrier and ele issue team checking",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A59B1328ACA401AF7C04EB752CE8A3AF",
+  "timestamp_text": "10/12/2026, 07:39:22 AM",
+  "ts_utc_ms": 1791776362000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 24 (100024)",
+  "text": "IMDAD Team Is checking",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A504CD22E4680531E8BF2DDA17BF7DBB",
+  "timestamp_text": "10/12/2026, 07:54:21 AM",
+  "ts_utc_ms": 1791777261000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 24 (100024)",
+  "text": "N Building 1st Floor inside security control Room AC Temperature is not cold need to Increase AC @109884809226867 @135491884424186",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5AEC2181C690F94A2C5B595602607F9",
+  "timestamp_text": "10/12/2026, 07:56:23 AM",
+  "ts_utc_ms": 1791777383000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 25 (100025)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC918287BA68418D9D42995367697CD6",
+  "timestamp_text": "10/12/2026, 07:58:34 AM",
+  "ts_utc_ms": 1791777514000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 26 (100026)",
+  "text": "Resolved",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC74DC6BB521FCAC33F1F87400805ACE",
+  "timestamp_text": "10/12/2026, 08:46:47 AM",
+  "ts_utc_ms": 1791780407000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 27 (100027)",
+  "text": "M Building Inside Service Lift, Steel Holder is Shaking and not Stable. Need to Fix.",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC832A18E805A7ACA67960F9DE27D4C5",
+  "timestamp_text": "10/12/2026, 08:47:55 AM",
+  "ts_utc_ms": 1791780475000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 27 (100027)",
+  "text": "M Building Ground Floor Inside Fire Fighting Pump Room, 1 Hanging Light is not Working. Need to Check and Rectify.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC79238BC9C081335DB757AABA0C18C0",
+  "timestamp_text": "10/12/2026, 08:48:32 AM",
+  "ts_utc_ms": 1791780512000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 26 (100026)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACDA41A1C1CD8139765531C5BD5BE1D3",
+  "timestamp_text": "10/12/2026, 09:21:45 AM",
+  "ts_utc_ms": 1791782505000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 27 (100027)",
+  "text": "M Building 3rd Floor Infront of Female Washroom, Fire Exit Signage Light is not Working. Need to Check.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACF2CE144080C5C7B66B1F5E5197DE0C",
+  "timestamp_text": "10/12/2026, 09:33:48 AM",
+  "ts_utc_ms": 1791783228000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "@54148447241264 \n\nCars entered as of 10 o'clock = 810\n\nCars parked as of 10 o'clock = 806\n\nCars parked outside = 11",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC7DA45538CA286B81B63D937830B9DD",
+  "timestamp_text": "10/12/2026, 09:44:44 AM",
+  "ts_utc_ms": 1791783884000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 23 (100023)",
+  "text": "@54148447241264 as per AVS manual lock has been kept in open position that's why it's happen now they put it back to normal.",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC50A5382F37EC23A22BC67468822B8E",
+  "timestamp_text": "10/12/2026, 09:55:25 AM",
+  "ts_utc_ms": 1791784525000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "@54148447241264\n\nKONE personnel and Imdaad team have signed IN for lifts maintenance",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5D3DE46203445CC7340575EAE3F2874",
+  "timestamp_text": "10/12/2026, 10:01:06 AM",
+  "ts_utc_ms": 1791784866000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 29 (100029)",
+  "text": "Q-Building, GF, House keeping kept office chairs inside and outside of Domestic water pump room and they will remove this today evening..maam Person Y already send emain regarding this..",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC8E33000B09ED307FEFDE97ABF0A264",
+  "timestamp_text": "10/12/2026, 10:59:07 AM",
+  "ts_utc_ms": 1791788347000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 26 (100026)",
+  "text": "Light replaced",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACEC71554DA643874E2F442F89EBCF38",
+  "timestamp_text": "10/12/2026, 11:00:34 AM",
+  "ts_utc_ms": 1791788434000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 26 (100026)",
+  "text": "Done",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACC552F2AB6DA5095A4F9114EAA48CCD",
+  "timestamp_text": "10/12/2026, 11:01:08 AM",
+  "ts_utc_ms": 1791788468000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 26 (100026)",
+  "text": "Light replaced",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACEF6DBD6CA24B73B7DEDA2D03D0F53E",
+  "timestamp_text": "10/12/2026, 11:44:17 AM",
+  "ts_utc_ms": 1791791057000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "@54148447241264 \n\nCars entered as of 12 o'clock  = 871\n\nCars parked as of 12  o'clock = 658\n\nCars parked outside = 17",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A582ED6C29E81683BF09F47B502642D2",
+  "timestamp_text": "10/12/2026, 01:13:24 PM",
+  "ts_utc_ms": 1791796404000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 24 (100024)",
+  "text": "N Building 2nd Floor Male Washroom Muslim shower  water control Push Button is free need to Rectify @109884809226867",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACD945792A1AAA7FA764383B8018F3F6",
+  "timestamp_text": "10/12/2026, 01:17:15 PM",
+  "ts_utc_ms": 1791796635000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 23 (100023)",
+  "text": "Ok",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A56AA3EDADD05BE5C8EE05B135C7B688",
+  "timestamp_text": "10/12/2026, 01:21:56 PM",
+  "ts_utc_ms": 1791796916000,
+  "group_name": "Job and Internship opportunities",
+  "sender": "Person 30 (100030)",
+  "text": "المعلوماتية الحيوية بدك تكون خريج فرع اما بيتعلق بالحاسوب أو بعلم الاحياء حصراً \nفوت على صفحة الجامعة على الفيسبوك ونزل المفاضلة وشوف الشروط",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5BF677123924CC3D7CA100172BE3B7B",
+  "timestamp_text": "10/12/2026, 01:23:19 PM",
+  "ts_utc_ms": 1791796999000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 31 (100031)",
+  "text": "*Actual car parking inside at 1.30 PM\n*Q:Building.*\n*Tanfeeth* total parking\n\n00:-00\n01:-03\n02:-07\n03:-08\n04:-26\n05:-34\n06:-01\n\nEXPECTANT MOTHER*:-00\n*PRO*:04\n*INA*:-02\n*MEDICAL*: -02\n\n\n*M* Building total  parking \n\n00:-01\n01:-04\n02:-12\n03:-33\n04:-34\n05:-00\nPOD-00",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5B6E66457F524D85F522182A96CE3B6",
+  "timestamp_text": "10/12/2026, 01:26:27 PM",
+  "ts_utc_ms": 1791797187000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 6 (100006)",
+  "text": "Date 12th October 1312\nRumble area location \nTim 01:30PM \nTotal car's parking at Rumble area now are 407 car's \nBus 🚌  00 car",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC999D70B97AA653247605C9B7AEF0C6",
+  "timestamp_text": "10/12/2026, 01:30:03 PM",
+  "ts_utc_ms": 1791797403000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 7 (100007)",
+  "text": "*Actual Car Parked Inside at 1.30 PM In*\n*N: Building*\n*P: Building*                         \n\n*N* building total parking\n\n0 :- 01\n1 :- 02\n2 :- 05\n3 :- 18\n4 :- 15\n5 :- 00\n6 :- 01\nPRO :-01\n\n*P* Building total parking\n\n0 :- 00\n1 :- 02\n2 :- 02\n3 :- 20\n4 :- 06\n5 :- 01\n6 :- 01\n *Vip*:08\n*Ambulance*:-01\n*Exp mother*:-03\n *Handicap*:- 00",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACAE4F70741D0AED40EA85A5322F7346",
+  "timestamp_text": "10/12/2026, 01:58:33 PM",
+  "ts_utc_ms": 1791799113000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "@54148447241264 \n\nCars entered as of 14 o'clock = 887\n\nCars parked as of 14 o'clock = 866\n\nCars parked outside = 1$",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2AC9084C8549F4568B4C",
+  "timestamp_text": "10/12/2026, 03:24:39 PM",
+  "ts_utc_ms": 1791804279000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 22 (100022)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3AF62568C8C43669BC86",
+  "timestamp_text": "10/12/2026, 03:24:57 PM",
+  "ts_utc_ms": 1791804297000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 32 (100032)",
+  "text": "💃💃",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2AD1A5304E6EF80CB87F",
+  "timestamp_text": "10/12/2026, 03:25:35 PM",
+  "ts_utc_ms": 1791804335000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 22 (100022)",
+  "text": "No 1",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3AECFCCA65AE8BAD5005",
+  "timestamp_text": "10/12/2026, 03:26:07 PM",
+  "ts_utc_ms": 1791804367000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 32 (100032)",
+  "text": "Home sweet home",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC33B1FA252383EC36F89A3A3B34AD9D",
+  "timestamp_text": "10/12/2026, 03:26:37 PM",
+  "ts_utc_ms": 1791804397000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 21 (100021)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A03CE2F25EC69859B3C",
+  "timestamp_text": "10/12/2026, 03:31:01 PM",
+  "ts_utc_ms": 1791804661000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 22 (100022)",
+  "text": "Recorded",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3A7B4C2C32115FF69908",
+  "timestamp_text": "10/12/2026, 03:34:18 PM",
+  "ts_utc_ms": 1791804858000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 32 (100032)",
+  "text": "Private message",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC95F5E6F43F179C283507AC132C903C",
+  "timestamp_text": "10/12/2026, 03:43:29 PM",
+  "ts_utc_ms": 1791805409000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 33 (100033)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A93CD2907EFBCCC258C",
+  "timestamp_text": "10/12/2026, 03:43:57 PM",
+  "ts_utc_ms": 1791805437000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 22 (100022)",
+  "text": "Recorded",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACD7BEBF6015C79722D15ED0294356F8",
+  "timestamp_text": "10/12/2026, 04:47:40 PM",
+  "ts_utc_ms": 1791809260000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 34 (100034)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5F32680FD1A853E11B92D90E0182A88",
+  "timestamp_text": "10/12/2026, 04:47:59 PM",
+  "ts_utc_ms": 1791809279000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 35 (100035)",
+  "text": "Noted sir",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3A83999576CA737B22B8",
+  "timestamp_text": "10/12/2026, 04:48:46 PM",
+  "ts_utc_ms": 1791809326000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 32 (100032)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC549CBFD9DACABFA59B75704CCAFD93",
+  "timestamp_text": "10/12/2026, 04:48:57 PM",
+  "ts_utc_ms": 1791809337000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 36 (100036)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A6FB5924F5B28F1A358",
+  "timestamp_text": "10/12/2026, 04:51:11 PM",
+  "ts_utc_ms": 1791809471000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 22 (100022)",
+  "text": "Again",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3AA1E88529B09AB9F572",
+  "timestamp_text": "10/12/2026, 04:51:36 PM",
+  "ts_utc_ms": 1791809496000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 32 (100032)",
+  "text": "That is 1317",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A4ED766EA2D1F393F2F",
+  "timestamp_text": "10/12/2026, 04:52:12 PM",
+  "ts_utc_ms": 1791809532000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 22 (100022)",
+  "text": "Received",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A86F6211C300235155C",
+  "timestamp_text": "10/12/2026, 04:53:30 PM",
+  "ts_utc_ms": 1791809610000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 22 (100022)",
+  "text": "Received",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC60361448B5F7A5827456C1DF5B0031",
+  "timestamp_text": "10/12/2026, 04:58:22 PM",
+  "ts_utc_ms": 1791809902000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 36 (100036)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A5C95484485858A6CB3",
+  "timestamp_text": "10/12/2026, 05:03:24 PM",
+  "ts_utc_ms": 1791810204000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 22 (100022)",
+  "text": "Recorded",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACB30C2D45996E116CCE73E951E7D1AC",
+  "timestamp_text": "10/12/2026, 05:08:00 PM",
+  "ts_utc_ms": 1791810480000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 36 (100036)",
+  "text": "Thanks sir",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3AEAA4EE31925A7916E8",
+  "timestamp_text": "10/12/2026, 05:24:05 PM",
+  "ts_utc_ms": 1791811445000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 37 (100037)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC790D0318ED93EAFBD3922BD7833FED",
+  "timestamp_text": "10/12/2026, 05:24:36 PM",
+  "ts_utc_ms": 1791811476000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 38 (100038)",
+  "text": "مساء الخير❤️🤍\nهو فى تاسك لمحاضره امبارح",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACF1319CFBA233A27936D5F8393D9B8E",
+  "timestamp_text": "10/12/2026, 05:25:15 PM",
+  "ts_utc_ms": 1791811515000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 34 (100034)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5737EF62E49B3BFB76D1D4C0C5B4B2F",
+  "timestamp_text": "10/12/2026, 05:27:31 PM",
+  "ts_utc_ms": 1791811651000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A504C5F4E1649DDA900A2A623387F464",
+  "timestamp_text": "10/12/2026, 05:40:41 PM",
+  "ts_utc_ms": 1791812441000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 31 (100031)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC3E564E2C4D4D8EEE8522E93EB3DA0E",
+  "timestamp_text": "10/12/2026, 05:45:21 PM",
+  "ts_utc_ms": 1791812721000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 39 (100039)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACEE901A6D542FEB5E7330C437935A59",
+  "timestamp_text": "10/12/2026, 05:48:03 PM",
+  "ts_utc_ms": 1791812883000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 40 (100040)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3EB04B7751FFD9B4A306C8",
+  "timestamp_text": "10/12/2026, 05:48:50 PM",
+  "ts_utc_ms": 1791812930000,
+  "group_name": "Job and Internship opportunities",
+  "sender": "Person 19 (100019)",
+  "text": "هذه اخر مفاضلة نشروها",
+  "media_type": "📄 Document",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2A577D02885F03E69F21",
+  "timestamp_text": "10/12/2026, 05:52:59 PM",
+  "ts_utc_ms": 1791813179000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 22 (100022)",
+  "text": "Recorded not sure for approval as this is December month",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A58901F83F367606B94F465A15E1E777",
+  "timestamp_text": "10/12/2026, 06:09:31 PM",
+  "ts_utc_ms": 1791814171000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 29 (100029)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC16D78AB56D0CD52AD03C72050D7407",
+  "timestamp_text": "10/12/2026, 06:10:19 PM",
+  "ts_utc_ms": 1791814219000,
+  "group_name": "منح ماجستير طلال أبو غزالة",
+  "sender": "Person 41 (100041)",
+  "text": "efset",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A53EE4E93BB5F9FC4CF975813AEA9608",
+  "timestamp_text": "10/12/2026, 06:24:31 PM",
+  "ts_utc_ms": 1791815071000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACBDC1AC40F329FBDB776F093A3C0010",
+  "timestamp_text": "10/12/2026, 06:29:00 PM",
+  "ts_utc_ms": 1791815340000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 42 (100042)",
+  "text": "*Maintenance area*\n*Entrance security cabinet*\n*AC* not working properly it's has power but don't has air need to check and fix it",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3ABE3C000B8756834505",
+  "timestamp_text": "10/12/2026, 06:36:52 PM",
+  "ts_utc_ms": 1791815812000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 12 (100012)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3AA22C7C340A56B06481",
+  "timestamp_text": "10/12/2026, 06:58:44 PM",
+  "ts_utc_ms": 1791817124000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 5 (100005)",
+  "text": "المحاضرة الجاية ان شاء الله",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A57D201003A84A124B39D75C7EC5A3EE",
+  "timestamp_text": "10/12/2026, 07:01:09 PM",
+  "ts_utc_ms": 1791817269000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "Housekeeping staff are removing all old chairs from the Employee Services side on the 1st floor of Q Building and placing new chairs there",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5C3F7385F7E6D2CBAD8A05E3C4738ED",
+  "timestamp_text": "10/12/2026, 07:01:10 PM",
+  "ts_utc_ms": 1791817270000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A52700EA573C4BBAC1576794B7D6DD43",
+  "timestamp_text": "10/12/2026, 07:01:12 PM",
+  "ts_utc_ms": 1791817272000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACB5BF6C9E47388FDBD41A7A837B2C12",
+  "timestamp_text": "10/12/2026, 07:02:24 PM",
+  "ts_utc_ms": 1791817344000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "👍",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A52BF339BC5FC465B3D03699CAFDEA48",
+  "timestamp_text": "10/12/2026, 07:11:48 PM",
+  "ts_utc_ms": 1791817908000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 43 (100043)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACCDEB71EFCFFF90E62D71D6C5792617",
+  "timestamp_text": "10/12/2026, 07:33:31 PM",
+  "ts_utc_ms": 1791819211000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 34 (100034)",
+  "text": "N building 3rd floor front of reception two Emergency Exit light are not working",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC9EFF07882E9C041A35576539E6497E",
+  "timestamp_text": "10/12/2026, 07:36:28 PM",
+  "ts_utc_ms": 1791819388000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 34 (100034)",
+  "text": "N building 2nd floor near to reception 1 emergency exit light is not working",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC5198C4766FAE53661C494A0E0DA4B6",
+  "timestamp_text": "10/12/2026, 07:38:19 PM",
+  "ts_utc_ms": 1791819499000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 34 (100034)",
+  "text": "N building 1st floor exit staircase door to ramp Area,1 emergency exit light is not working",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACBD8BCD5BA848F98B4EB72EA83E4700",
+  "timestamp_text": "10/12/2026, 07:38:54 PM",
+  "ts_utc_ms": 1791819534000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "👍",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACA5087A6848FF0E87B6092127275200",
+  "timestamp_text": "10/12/2026, 07:39:42 PM",
+  "ts_utc_ms": 1791819582000,
+  "group_name": "Fire & Safety Team Meydan",
+  "sender": "Person 10 (100010)",
+  "text": "N building 3rd floor front of reception two Emergency Exit light are not working",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACC5B773B077A069C1E11C59E43DAF9A",
+  "timestamp_text": "10/12/2026, 07:40:07 PM",
+  "ts_utc_ms": 1791819607000,
+  "group_name": "Fire & Safety Team Meydan",
+  "sender": "Person 10 (100010)",
+  "text": "N building 2nd floor near to reception 1 emergency exit light is not working",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACDF8A0C27ADCF776BE47776758B5E02",
+  "timestamp_text": "10/12/2026, 07:40:20 PM",
+  "ts_utc_ms": 1791819620000,
+  "group_name": "Fire & Safety Team Meydan",
+  "sender": "Person 10 (100010)",
+  "text": "N building 1st floor exit staircase door to ramp Area,1 emergency exit light is not working",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC0260A2BAF0973915879D76EF5EC6DF",
+  "timestamp_text": "10/12/2026, 07:40:34 PM",
+  "ts_utc_ms": 1791819634000,
+  "group_name": "Fire & Safety Team Meydan",
+  "sender": "Person 10 (100010)",
+  "text": "@25737036833186 FYI",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3EB03FD22AEAFCD23178FB",
+  "timestamp_text": "10/12/2026, 07:46:57 PM",
+  "ts_utc_ms": 1791820017000,
+  "group_name": "Projects Group",
+  "sender": "Person 44 (100044)",
+  "text": "www.linkedin.com/in/Person 14-rady-707799062",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3EB00BCAE7896C91DBB816",
+  "timestamp_text": "10/12/2026, 07:48:19 PM",
+  "ts_utc_ms": 1791820099000,
+  "group_name": "Projects Group",
+  "sender": "Person 44 (100044)",
+  "text": "لينكد ان الجديد لان القديم ضاع , متابعه من فضلكم وهنزل من جديد مشاريع حقيقه لشركات اشتغلت معاها ❤️🙏",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A52FDEA2F226727DB7ACBCC145A9F368",
+  "timestamp_text": "10/12/2026, 08:07:52 PM",
+  "ts_utc_ms": 1791821272000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "Q Building, 1st Floor, Employee Services side: None of the security access cards are working for the cabin. At least one security access card should be activated for the patrolling guard so that the cabin can be accessed in case of any incident, such as water leakage or any other emergency @69196819892501",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACA1D017CEF9658F99DB7E6C93CD2DC5",
+  "timestamp_text": "10/12/2026, 08:34:05 PM",
+  "ts_utc_ms": 1791822845000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "It means u are restricted to access it",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC7E8A65C16C3BB96B1F655F510213B6",
+  "timestamp_text": "10/12/2026, 08:35:13 PM",
+  "ts_utc_ms": 1791822913000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "We have master cards incase of emergency it can access the area",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A57EE66863003801FA0FB2F184DFBA88",
+  "timestamp_text": "10/12/2026, 08:35:24 PM",
+  "ts_utc_ms": 1791822924000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A53009193A89FCAE167CFF44DBB6B9BC",
+  "timestamp_text": "10/12/2026, 08:54:36 PM",
+  "ts_utc_ms": 1791824076000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 43 (100043)",
+  "text": "P building 4th floor the TELECON SIGNS COMPANY Changes posters and remove olds one",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5D9A5CAE47D1BE7973E49DE8D210D14",
+  "timestamp_text": "10/12/2026, 08:54:38 PM",
+  "ts_utc_ms": 1791824078000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 43 (100043)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A56C7F87E7A813CEAAD5F253E408D104",
+  "timestamp_text": "10/12/2026, 08:54:37 PM",
+  "ts_utc_ms": 1791824077000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 43 (100043)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A581951BDB36B90491F0A2B77F7EC738",
+  "timestamp_text": "10/12/2026, 08:54:37 PM",
+  "ts_utc_ms": 1791824077000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 43 (100043)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A578780C3530370F5714B3D587192CF9",
+  "timestamp_text": "10/12/2026, 08:54:38 PM",
+  "ts_utc_ms": 1791824078000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 43 (100043)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC67FD60E79E97BEBD8142CEFA064503",
+  "timestamp_text": "10/12/2026, 08:55:27 PM",
+  "ts_utc_ms": 1791824127000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "👍",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3EB018295D51C02DE02736",
+  "timestamp_text": "10/12/2026, 08:56:02 PM",
+  "ts_utc_ms": 1791824162000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 45 (100045)",
+  "text": "انا كان عندي سوال معلش عشان لسة بشوف المحاضرة الاولي عشان دخلت متاخر اي اختصار OLAP و OLTP",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3EB05DB841FA652D878B32",
+  "timestamp_text": "10/12/2026, 08:58:49 PM",
+  "ts_utc_ms": 1791824329000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 5 (100005)",
+  "text": "**OLTP** اختصار لـ **Online Transaction Processing**\n\nوده النظام اللي بيكون مسؤول عن العمليات اليومية زي مثلا لما عميل يشتري منتج من متجر إلكتروني أو يعمل عملية دفع أو يسجل طلب جديد\n\nيعني باختصار نظام هدفه تسجيل وتنفيذ العمليات بسرعة ودقة\n\nأما **OLAP** اختصار لـ **Online Analytical Processing**\n\nوده بقى المسؤول عن تحليل البيانات علشان نقدر نستخرج منها معلومات تساعدنا ناخد قرارات\n\nيعني مثلا نفس المتجر الإلكتروني عاوز يعرف إجمالي المبيعات خلال آخر 6 شهور أو أكتر المنتجات مبيعا أو يقارن المبيعات بين الفروع\n\nخد بالك من الفرق الجميل ده\n\n**OLTP** بيسجل عمليات البيع اللي بتحصل كل يوم\n\n**OLAP** بيحلل عمليات البيع دي علشان نفهم أداء الشغل\n\nيعني واحد بيشغل البيزنس والتاني بيساعدنا نفهم البيزنس\n\nوطبعا لما ندخل في جزء الـ Databases والـ Data Engineering هنفهم الفرق بينهم بشكل أعمق وهنشوف إزاي البيانات بتنتقل من الأنظمة التشغيلية للأنظمة التحليلية بشكل عملي ❤️",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3EB04FE13E83B6CBF4FD5C",
+  "timestamp_text": "10/12/2026, 09:04:24 PM",
+  "ts_utc_ms": 1791824664000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 45 (100045)",
+  "text": "شكرا يا بشمهندس",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3A2470B9B163E158CB5D",
+  "timestamp_text": "10/12/2026, 09:41:58 PM",
+  "ts_utc_ms": 1791826918000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 12 (100012)",
+  "text": "Arki group vendors is working in M building 1st floor office",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC2D48F84D3928AE13F34845120598A0",
+  "timestamp_text": "10/12/2026, 09:42:31 PM",
+  "ts_utc_ms": 1791826951000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "👍",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5F791EDE0EECC827A1058D35E356E92",
+  "timestamp_text": "10/13/2026, 03:19:33 AM",
+  "ts_utc_ms": 1791847173000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 43 (100043)",
+  "text": "P building ground floor inside service lift there is one of the lights not working properly need to check by technician",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A50814EFBD019AC60CBDC8DE67E01FE0",
+  "timestamp_text": "10/13/2026, 03:19:33 AM",
+  "ts_utc_ms": 1791847173000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 43 (100043)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACF13C59E137EC9060BB1B679FD87267",
+  "timestamp_text": "10/13/2026, 03:20:16 AM",
+  "ts_utc_ms": 1791847216000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 10 (100010)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACB8735B19A8321B962FC42E074503EE",
+  "timestamp_text": "10/13/2026, 03:20:16 AM",
+  "ts_utc_ms": 1791847216000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 10 (100010)",
+  "text": "P building ground floor inside service lift there is one of the lights not working properly need to check by technician",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC359945E0443A94EE4F316F1DBD05FE",
+  "timestamp_text": "10/13/2026, 03:20:37 AM",
+  "ts_utc_ms": 1791847237000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 10 (100010)",
+  "text": "👍",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC5D7527BC37553B2AD9D2824D4CE496",
+  "timestamp_text": "10/13/2026, 06:29:12 AM",
+  "ts_utc_ms": 1791858552000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team, \n\nKindly allow this vehicle in smart parking  only for 3 days from today 13/10/2026 until 15/10/2026.\n\nPlate no : 4 / 25444\nCar make :GMC",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5E9D2217171DBF4A2B197BEFAA199A6",
+  "timestamp_text": "10/13/2026, 06:31:02 AM",
+  "ts_utc_ms": 1791858662000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 24 (100024)",
+  "text": "N Building Ground Floor Lift Loby Area infront Of Reception one Cielling light is Blinking need to check @109884809226867",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC73526C9AE933C3924E8F122E519CB0",
+  "timestamp_text": "10/13/2026, 07:01:21 AM",
+  "ts_utc_ms": 1791860481000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 46 (100046)",
+  "text": "Leave Details : Full name : Person X Staff Id : 333333 Start Date : 01/01/2027 Total Days : 30",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC682053A2E02B936D6D5E8E9C26ACD4",
+  "timestamp_text": "10/13/2026, 07:05:08 AM",
+  "ts_utc_ms": 1791860708000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 47 (100047)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACCA528F437B6BC16CC12B4D85136631",
+  "timestamp_text": "10/13/2026, 07:51:10 AM",
+  "ts_utc_ms": 1791863470000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 48 (100048)",
+  "text": "@897969192028040",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A57EC0A29B95DB593D47D30B40023BB7",
+  "timestamp_text": "10/13/2026, 07:52:41 AM",
+  "ts_utc_ms": 1791863561000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 24 (100024)",
+  "text": "N building 1st Floor Security Control Room AC is not Cold need to Increase AC @109884809226867",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A56F871982EB8F2E5F6D626F621F8CAD",
+  "timestamp_text": "10/13/2026, 07:53:20 AM",
+  "ts_utc_ms": 1791863600000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 25 (100025)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC68DF7D12EDF020E9BF5455EB785CD8",
+  "timestamp_text": "10/13/2026, 07:54:40 AM",
+  "ts_utc_ms": 1791863680000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team, \n\nKindly allow this vehicle in VIP parking slot only for today .\n\nPlate no : EE 43706",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC5E5BE7D168F4A9438077D2C1960C8B",
+  "timestamp_text": "10/13/2026, 07:55:58 AM",
+  "ts_utc_ms": 1791863758000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 26 (100026)",
+  "text": "Currently light off condition.will replace",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "2AB97BC00F0AF3330B5D",
+  "timestamp_text": "10/13/2026, 07:56:21 AM",
+  "ts_utc_ms": 1791863781000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 22 (100022)",
+  "text": "@109884809226867 this is daily issues. Pls keep the control room ac standard condition all times",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC27F6D3A3A6BF3325AB56993153B831",
+  "timestamp_text": "10/13/2026, 07:57:49 AM",
+  "ts_utc_ms": 1791863869000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 23 (100023)",
+  "text": "@135491884424186 @56620024536556 pls check and update",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC36BE172BF7237CA30A15889B4B9736",
+  "timestamp_text": "10/13/2026, 08:25:40 AM",
+  "ts_utc_ms": 1791865540000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 49 (100049)",
+  "text": "Done",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACC278B2E20F913CEEF1B0BE9531B93A",
+  "timestamp_text": "10/13/2026, 08:25:41 AM",
+  "ts_utc_ms": 1791865541000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 49 (100049)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACC7C9AFF333B73F8209ED001D3DDD87",
+  "timestamp_text": "10/13/2026, 08:39:01 AM",
+  "ts_utc_ms": 1791866341000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 50 (100050)",
+  "text": "Parked in VIP slot @185674016026565",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACB325F153B92C2B6E6E946412F9D91C",
+  "timestamp_text": "10/13/2026, 08:55:42 AM",
+  "ts_utc_ms": 1791867342000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team , \n\nKindly allow this vehicle in the VIP parking slot only for today. \n\nPlate no : V 29671\nCar make : Mitsubishi Pajero",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A52D109D29C0040B89BCBE34B69A907D",
+  "timestamp_text": "10/13/2026, 09:15:47 AM",
+  "ts_utc_ms": 1791868547000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 29 (100029)",
+  "text": "Follow up please",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACF4EF7EE179EA8532FA9CDADB09DCC1",
+  "timestamp_text": "10/13/2026, 09:28:17 AM",
+  "ts_utc_ms": 1791869297000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "@54148447241264 \n\nCars entered as of 10 o'clock = 806\n\nCars parked as of 10 o'clock = 801\n\nCars parked outside = 09",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5DD46BA4F6E77909BC8CD214206B423",
+  "timestamp_text": "10/13/2026, 09:32:56 AM",
+  "ts_utc_ms": 1791869576000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 6 (100006)",
+  "text": "Date 13th October 1312\nRumble area location \nTime09:30AM \nTotal car's parking at Rumble area now are 209 car's \nBus 🚌  00 car",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACE3694456C9F52DA59FF052670F061E",
+  "timestamp_text": "10/13/2026, 09:38:29 AM",
+  "ts_utc_ms": 1791869909000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "@54148447241264\n\nStaff parked his non-electric car on EV fast charging slot 399  on level 4\n\n@185674016026565.\n\nKindly notify concern department for him to come and remove his car.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC5E7746FD6EF36DB1FC370479F68082",
+  "timestamp_text": "10/13/2026, 09:38:52 AM",
+  "ts_utc_ms": 1791869932000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC593544F52C015C6D8949F11E8566A3",
+  "timestamp_text": "10/13/2026, 09:53:08 AM",
+  "ts_utc_ms": 1791870788000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Updated :Staff stated he is in the meeting after 1 hour he will remove.",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC1AB9E58D477F21062E2922AFA67315",
+  "timestamp_text": "10/13/2026, 10:23:22 AM",
+  "ts_utc_ms": 1791872602000,
+  "group_name": "Projects Group",
+  "sender": "Person 51 (100051)",
+  "text": "https://lnkd.in/p/e6Gmt39f جماعه ممكن سابورت عشان يدوني الشهاده 😂",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACC734FAC7162A19435C51A67220BA1A",
+  "timestamp_text": "10/13/2026, 10:27:29 AM",
+  "ts_utc_ms": 1791872849000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team, \n\nKindly allow this vehicle in parking slot ( M 96 )only for today. \n\nPlate no : FF 78382",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC61C073DA84B844E9E35296B66C8531",
+  "timestamp_text": "10/13/2026, 10:31:42 AM",
+  "ts_utc_ms": 1791873102000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "Noted sir we",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5BAEBF6F1851078C3A729A3A7945369",
+  "timestamp_text": "10/13/2026, 10:42:54 AM",
+  "ts_utc_ms": 1791873774000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 31 (100031)",
+  "text": "Noted...",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "3AB1803A6E81D57E6FE9",
+  "timestamp_text": "10/13/2026, 10:49:37 AM",
+  "ts_utc_ms": 1791874177000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 37 (100037)",
+  "text": "Q building first floor Speed Gate is out of service",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC1899EE707ED9FA0DD3EB7873FAE87A",
+  "timestamp_text": "10/13/2026, 10:52:02 AM",
+  "ts_utc_ms": 1791874322000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 21 (100021)",
+  "text": "Q building first floor Speed Gate is out of service",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A517D3D44E1E659F891D09FF61EC2E81",
+  "timestamp_text": "10/13/2026, 11:25:42 AM",
+  "ts_utc_ms": 1791876342000,
+  "group_name": "Fire & Safety Team Meydan",
+  "sender": "Person 24 (100024)",
+  "text": "N Building Ground Floor Emergency Lights are Glowing without any Emergency situation in the Building on several places need to Rectify                          1) Electrical Room (2) Parking Area Next To waiting lounge (3) Service lift Loby",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A59906947D1EEE511B71F0873A1A3A68",
+  "timestamp_text": "10/13/2026, 11:25:43 AM",
+  "ts_utc_ms": 1791876343000,
+  "group_name": "Fire & Safety Team Meydan",
+  "sender": "Person 24 (100024)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5981CDB9B1CA7DCD0DEC8A85EBDA703",
+  "timestamp_text": "10/13/2026, 11:25:43 AM",
+  "ts_utc_ms": 1791876343000,
+  "group_name": "Fire & Safety Team Meydan",
+  "sender": "Person 24 (100024)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A53984393CC52A205A7A40AD49F77301",
+  "timestamp_text": "10/13/2026, 11:26:18 AM",
+  "ts_utc_ms": 1791876378000,
+  "group_name": "Fire & Safety Team Meydan",
+  "sender": "Person 24 (100024)",
+  "text": "@25737036833186 plz check it was reported before but not yet Rectified",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC603A4BA61D9D42E1A2279003BCE950",
+  "timestamp_text": "10/13/2026, 11:28:03 AM",
+  "ts_utc_ms": 1791876483000,
+  "group_name": "Fire & Safety Team Meydan",
+  "sender": "Person 52 (100052)",
+  "text": "Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5B73408D689ED521F584E918275AF6A",
+  "timestamp_text": "10/13/2026, 11:28:09 AM",
+  "ts_utc_ms": 1791876489000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 31 (100031)",
+  "text": "Parked in the assigned slot.",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC159BB391612F0D9E1E6ABF21055482",
+  "timestamp_text": "10/13/2026, 11:37:48 AM",
+  "ts_utc_ms": 1791877068000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 27 (100027)",
+  "text": "M Building 1st Floor Group Engineering Dep, Eurosec vendor is Removing the 1 Camera.",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC3B0FBC2BC68E8567AD5AB0B57C7608",
+  "timestamp_text": "10/13/2026, 11:37:49 AM",
+  "ts_utc_ms": 1791877069000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 27 (100027)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC9C8171FB1258CFC07C81D5EE081940",
+  "timestamp_text": "10/13/2026, 11:37:49 AM",
+  "ts_utc_ms": 1791877069000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 27 (100027)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC0AA1BBD9864783C9C54FDD45AA4795",
+  "timestamp_text": "10/13/2026, 11:37:49 AM",
+  "ts_utc_ms": 1791877069000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 27 (100027)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5E184D7EF7DDB1B1850D9154E3BC72D",
+  "timestamp_text": "10/13/2026, 11:43:27 AM",
+  "ts_utc_ms": 1791877407000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 6 (100006)",
+  "text": "Date 13th October 1312\nRumble area location \nTime11:30AM \nTotal car's parking at Rumble area now are 414 car's \nBus 🚌  00 car",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A53AAB8AFF1BFF3F83E15C5E61947B74",
+  "timestamp_text": "10/13/2026, 12:03:21 PM",
+  "ts_utc_ms": 1791878601000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 29 (100029)",
+  "text": "Please follow up ASAP",
+  "media_type": "🎬 Video",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACCECE72C58F1A537164DF919A7D3809",
+  "timestamp_text": "10/13/2026, 12:20:23 PM",
+  "ts_utc_ms": 1791879623000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 26 (100026)",
+  "text": "Working",
+  "media_type": "📷 Image",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC828490A35A916A049B02295D90390E",
+  "timestamp_text": "10/13/2026, 12:28:14 PM",
+  "ts_utc_ms": 1791880094000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "*Subject: Request for Permanent Parking Access - Slot (Q-103 )*\n\nDear Team,\n\nKindly grant permanent parking access for Slot No. ( Q-103 )to the below staff.\n\n*Details:*\n*Name:* Omer A Rasul\n*Plate No:* X 19490\n*Car Make:* Audi A5\n\n*Reason:* The staff has swapped his parking slot from ( Q-5 ) to ( Q-103 ). The previous holder of slot ( Q-103), Mr. Person Y Alrahma, has left the organization.",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5A7F24467A235BC3E0B4609C0CA20DE",
+  "timestamp_text": "10/13/2026, 12:29:02 PM",
+  "ts_utc_ms": 1791880142000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 31 (100031)",
+  "text": "Noted...",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC2072C5836ABEDD8CF662AB0ED79979",
+  "timestamp_text": "10/13/2026, 12:32:02 PM",
+  "ts_utc_ms": 1791880322000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "@54148447241264 \n\nCars entered as of 12 o'clock  = 894\n\nCars parked as of 12  o'clock = 873\n\nCars parked outside = 28",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACF54C04B06D9B6BA1F2224C3D5C3BAE",
+  "timestamp_text": "10/13/2026, 12:51:16 PM",
+  "ts_utc_ms": 1791881476000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "*Subject: Request for Permanent Parking Access - Slot (Q-103 )*\n\nDear Team,\n\nKindly grant permanent parking access for Slot No. ( Q-103 )to the below staff.\n\n*Details:*\n*Name:* Omer A Rasul\n*Plate No:* AA 95409\n*Car Make:* Porsche\n\n*Reason:* The staff has swapped his parking slot from ( Q-5 ) to ( Q-103 ). The previous holder of slot ( Q-103), Mr. Person Y Alrahma, has left the organization.",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "ACBE9D96AD581954F4EF2A4E19568A3D",
+  "timestamp_text": "10/13/2026, 12:52:32 PM",
+  "ts_utc_ms": 1791881552000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 50 (100050)",
+  "text": "Acknowledged",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC3B66844DA3235B320063E6932356AC",
+  "timestamp_text": "10/13/2026, 01:05:57 PM",
+  "ts_utc_ms": 1791882357000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 53 (100053)",
+  "text": "السلام عليكم",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC4BC99E2093B5373D0787428CA84FC6",
+  "timestamp_text": "10/13/2026, 01:06:39 PM",
+  "ts_utc_ms": 1791882399000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 53 (100053)",
+  "text": "فيه حد اشترك فى Claude ؟",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5690970C0BEF0422F4EF3BC073833EE",
+  "timestamp_text": "10/13/2026, 01:23:22 PM",
+  "ts_utc_ms": 1791883402000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 31 (100031)",
+  "text": "*Actual car parking inside at 1.30 PM\n*Q:Building.*\n*Tanfeeth* total parking\n\n00:-00\n01:-03\n02:-06\n03:-07\n04:-23\n05:-31\n06:-00\n\nEXPECTANT MOTHER*:-00\n*PRO*:05\n*INA*:-03\n*MEDICAL*: -01\n\n\n*M* Building total  parking \n\n00:-00\n01:-04\n02:-12\n03:-41\n04:-36\n05:-00\nPOD-00",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC3600E7F6285CECC2D85577247983E4",
+  "timestamp_text": "10/13/2026, 01:30:02 PM",
+  "ts_utc_ms": 1791883802000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 7 (100007)",
+  "text": "*Actual Car Parked Inside at 1.30 PM In*\n*N: Building*\n*P: Building*                         \n\n*N* building total parking\n\n0 :- 02\n1 :- 04\n2 :- 06\n3 :- 20\n4 :- 17\n5 :- 00\n6 :- 02\nPRO :-01\n\n*P* Building total parking\n\n0 :- 00\n1 :- 02\n2 :- 03\n3 :- 24\n4 :- 06\n5 :- 01\n6 :- 01\n *Vip*:09\n*Ambulance*:-01\n*Exp mother*:-03\n *Handicap*:- 00",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "A5B09ECF70812BCCF4A1197D65A88355",
+  "timestamp_text": "10/13/2026, 01:31:51 PM",
+  "ts_utc_ms": 1791883911000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 6 (100006)",
+  "text": "Date 13th October 1312\nRumble area location \nTime01:30PM \nTotal car's parking at Rumble area now are 378 car's \nBus 🚌  00 car",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC26FCB8DE0C5E08FDBE19A11CF941B5",
+  "timestamp_text": "10/13/2026, 01:37:28 PM",
+  "ts_utc_ms": 1791884248000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "@54148447241264 \n\nCars entered as of 14 o'clock = 905\n\nCars parked as of 14 o'clock = 866\n\nCars parked outside = 26",
+  "media_type": "💬 Text",
+  "quoted_message_id": null
+ },
+ {
+  "message_id": "AC485D79E9D4268770BE0678D41FDDA6",
+  "timestamp_text": "10/14/2026, 02:45:04 PM",
+  "ts_utc_ms": 1791974704000,
+  "group_name": "Oyp",
+  "sender": "Person 8 (100008)",
+  "text": "(Image)",
+  "media_type": "📷 Image",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACFD445CE9FD5EBB78B337269962B9D5",
+  "timestamp_text": "10/14/2026, 02:45:04 PM",
+  "ts_utc_ms": 1791974704000,
+  "group_name": "Oyp",
+  "sender": "Person 8 (100008)",
+  "text": "P building ground floor inside service lift there is one of the lights not working properly need to check by technician",
+  "media_type": "📷 Image",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "3A30613EDEBE61262061",
+  "timestamp_text": "10/14/2026, 03:02:11 PM",
+  "ts_utc_ms": 1791975731000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 37 (100037)",
+  "text": "Q building first floor Speed Gate is out of service",
+  "media_type": "🎬 Video",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACE540AA810D358212171E82F5727C30",
+  "timestamp_text": "10/14/2026, 03:02:28 PM",
+  "ts_utc_ms": 1791975748000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 21 (100021)",
+  "text": "Q building first floor Speed Gate is out of service",
+  "media_type": "🎬 Video",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "AC9BE2535E07B95C39559C6019ADCCB3",
+  "timestamp_text": "10/14/2026, 03:17:07 PM",
+  "ts_utc_ms": 1791976627000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 23 (100023)",
+  "text": "Ok",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACF32BD974BA7CB4FA97F782091DF7A9",
+  "timestamp_text": "10/14/2026, 03:38:52 PM",
+  "ts_utc_ms": 1791977932000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 26 (100026)",
+  "text": "Ok now",
+  "media_type": "💬 Text",
+  "quoted_message_id": "ACE540AA810D358212171E82F5727C30"
+ },
+ {
+  "message_id": "A5F7D44FA26348999EBEC1B3A9B480DC",
+  "timestamp_text": "10/14/2026, 03:39:33 PM",
+  "ts_utc_ms": 1791977973000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 29 (100029)",
+  "text": "Q-Building, 3rd floor, Dispatch room card reader access control device cover is not fixed need to fix this",
+  "media_type": "🎬 Video",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "AC4F24C0240A17D93B6BCF7437073223",
+  "timestamp_text": "10/14/2026, 04:43:32 PM",
+  "ts_utc_ms": 1791981812000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 21 (100021)",
+  "text": "Q-Building, 3rd floor, Dispatch room card reader access control device cover is not fixed need to fix this",
+  "media_type": "🎬 Video",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "3A4EF6681658A3BAB7DA",
+  "timestamp_text": "10/14/2026, 05:01:51 PM",
+  "ts_utc_ms": 1791982911000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 32 (100032)",
+  "text": "Al zawaya vendors taking out 13 drawers from n building 1st floor group engineering team",
+  "media_type": "📷 Image",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "A560BE0CA491192336F4D7058F8A89DD",
+  "timestamp_text": "10/14/2026, 05:12:11 PM",
+  "ts_utc_ms": 1791983531000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 29 (100029)",
+  "text": "Q-Building, 1st floor, staff cafeteria, this freezer making noise need to check",
+  "media_type": "🎬 Video",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "3AE7AB9DB1E1C5B04B46",
+  "timestamp_text": "10/14/2026, 05:28:53 PM",
+  "ts_utc_ms": 1791984533000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 5 (100005)",
+  "text": "اليوم ان شاء الله \nهتكون عندنا محاضرة دسمة \nList\nSet\nTuple\nDict\nShallow Copy VS Deep Copy\nPacking & Unpacking\nCOMPREHENSIONS & ITERABLES\nمحاضرة ممتعة ومفيدة بإذن الله \nبالتوفيق دايما يا باشمهندسين",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "3A3C3D2635A0E3CC5DD8",
+  "timestamp_text": "10/14/2026, 05:29:40 PM",
+  "ts_utc_ms": 1791984580000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 5 (100005)",
+  "text": "وهيكون فيه Tasks \nعلى كل ما سبق \nبإذن الله",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "A58D225DA688358DA7E4247B3F27D074",
+  "timestamp_text": "10/14/2026, 06:08:20 PM",
+  "ts_utc_ms": 1791986900000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 54 (100054)",
+  "text": "Al zawaya company staff remove 6 damaged chairs in m building 4th floor",
+  "media_type": "📷 Image",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACF585864CA2DCC238AF5FCF4CFCCA6E",
+  "timestamp_text": "10/14/2026, 06:18:15 PM",
+  "ts_utc_ms": 1791987495000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 40 (100040)",
+  "text": "These two sofa are shifted from p building to N building I put there on second floor Infront of female prayer room",
+  "media_type": "📷 Image",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACDC0CBB1990FF4B53BE15150D8DF316",
+  "timestamp_text": "10/14/2026, 08:29:31 PM",
+  "ts_utc_ms": 1791995371000,
+  "group_name": "Projects Group",
+  "sender": "Person 55 (100055)",
+  "text": "https://www.linkedin.com/posts/doaa-mohamed-9a3872658_%D8%B5%D8%A7%D8%AD%D8%A8-%D8%B3%D9%86%D8%AA%D8%B1-%D8%AF%D8%B1%D9%88%D8%B3-%D9%82%D8%A7%D9%84%D9%8A-%D8%A3%D9%86%D8%A7-%D9%85%D8%B4-%D8%B9%D8%A7%D8%B1%D9%81-%D8%A3%D9%86%D8%A7-%D9%83%D8%B3%D8%A8%D8%A7%D9%86-ugcPost-7982827476113442914-k3nd?utm_source=social_share_send&utm_medium=android_app&rcm=ACoAAGBPgQgB4KYzCug9JvbKghlNfenaeHtqedc&utm_campaign=whatsapp",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACDDFB8E4E2F1620AF02CDDD3CF2FBE4",
+  "timestamp_text": "10/14/2026, 10:09:06 PM",
+  "ts_utc_ms": 1792001346000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 14 (100014)",
+  "text": "لينك الزوم فين",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "3EB00A15C3E58181CAA5AC",
+  "timestamp_text": "10/14/2026, 10:09:06 PM",
+  "ts_utc_ms": 1792001346000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 38 (100038)",
+  "text": "??",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "2A3E6117A455D4890B5C",
+  "timestamp_text": "10/14/2026, 10:12:21 PM",
+  "ts_utc_ms": 1792001541000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 15 (100015)",
+  "text": "اه باذن الله يا هندسه اللينك هيتبعت حالا باذن الله",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "2ACE40250F7EF11814DA",
+  "timestamp_text": "10/14/2026, 10:13:28 PM",
+  "ts_utc_ms": 1792001608000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 15 (100015)",
+  "text": "https://us06web.zoom.us/j/88359824526",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "AC5B002858BCF2DA03F8794448CE06B2",
+  "timestamp_text": "10/14/2026, 10:35:21 PM",
+  "ts_utc_ms": 1792002921000,
+  "group_name": "Projects Group",
+  "sender": "Person 55 (100055)",
+  "text": "https://vt.tiktok.com/ZSgety6nj/",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "A50205EAEFACCBDE19CE8F21E3CA35A7",
+  "timestamp_text": "10/14/2026, 11:39:58 PM",
+  "ts_utc_ms": 1792006798000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 43 (100043)",
+  "text": "P building ground floor inside service lift there is one of the lights not working properly need to check by technician",
+  "media_type": "🎬 Video",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACA81DDB30D1EBFD9BBF0F82AFE49D09",
+  "timestamp_text": "10/15/2026, 01:01:32 AM",
+  "ts_utc_ms": 1792011692000,
+  "group_name": "AI Analytics Engineer.3",
+  "sender": "Person 14 (100014)",
+  "text": "هيا الكومنت بتاعي مش بيوصل ليه",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "A5052C34918906D09AAAF71849A31E41",
+  "timestamp_text": "10/15/2026, 01:29:36 AM",
+  "ts_utc_ms": 1792013376000,
+  "group_name": "Meydan - Security Team",
+  "sender": "Person 9 (100009)",
+  "text": "Q Building, 5th Floor: The ceiling panel near the Small IDF Room needs to be properly fixed",
+  "media_type": "📷 Image",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "AC81C5A9D0AB538C3F3EC636B39E326C",
+  "timestamp_text": "10/15/2026, 03:52:48 AM",
+  "ts_utc_ms": 1792021968000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 39 (100039)",
+  "text": "Smart parking staff overnight car parked at lvl 4 slot 363",
+  "media_type": "📷 Image",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACC381D6A080A9C8DBC33480B06FBBDB",
+  "timestamp_text": "10/15/2026, 06:23:08 AM",
+  "ts_utc_ms": 1792030988000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team, \n\nKindly allow this vehicle in the podium only for today . \n\nPlate no : M 82350\nCar make : Infinity QX60",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACD7013E4CA481D5BD3E75CEAFFA8B65",
+  "timestamp_text": "10/15/2026, 06:23:08 AM",
+  "ts_utc_ms": 1792030988000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team, \n\nKindly allow this vehicle in the podium only for today . \n\nPlate no : G 49574",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACE791B0395550830B2A8D885675EFA7",
+  "timestamp_text": "10/15/2026, 06:23:08 AM",
+  "ts_utc_ms": 1792030988000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team,\n\nKindly allow this vehicle in the podium only for today. \n\nPlate no : 88557",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACE15B477763C740C8F03707AF031CE3",
+  "timestamp_text": "10/15/2026, 06:23:08 AM",
+  "ts_utc_ms": 1792030988000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team, \n\nKindly allow this vehicle in the podium only for today for visitor.\n\nPlate no : R 76376 DXB\nCar make :Tesla (white )",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "AC61F91F0F3AA053A6A0E028A161953D",
+  "timestamp_text": "10/15/2026, 06:52:08 AM",
+  "ts_utc_ms": 1792032728000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team, \n\nKindly allow this vehicle in VIP parking slot only for today. \n\nPlate no : S 02117\nCar make : jeep Wrangler",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACDD19AD47BF510AC17497AB73FDE000",
+  "timestamp_text": "10/15/2026, 07:00:24 AM",
+  "ts_utc_ms": 1792033224000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team,\n\nKindky allow today below car at Q block.\n\nPlate no : 6477 \nCar make : Mercedes",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "AC1BFCDD266AF7F23E2B28F357E069A3",
+  "timestamp_text": "10/15/2026, 07:06:00 AM",
+  "ts_utc_ms": 1792033560000,
+  "group_name": "Meydan FM Team💪",
+  "sender": "Person 27 (100027)",
+  "text": "M Building 3rd Floor Inside Male Washroom, Toilet Flush Pipe Hanger Nut Screw is Missing. Need to Check and Fix It.",
+  "media_type": "🎬 Video",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACCBA1EA8D8852D3C3ED6EA49DE9F8E0",
+  "timestamp_text": "10/15/2026, 07:07:27 AM",
+  "ts_utc_ms": 1792033647000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 28 (100028)",
+  "text": "@54148447241264\n\nStaff parked her car overnight on level 4.",
+  "media_type": "📷 Image",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "A58443E6C2BDC2967416D4DA02144275",
+  "timestamp_text": "10/15/2026, 07:08:55 AM",
+  "ts_utc_ms": 1792033735000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 31 (100031)",
+  "text": "Noted...",
+  "media_type": "💬 Text",
+  "quoted_message_id": "ACDD19AD47BF510AC17497AB73FDE000"
+ },
+ {
+  "message_id": "ACC9344F59C66253AD382A0A67603AAC",
+  "timestamp_text": "10/15/2026, 07:22:23 AM",
+  "ts_utc_ms": 1792034543000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 50 (100050)",
+  "text": "All Noted",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACF459BAFEE6D61A32ADD4F0DAB21941",
+  "timestamp_text": "10/15/2026, 07:27:51 AM",
+  "ts_utc_ms": 1792034871000,
+  "group_name": "Parking Team at Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Dear Team, \n\nKindly allow this vehicle in VIP parking slot. \n\nPlate no :  I 05089\nCar make : BMW X5",
+  "media_type": "💬 Text",
+  "quoted_message_id": ""
+ },
+ {
+  "message_id": "ACBB5CCB10B7AAC9F6B0D2107D72B3B4",
+  "timestamp_text": "10/15/2026, 07:31:08 AM",
+  "ts_utc_ms": 1792035068000,
+  "group_name": "Multistory Parking Building Meydan",
+  "sender": "Person 21 (100021)",
+  "text": "Reported",
+  "media_type": "💬 Text",
+  "quoted_message_id": "ACCBA1EA8D8852D3C3ED6EA49DE9F8E0"
+ }
+]

@@ -1,5 +1,6 @@
 """Date and time parsing utilities supporting Western and Arabic formats in Asia/Dubai timezone."""
 
+import os
 import re
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
@@ -8,6 +9,15 @@ from typing import Optional, Tuple, Any
 DUBAI_TZ = ZoneInfo("Asia/Dubai")
 
 ARABIC_TO_WESTERN_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+
+
+def now_dubai() -> datetime:
+    """Current Dubai time. REPORTS_NOW (ISO 8601) freezes it for deterministic tests and replays."""
+    fixed = os.environ.get("REPORTS_NOW")
+    if fixed:
+        dt = datetime.fromisoformat(fixed)
+        return dt if dt.tzinfo else dt.replace(tzinfo=DUBAI_TZ)
+    return datetime.now(DUBAI_TZ)
 
 
 def normalize_datetime_string(raw: str) -> str:

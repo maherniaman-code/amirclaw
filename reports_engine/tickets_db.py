@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 
 from .config_loader import BASE_DIR
-from .date_utils import DUBAI_TZ, parse_datetime
+from .date_utils import DUBAI_TZ, now_dubai, parse_datetime
 
 DEFAULT_DB_PATH = os.environ.get("TICKETS_DB_PATH") or str(BASE_DIR / "workspace" / "tickets.db")
 
@@ -120,7 +120,7 @@ def get_building_occurrences(
     building: str, days: int = TREND_DAYS, db_path: str = DEFAULT_DB_PATH
 ) -> List[Dict[str, Any]]:
     """All tickets for a building in the last N days (excluding today's message_id handled separately)."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    cutoff = (now_dubai() - timedelta(days=days)).isoformat()
     with _conn(db_path) as c:
         rows = c.execute(
             "SELECT * FROM tickets WHERE building=? AND last_seen >= ? ORDER BY last_seen DESC",

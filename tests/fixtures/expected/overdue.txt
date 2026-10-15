@@ -1,0 +1,106 @@
+[
+ {
+  "id": "ACB3BEFFAF8B347207F64AECCDB2C645",
+  "report": "maintenance",
+  "building": "M",
+  "hours_open": 77.8,
+  "reported": "12-10-2026 06:12",
+  "text": "M Building back side right side barrier is not opening or closing, inform the co"
+ },
+ {
+  "id": "A5DBDEEC203E9995DC0525F5BEC7D59B",
+  "report": "maintenance",
+  "building": "N",
+  "hours_open": 76.9,
+  "reported": "12-10-2026 07:05",
+  "text": "N Building 2nd Floor Procurment pantry Electrical Power issue reported need to c"
+ },
+ {
+  "id": "A5367A3DDE3CF178F88FA438678DB55F",
+  "report": "maintenance",
+  "building": "N",
+  "hours_open": 76.6,
+  "reported": "12-10-2026 07:26",
+  "text": "Location: N Building, 3rd Floor, Reception Area Observation: One ceiling light b"
+ },
+ {
+  "id": "AC74DC6BB521FCAC33F1F87400805ACE",
+  "report": "maintenance",
+  "building": "M",
+  "hours_open": 75.2,
+  "reported": "12-10-2026 08:46",
+  "text": "M Building Inside Service Lift, Steel Holder is Shaking and not Stable. Need to "
+ },
+ {
+  "id": "AC832A18E805A7ACA67960F9DE27D4C5",
+  "report": "maintenance",
+  "building": "M",
+  "hours_open": 75.2,
+  "reported": "12-10-2026 08:47",
+  "text": "M Building Ground Floor Inside Fire Fighting Pump Room, 1 Hanging Light is not W"
+ },
+ {
+  "id": "A582ED6C29E81683BF09F47B502642D2",
+  "report": "maintenance",
+  "building": "N",
+  "hours_open": 70.8,
+  "reported": "12-10-2026 13:13",
+  "text": "N Building 2nd Floor Male Washroom Muslim shower water control Push Button is fr"
+ },
+ {
+  "id": "ACA5087A6848FF0E87B6092127275200",
+  "report": "fire_safety",
+  "building": "N",
+  "hours_open": 64.3,
+  "reported": "12-10-2026 19:39",
+  "text": "N building 3rd floor front of reception two Emergency Exit light are not working"
+ },
+ {
+  "id": "ACC5B773B077A069C1E11C59E43DAF9A",
+  "report": "fire_safety",
+  "building": "N",
+  "hours_open": 64.3,
+  "reported": "12-10-2026 19:40",
+  "text": "N building 2nd floor near to reception 1 emergency exit light is not working"
+ },
+ {
+  "id": "ACDF8A0C27ADCF776BE47776758B5E02",
+  "report": "fire_safety",
+  "building": "N",
+  "hours_open": 64.3,
+  "reported": "12-10-2026 19:40",
+  "text": "N building 1st floor exit staircase door to ramp Area,1 emergency exit light is "
+ },
+ {
+  "id": "ACF13C59E137EC9060BB1B679FD87267",
+  "report": "maintenance",
+  "building": "P",
+  "hours_open": 56.7,
+  "reported": "13-10-2026 03:20",
+  "text": "P building ground floor inside service lift there is one of the lights not worki"
+ },
+ {
+  "id": "A5E9D2217171DBF4A2B197BEFAA199A6",
+  "report": "maintenance",
+  "building": "N",
+  "hours_open": 53.5,
+  "reported": "13-10-2026 06:31",
+  "text": "N Building Ground Floor Lift Loby Area infront Of Reception one Cielling light i"
+ },
+ {
+  "id": "AC1899EE707ED9FA0DD3EB7873FAE87A",
+  "report": "maintenance",
+  "building": "Q",
+  "hours_open": 49.1,
+  "reported": "13-10-2026 10:52",
+  "text": "Q building first floor Speed Gate is out of service"
+ },
+ {
+  "id": "A517D3D44E1E659F891D09FF61EC2E81",
+  "report": "fire_safety",
+  "building": "N",
+  "hours_open": 48.6,
+  "reported": "13-10-2026 11:25",
+  "text": "N Building Ground Floor Emergency Lights are Glowing without any Emergency situa"
+ }
+]

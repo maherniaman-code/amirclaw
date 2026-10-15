@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 import openpyxl
 
-from . import messages_db
+from . import master_data, messages_db
 from .config_loader import get_config, BASE_DIR
 from .date_utils import parse_datetime, DUBAI_TZ, ARABIC_TO_WESTERN_DIGITS, is_within_freshness
 from .sender_resolver import SenderResolver
@@ -34,7 +34,12 @@ def extract_xlsx_images(xlsx_path: Path) -> Dict[int, List[Dict[str, Any]]]:
                 return {}
             rels_xml = z.read("xl/drawings/_rels/drawing1.xml.rels")
             rels_root = ET.fromstring(rels_xml)
-            rel_map = {r.attrib["Id"]: r.attrib["Target"].replace("../media/", "xl/media/") for r in rels_root}
+            # ExcelJS writes "../media/x.jpeg", openpyxl writes "/xl/media/x.jpeg"
+            rel_map = {
+                r.attrib["Id"]: (r.attrib["Target"].lstrip("/") if r.attrib["Target"].startswith("/")
+                                 else r.attrib["Target"].replace("../media/", "xl/media/"))
+                for r in rels_root
+            }
             draw_xml = z.read("xl/drawings/drawing1.xml")
             draw_root = ET.fromstring(draw_xml)
             ns = {
@@ -102,8 +107,9 @@ class WhatsAppParser:
             current_mtime = None
 
         self.raw_messages = []
+        ts_by_row: Dict[int, int] = {}
         if source == "sqlite":
-            raw_rows, images_by_row = messages_db.read_rows(path, load_images)
+            raw_rows, images_by_row, ts_by_row = messages_db.read_rows(path, load_images)
         else:
             wb = openpyxl.load_workbook(str(path), data_only=True, read_only=True)
             ws = wb.active
@@ -140,7 +146,9 @@ class WhatsAppParser:
             if "video" in media_type.lower() and not raw_text:
                 raw_text = "(Video)"
 
-            dt = parse_datetime(raw_dt)
+            # Exact capture time when the bot recorded it; the text is display-only and locale-dependent
+            ts_ms = ts_by_row.get(row_idx)
+            dt = datetime.fromtimestamp(ts_ms / 1000, tz=DUBAI_TZ) if ts_ms else parse_datetime(raw_dt)
             resolved_text = self.resolver.resolve_mentions(raw_text)
             row_photos = images_by_row.get(row_idx, [])
 
@@ -460,6 +468,8 @@ class WhatsAppParser:
             bld = next((g for g in bld_match.groups() if g), None)
             if bld:
                 bld = bld.upper()
+        if not bld:
+            bld = master_data.building_from_aliases(text)  # spellings the regex misses (config/master_data.yaml)
 
         floor_pat = self.config.get("floor_regex", r"(ground floor|\bgf\b|\d+(?:st|nd|rd|th)?\s*floor|level\s*\d+)")
         floor_match = re.search(floor_pat, text, re.IGNORECASE)

@@ -12,6 +12,7 @@ export const EXCEL_PATH = path.join(WORKSPACE_DIR, 'whatsapp_messages.xlsx');
 export interface WhatsAppMessageEntry {
     messageId: string;
     timestamp: string;
+    timestampMs?: number; // exact WhatsApp message time (UTC epoch ms); the text above is display only
     groupName: string;
     sender: string;
     text: string;
@@ -379,6 +380,7 @@ export async function appendWhatsAppMessage(entry: WhatsAppMessageEntry): Promis
     storeWhatsAppMessage({
         messageId: entry.messageId,
         timestamp: entry.timestamp,
+        timestampMs: entry.timestampMs,
         groupName: entry.groupName,
         sender: entry.sender,
         text: entry.text,
@@ -393,6 +395,9 @@ export async function appendWhatsAppMessage(entry: WhatsAppMessageEntry): Promis
         alertOwner('sqlite-store', `فشل حفظ رسالة واتساب في قاعدة البيانات: ${err?.message || err}`).catch(() => {});
     });
 
+    // The SQLite store above is the source of truth; the live workbook can be switched off
+    // (EXCEL_LIVE_WRITE=false) once on-demand export is trusted, saving a full rewrite per message.
+    if (process.env.EXCEL_LIVE_WRITE === 'false') return;
     if (knownMessageIds.has(entry.messageId)) return;
     pendingEntries.push(entry);
 
