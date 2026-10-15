@@ -86,8 +86,9 @@ export interface StoredMessage {
 }
 
 export async function storeWhatsAppMessage(m: StoredMessage): Promise<void> {
+    // Photos, and videos that got a frame / preview thumbnail
     const isImage = m.mediaBadge.includes('Image');
-    const thumb = isImage ? await loadThumbnail(m.thumbnailPath, m.mediaLocalPath) : null;
+    const thumb = isImage || m.thumbnailPath ? await loadThumbnail(m.thumbnailPath, m.mediaLocalPath) : null;
     getDb();
     insertStmt!.run({
         messageId: m.messageId,
