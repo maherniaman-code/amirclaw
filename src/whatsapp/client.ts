@@ -14,6 +14,7 @@ import sharp from 'sharp';
 import { appendWhatsAppMessage, ensureExcelInitialized, flushWhatsAppMessages, EXCEL_PATH } from './excel.js';
 import { config } from '../config.js';
 import { mirrorWhatsAppMessage } from '../cloud/messages.js';
+import { recordGroupActivity } from '../monitoring/alerts.js';
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
 const SESSION_DIR = path.join(WORKSPACE_DIR, 'whatsapp_session');
@@ -25,6 +26,15 @@ if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 let waSocket: WASocket | null = null;
 let currentStatus: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
+let statusSince = Date.now();
+let loggedOut = false;
+
+// statusSince = when we last went from connected to not-connected (or back). Reconnect
+// attempts flip disconnected <-> connecting every few seconds and must not reset it.
+function setStatus(next: 'disconnected' | 'connecting' | 'connected'): void {
+    if ((next === 'connected') !== (currentStatus === 'connected')) statusSince = Date.now();
+    currentStatus = next;
+}
 let currentQrBuffer: Buffer | null = null;
 let currentQrText: string | null = null;
 let groupMetadataCache: Map<string, string> = new Map();
@@ -32,6 +42,8 @@ let groupMetadataCache: Map<string, string> = new Map();
 export function getWhatsAppStatus() {
     return {
         status: currentStatus,
+        statusSince,
+        loggedOut,
         hasQr: !!currentQrBuffer,
         excelPath: EXCEL_PATH,
     };
@@ -228,6 +240,7 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
 
         if (effectiveText || mediaType !== 'Text') {
             console.log(`💬 Captured WhatsApp group message [${groupName}] from [${senderDisplay}]: ${effectiveText.slice(0, 50)}`);
+            recordGroupActivity(groupName, tsSeconds * 1000);
             await appendWhatsAppMessage({
                 messageId,
                 timestamp: dateStr,
@@ -268,7 +281,7 @@ export async function startWhatsAppClient(): Promise<void> {
         return;
     }
 
-    currentStatus = 'connecting';
+    setStatus('connecting');
     console.log('🟢 Initializing WhatsApp Read-Only Client (Baileys)...');
 
     // Clean up old socket if any
@@ -316,17 +329,19 @@ export async function startWhatsAppClient(): Promise<void> {
         }
 
         if (connection === 'close') {
-            currentStatus = 'disconnected';
+            setStatus('disconnected');
             currentQrBuffer = null;
             const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            loggedOut = !shouldReconnect;
             console.log(`❌ WhatsApp disconnected (code: ${statusCode}). Reconnecting: ${shouldReconnect}`);
 
             if (shouldReconnect) {
                 setTimeout(() => startWhatsAppClient(), 4000);
             }
         } else if (connection === 'open') {
-            currentStatus = 'connected';
+            setStatus('connected');
+            loggedOut = false;
             currentQrBuffer = null;
             currentQrText = null;
             console.log('✅ WhatsApp connected successfully! Now listening to group messages in READ-ONLY mode.');

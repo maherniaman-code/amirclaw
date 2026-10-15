@@ -92,8 +92,15 @@ def list_corrections(limit: int = 50) -> List[Dict[str, Any]]:
         return [dict(row) for row in cursor.fetchall()]
 
 
+_initialized_paths: set = set()
+
+
 def get_correction_for_message(message_id: str, group_name: str = "", text: str = "") -> Optional[Dict[str, Any]]:
     """Checks if there is an exact message correction or a group/keyword specific rule."""
+    path = os.environ.get("REPORTS_DB_PATH") or DEFAULT_DB_PATH
+    if path not in _initialized_paths:  # a fresh DB file (new server / tests) has no table yet
+        init_corrections_table()
+        _initialized_paths.add(path)
     with get_db_connection() as conn:
         cursor = conn.cursor()
         # 1. Exact message ID match

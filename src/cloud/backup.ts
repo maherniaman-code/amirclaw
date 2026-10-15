@@ -28,6 +28,7 @@ const SQLITE_FILES = [
     'workspace/tickets.db',
     'workspace/reports_corrections.db',
     'workspace/reports.db',
+    'workspace/whatsapp_messages.db', // SQLite message store read by the reports engine
 ];
 const PLAIN_FILES = ['workspace/whatsapp_messages.xlsx', 'workspace/whatsapp_messages.json'];
 const DIRS = ['workspace/whatsapp_session'];

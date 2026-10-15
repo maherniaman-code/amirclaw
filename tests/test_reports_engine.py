@@ -714,6 +714,107 @@ class TestVehiclePermissionReplies(unittest.TestCase):
         self.assertEqual(text.count("Status: Noted"), 3)
 
 
+class TestManualCorrectionsAndOwnerKpis(unittest.TestCase):
+    """Telegram correction buttons write to manual_corrections; reports must honour them."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._env = mock.patch.dict("os.environ", {"REPORTS_DB_PATH": str(Path(self._tmp.name) / "corr.db")})
+        self._env.start()
+
+    def tearDown(self):
+        self._env.stop()
+        self._tmp.cleanup()
+
+    def test_corrections_override_matching(self):
+        from reports_engine.corrections_db import save_correction
+        items = [
+            {"message_id": "A", "status": "Pending", "source_message_ids": ["A"]},
+            {"message_id": "B", "status": "Done", "resolved_by": "Raja", "source_message_ids": ["B", "B-photo"]},
+            {"message_id": "C", "status": "Pending", "source_message_ids": ["C"]},
+        ]
+        save_correction("A", "maintenance", target_status="Done", corrected_by="owner")
+        save_correction("B-photo", "maintenance", target_status="Pending", corrected_by="owner")  # via a source id
+        save_correction("C", "ignore", corrected_by="owner")
+        out = ReportsManager._apply_manual_corrections([dict(i) for i in items])
+        self.assertEqual([(i["message_id"], i["status"]) for i in out], [("A", "Done"), ("B", "Pending")])
+        self.assertEqual(out[0]["resolved_by"], "owner")
+        self.assertNotIn("resolved_by", out[1])  # reopened -> no longer "done by Raja"
+
+    def test_report_returns_numbered_items_and_applies_correction(self):
+        from reports_engine.corrections_db import save_correction
+        m = ReportsManager()
+        res = m.generate_maintenance(target_date="13-10-2026", target_shift="Day")
+        self.assertEqual([i["no"] for i in res["items"]], list(range(1, len(res["items"]) + 1)))
+        in_shift = next(t for t in m.last_items["maintenance"] if not t.get("is_carry_over") and t["status"] == "Pending")
+        carried = next(t for t in m.last_items["maintenance"] if t.get("is_carry_over") and t["status"] == "Pending")
+        save_correction(in_shift["message_id"], "maintenance", target_status="Done", corrected_by="owner")
+        save_correction(carried["message_id"], "maintenance", target_status="Done", corrected_by="owner")
+        res2 = m.generate_maintenance(target_date="13-10-2026", target_shift="Day")
+        ids2 = {i["id"]: i["status"] for i in res2["items"]}
+        self.assertEqual(ids2[in_shift["message_id"]], "Done")
+        self.assertNotIn(carried["message_id"], ids2)  # a fixed old ticket no longer carries over
+
+    def test_owner_kpis_sections(self):
+        from reports_engine.owner_kpis import generate_owner_kpis
+        text = generate_owner_kpis(ReportsManager())["text"]
+        for section in ("الصيانة", "الحريق والسلامة", "العمليات", "مخالفات المواقف", "تصاريح المركبات", "SLA"):
+            self.assertIn(section, text)
+
+
+class TestSqliteMessageStore(unittest.TestCase):
+    """The SQLite store must give the parser exactly what the Excel workbook gives it."""
+
+    SRC = Path(__file__).resolve().parent.parent / "workspace" / "whatsapp_messages.xlsx"
+
+    def setUp(self):
+        if not self.SRC.exists():
+            self.skipTest("live workspace/whatsapp_messages.xlsx not present")
+        import shutil
+        self._tmp = tempfile.TemporaryDirectory()
+        self.xlsx = Path(self._tmp.name) / "whatsapp_messages.xlsx"
+        shutil.copy(self.SRC, self.xlsx)
+        self._env = mock.patch.dict("os.environ", {"REPORTS_SOURCE": "auto"})
+        self._env.start()
+
+    def tearDown(self):
+        self._env.stop()
+        self._tmp.cleanup()
+
+    def test_excel_used_until_import_completes(self):
+        from reports_engine import messages_db
+        db = messages_db.db_path_for(self.xlsx)
+        self.assertEqual(WhatsAppParser(self.xlsx)._message_source()[0], "excel")
+        # A database the bot started writing before the import is not trusted yet
+        import sqlite3
+        with sqlite3.connect(db) as c:
+            c.executescript(messages_db.SCHEMA)
+        self.assertFalse(messages_db.is_ready(db))
+        self.assertEqual(WhatsAppParser(self.xlsx)._message_source()[0], "excel")
+
+    def test_import_matches_excel_exactly(self):
+        from reports_engine import messages_db
+        r = messages_db.import_excel(self.xlsx)
+        self.assertGreater(r["total"], 0)
+        self.assertGreater(r["with_photo"], 0)
+        self.assertEqual(WhatsAppParser(self.xlsx)._message_source()[0], "sqlite")
+        c = messages_db.compare(self.xlsx)
+        self.assertEqual((c["missing_in_sqlite"], c["only_in_sqlite"], c["field_differences"]), (0, 0, 0))
+        # Re-running is safe and keeps the same data
+        self.assertEqual(messages_db.import_excel(self.xlsx)["total"], r["total"])
+
+    def test_reports_identical_from_both_sources(self):
+        from reports_engine import messages_db
+        messages_db.import_excel(self.xlsx)
+        texts = {}
+        for source in ("excel", "sqlite"):
+            with mock.patch.dict("os.environ", {"REPORTS_SOURCE": source}):
+                m = ReportsManager(self.xlsx)
+                texts[source] = (m.generate_maintenance(target_date="13-10-2026", target_shift="Day")["text"],
+                                 m.generate_operations(target_date="week")["text"])
+        self.assertEqual(texts["excel"], texts["sqlite"])
+
+
 class TestSlaHiddenFromReports(unittest.TestCase):
     def test_sla_breach_not_rendered_in_report_text(self):
         item = {

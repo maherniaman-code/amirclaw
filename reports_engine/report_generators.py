@@ -150,6 +150,7 @@ def generate_maintenance_report_text(events: List[Dict[str, Any]], summary_stats
                 issue_title = f"{issue_title} {item['chronic_building_flag']}"
 
             t_str = format_report_timestamp(item.get("datetime") or item.get("raw_datetime"))
+            item["report_no"] = idx  # number shown in the report, used by Telegram correction buttons
             lines.append(f"{idx}. {issue_title}")
             lines.append(f"   ⏰ Reported: {t_str}")
 
@@ -238,6 +239,7 @@ def generate_fire_safety_report_text(events: List[Dict[str, Any]], summary_stats
                 issue_title = f"{issue_title} {item['chronic_building_flag']}"
 
             t_str = format_report_timestamp(item.get("datetime") or item.get("raw_datetime"))
+            item["report_no"] = idx  # number shown in the report, used by Telegram correction buttons
             lines.append(f"{idx}. {issue_title}")
             lines.append(f"   ⏰ Reported: {t_str}")
 
@@ -320,6 +322,7 @@ def generate_operations_report_text(events: List[Dict[str, Any]], summary_stats:
             photo_ref = item.get("photo_ref") or "N/A"
             status = item.get("status") or "Reported"
 
+            item["report_no"] = item_idx
             lines.append(f"{item_idx}. {vendor} – {activity}")
             lines.append(f"   ⏰ Date & Time: {t_str} | 📷 Photo: {photo_ref}")
             if status == "Completed":

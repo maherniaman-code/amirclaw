@@ -21,10 +21,12 @@ export interface ReportResult {
     rectified?: number;
     parked?: number;
     pending?: number;
+    // Report number -> WhatsApp message id, for the Telegram correction buttons
+    items?: { no: number; id: string; status: string }[];
 }
 
 export async function runReportEngine(
-    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'list_corrections',
+    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'owner_kpis' | 'list_corrections',
     options?: { slot?: string; date?: string; shift?: 'Day' | 'Night'; excelPath?: string }
 ): Promise<ReportResult> {
     const pythonBin = config.pythonPath || 'python3';
@@ -88,6 +90,7 @@ export async function runReportEngine(
             rectified: parsed.rectified,
             parked: parsed.parked,
             pending: parsed.pending,
+            items: Array.isArray(parsed.items) ? parsed.items : [],
         };
     } catch (err: any) {
         console.error(`Error executing Python report engine (${reportType}):`, err.message);
@@ -95,5 +98,31 @@ export async function runReportEngine(
             success: false,
             error: err.message || 'Failed to execute Python reporting engine',
         };
+    }
+}
+
+/**
+ * Saves a manual classification correction (applied on top of automatic matching in every
+ * later report). targetReport "ignore" drops the message from reports.
+ */
+export async function saveCorrection(
+    messageId: string,
+    targetReport: string,
+    targetStatus?: string,
+    correctedBy?: string,
+    notes?: string,
+): Promise<boolean> {
+    const pythonBin = config.pythonPath || 'python3';
+    const args = ['-m', 'reports_engine.cli', '--report', 'list_corrections',
+        '--msg-id', messageId, '--target-report', targetReport];
+    if (targetStatus) args.push('--target-status', targetStatus);
+    if (correctedBy) args.push('--corrected-by', correctedBy);
+    if (notes) args.push('--notes', notes);
+    try {
+        const { stdout } = await execFileAsync(pythonBin, args, { cwd: ROOT_DIR, timeout: 20000, env: { ...process.env } });
+        return stdout.includes('"correction_saved": true');
+    } catch (err: any) {
+        console.error('Error saving correction:', err.message);
+        return false;
     }
 }

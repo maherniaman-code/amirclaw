@@ -12,6 +12,7 @@ from .whatsapp_parser import WhatsAppParser
 from .deduplicator import deduplicate_events
 from .email_reader import fetch_parking_email_from_imap
 from .corrections_db import get_correction_for_message
+from .corrections_db import get_correction_for_message as _correction_for
 from .tickets_db import enrich_ticket, CHRONIC_HOURS
 from .report_generators import (
     generate_parking_report_text,
@@ -213,6 +214,8 @@ class ReportsManager:
         self.excel_path = excel_path or (BASE_DIR / "workspace" / "whatsapp_messages.xlsx")
         self.config = get_config()
         self.parser = WhatsAppParser(self.excel_path)
+        # Items behind the last generated report of each type (used by owner KPIs; not in JSON output)
+        self.last_items: Dict[str, List[Dict[str, Any]]] = {}
 
     # ─────────────────────────────────────────────────────────────
     # REPORT 1: PARKING REPORT
@@ -505,6 +508,38 @@ class ReportsManager:
         return f"{title}\n\n📅 Period: {label}\n{rest}"
 
     @staticmethod
+    def _apply_manual_corrections(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Telegram correction buttons win over automatic matching: "ignore" drops the item,
+        a target status replaces whatever replies linked to it.
+        """
+        kept = []
+        for it in items:
+            corr = None
+            for mid in [it.get("message_id")] + list(it.get("source_message_ids") or []):
+                corr = _correction_for(mid) if mid else None
+                if corr:
+                    break
+            if corr and corr.get("target_report") == "ignore":
+                continue
+            if corr and corr.get("target_status"):
+                it["status"] = corr["target_status"]
+                it["manually_corrected"] = True
+                if corr["target_status"].lower() in ("done", "completed"):
+                    it.setdefault("resolved_by", corr.get("corrected_by") or "Manual correction")
+                else:
+                    it.pop("resolved_by", None)
+            kept.append(it)
+        return kept
+
+    @staticmethod
+    def _correction_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Report number -> message id list for the Telegram correction buttons (JSON-safe)."""
+        rows = [{"no": it["report_no"], "id": it.get("message_id", ""), "status": it.get("status", "")}
+                for it in items if it.get("report_no")]
+        return sorted(rows, key=lambda r: r["no"])
+
+    @staticmethod
     def _default_period(target_date: Optional[str], target_shift: Optional[str]) -> Tuple[str, Optional[str]]:
         """
         No date → the shift in progress. A specific date without a shift (Telegram date
@@ -656,7 +691,7 @@ class ReportsManager:
                 "audit_status": "Valid Ticket",
             })
 
-        ticket_list = list(tickets.values())
+        ticket_list = self._apply_manual_corrections(list(tickets.values()))
         unique_tickets, flagged_dups = deduplicate_events(ticket_list)
 
         # Date-range filtering & carry-over (chronic split at CHRONIC_HOURS)
@@ -717,6 +752,7 @@ class ReportsManager:
             "shift_info": shift_label,
         }
 
+        self.last_items["maintenance"] = unique_tickets
         report_text = generate_maintenance_report_text(unique_tickets, summary_stats)
         excel_path = generate_generic_report_excel(
             report_title="Maintenance Summary – Meydan FM",
@@ -735,6 +771,7 @@ class ReportsManager:
             "completed": completed,
             "sla_breaches": sla_breaches,
             "unlinked_count": len(unlinked),
+            "items": self._correction_items(unique_tickets),
             "link_stats": self._link_stats(source_audit, unlinked, unique_tickets, shift_start, shift_end),
         }
 
@@ -856,7 +893,7 @@ class ReportsManager:
                 "audit_status": "Valid Ticket",
             })
 
-        ticket_list = list(tickets.values())
+        ticket_list = self._apply_manual_corrections(list(tickets.values()))
         unique_tickets, flagged_dups = deduplicate_events(ticket_list)
 
         # Date-range filtering & carry-over (chronic split at CHRONIC_HOURS)
@@ -914,6 +951,7 @@ class ReportsManager:
             "shift_info": shift_label,
         }
 
+        self.last_items["fire_safety"] = unique_tickets
         report_text = generate_fire_safety_report_text(unique_tickets, summary_stats)
         excel_path = generate_generic_report_excel(
             report_title="Fire & Safety Summary – Meydan",
@@ -932,6 +970,7 @@ class ReportsManager:
             "completed": completed,
             "sla_breaches": sla_breaches,
             "unlinked_count": len(unlinked),
+            "items": self._correction_items(unique_tickets),
             "link_stats": self._link_stats(source_audit, unlinked, unique_tickets, shift_start, shift_end),
         }
 
@@ -1065,7 +1104,7 @@ class ReportsManager:
                 if inferred_from else "Operational Event",
             })
 
-        unique_events, flagged_dups = deduplicate_events(events)
+        unique_events, flagged_dups = deduplicate_events(self._apply_manual_corrections(events))
         total = len(unique_events)
         completed = sum(1 for e in unique_events if e["status"] == "Completed")
         reported = total - completed
@@ -1079,6 +1118,7 @@ class ReportsManager:
             "shift_info": shift_info,
         }
 
+        self.last_items["operations"] = unique_events
         report_text = generate_operations_report_text(unique_events, summary_stats)
         excel_path = generate_generic_report_excel(
             report_title="Operations Summary – Meydan Security",
@@ -1095,6 +1135,7 @@ class ReportsManager:
             "total": total,
             "completed": completed,
             "reported": reported,
+            "items": self._correction_items(unique_events),
         }
 
     # ─────────────────────────────────────────────────────────────
@@ -1202,6 +1243,7 @@ class ReportsManager:
             "pending": pending,
         }
 
+        self.last_items["violations"] = unique_violations
         report_text = self._with_period_line(
             generate_parking_violations_report_text(unique_violations, summary_stats), period_label
         )
@@ -1340,6 +1382,7 @@ class ReportsManager:
             "pending": pending,
         }
 
+        self.last_items["permissions"] = unique_perms
         report_text = self._with_period_line(
             generate_vehicle_permissions_report_text(unique_perms, summary_stats), period_label
         )

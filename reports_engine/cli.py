@@ -8,11 +8,12 @@ from pathlib import Path
 from .manager import ReportsManager
 from .corrections_db import save_correction, list_corrections
 from .data_quality import generate_data_quality
+from .owner_kpis import generate_owner_kpis
 
 
 def main():
     parser = argparse.ArgumentParser(description="Meydan Reports Generator CLI")
-    parser.add_argument("--report", choices=["parking", "maintenance", "fire_safety", "operations", "violations", "permissions", "cleaning", "data_quality", "list_corrections"], required=True)
+    parser.add_argument("--report", choices=["parking", "maintenance", "fire_safety", "operations", "violations", "permissions", "cleaning", "data_quality", "owner_kpis", "list_corrections"], required=True)
     parser.add_argument("--slot", default="latest", help="Parking slot time (e.g. 10:00, 12:00, 14:00, latest)")
     parser.add_argument("--date", default=None, help="Target report date (DD-MM-YYYY)")
     parser.add_argument("--shift", choices=["Day", "Night"], default=None, help="Shift for maintenance/fire_safety/operations (default: shift in progress)")
@@ -22,6 +23,8 @@ def main():
     parser.add_argument("--msg-id", default=None, help="Message ID for manual correction")
     parser.add_argument("--target-report", default=None, help="Target report for correction")
     parser.add_argument("--target-status", default=None, help="Target status for correction")
+    parser.add_argument("--corrected-by", default="cli", help="Who made the correction")
+    parser.add_argument("--notes", default=None, help="Free-text note for the correction")
 
     args = parser.parse_args()
 
@@ -35,7 +38,8 @@ def main():
                 message_id=args.msg_id,
                 target_report=args.target_report,
                 target_status=args.target_status,
-                corrected_by="cli",
+                corrected_by=args.corrected_by,
+                notes=args.notes,
             )
             print(json.dumps({"correction_saved": True, "row_id": row_id, "message_id": args.msg_id, "target_report": args.target_report, "target_status": args.target_status}, ensure_ascii=False))
             return
@@ -63,6 +67,9 @@ def main():
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "data_quality":
             res = generate_data_quality(manager)
+            print(json.dumps(res, ensure_ascii=False))
+        elif args.report == "owner_kpis":
+            res = generate_owner_kpis(manager)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "list_corrections":
             corrs = list_corrections()
