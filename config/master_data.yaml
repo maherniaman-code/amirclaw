@@ -1,0 +1,16 @@
+# Reference data shared by every report. Edit here, never in code.
+
+# Building code -> other ways people write it (matched case-insensitively, whole words).
+# The building regex in meydan_rules.yaml already handles "N building", "N-Building",
+# "Building N", "bldg N" and "N block"; add only what it misses.
+buildings:
+  P: ["p blk", "p-blk", "blk p"]
+  N: ["n blk", "n-blk", "blk n"]
+  M: ["m blk", "m-blk", "blk m"]
+  Q: ["q blk", "q-blk", "blk q"]
+
+# WhatsApp sender id (the number in brackets) -> how reports show the person.
+# Reports never print the phone/account number; without an entry the WhatsApp display
+# name is used. Draft from real data: python3 -m reports_engine.master_data --suggest
+staff: {}
+#  "209852118868213": {name: "Shrikant Yadav", team: "FM"}

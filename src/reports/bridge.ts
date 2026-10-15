@@ -25,6 +25,9 @@ export interface ReportResult {
     items?: { no: number; id: string; status: string }[];
     // Open tickets older than the overdue threshold (owner reminders)
     overdue?: OverdueTicket[];
+    // Daily data-quality problems (owner alert)
+    anomalies?: string[];
+    htmlPath?: string;
 }
 
 export interface OverdueTicket {
@@ -37,7 +40,7 @@ export interface OverdueTicket {
 }
 
 export async function runReportEngine(
-    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'owner_kpis' | 'morning_digest' | 'overdue' | 'list_corrections',
+    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'owner_kpis' | 'morning_digest' | 'overdue' | 'dq_daily' | 'dashboard' | 'list_corrections',
     options?: { slot?: string; date?: string; shift?: 'Day' | 'Night'; excelPath?: string }
 ): Promise<ReportResult> {
     const pythonBin = config.pythonPath || 'python3';
@@ -103,6 +106,8 @@ export async function runReportEngine(
             pending: parsed.pending,
             items: Array.isArray(parsed.items) ? parsed.items : [],
             overdue: Array.isArray(parsed.overdue) ? parsed.overdue : [],
+            anomalies: Array.isArray(parsed.anomalies) ? parsed.anomalies : [],
+            htmlPath: parsed.html_path,
         };
     } catch (err: any) {
         console.error(`Error executing Python report engine (${reportType}):`, err.message);
@@ -136,5 +141,23 @@ export async function saveCorrection(
     } catch (err: any) {
         console.error('Error saving correction:', err.message);
         return false;
+    }
+}
+
+/**
+ * Builds the WhatsApp messages workbook from the SQLite store (with thumbnails).
+ * Returns the file path, or null when the store is not ready (caller falls back to the live file).
+ */
+export async function exportMessagesExcel(outPath: string): Promise<string | null> {
+    const pythonBin = config.pythonPath || 'python3';
+    try {
+        const { stdout } = await execFileAsync(pythonBin, ['-m', 'reports_engine.messages_db', '--export-excel', outPath], {
+            cwd: ROOT_DIR, timeout: 120000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env },
+        });
+        const line = stdout.trim().split('\n').reverse().find((l) => l.trim().startsWith('{'));
+        return line && JSON.parse(line).path && fs.existsSync(outPath) ? outPath : null;
+    } catch (err: any) {
+        console.error('Excel export from SQLite failed, using the live workbook:', err.message);
+        return null;
     }
 }

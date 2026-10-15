@@ -1,0 +1,35 @@
+name: tests
+
+# Runs without the live WhatsApp data: live-data tests skip themselves and the
+# anonymized fixture (tests/fixtures) provides the golden report outputs.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest tests -q
+
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - name: TypeScript tests
+        run: |
+          for t in test_scheduler_verification test_alerts test_corrections test_overdue test_privacy; do
+            npx tsx "tests/$t.ts"
+          done

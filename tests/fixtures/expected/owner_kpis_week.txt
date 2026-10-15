@@ -1,0 +1,37 @@
+📈 *ملخص الأسبوع للمالك — آخر 7 أيام*
+📅 08-10-2026 → 15-10-2026
+
+🔧 *الصيانة*
+   • تذاكر الأسبوع: 16 — اتقفل 4، مفتوح 12
+   • متوسط وقت الإغلاق: 0.7 ساعة (من 4 تذكرة)
+   ⚠️ مفتوحة أكتر من 24 ساعة (SLA): 9
+   • أكتر المباني أعطال: N: 6, M: 5, Q: 4
+   • أعطال متكررة: 1
+   🔴 أقدم التذاكر المفتوحة (أكتر من 48 ساعة):
+      - 3.2 يوم | 12-10-2026 06:12 | M Building back side right side barrier is not opening or cl
+      - 3.2 يوم | 12-10-2026 07:05 | N Building 2nd Floor Procurment pantry Electrical Power issu
+      - 3.2 يوم | 12-10-2026 07:26 | Location: N Building, 3rd Floor, Reception Area Observation:
+      - 3.1 يوم | 12-10-2026 08:46 | M Building Inside Service Lift, Steel Holder is Shaking and 
+      - 3.1 يوم | 12-10-2026 08:47 | M Building Ground Floor Inside Fire Fighting Pump Room, 1 Ha
+
+🧯 *الحريق والسلامة*
+   • تذاكر الأسبوع: 4 — اتقفل 0، مفتوح 4
+   • متوسط وقت الإغلاق: —
+   ⚠️ مفتوحة أكتر من 24 ساعة (SLA): 4
+   • أكتر المباني أعطال: N: 4
+   • أعطال متكررة: 2
+   🔴 أقدم التذاكر المفتوحة (أكتر من 48 ساعة):
+      - 2.7 يوم | 12-10-2026 19:39 | N building 3rd floor front of reception two Emergency Exit l
+      - 2.7 يوم | 12-10-2026 19:40 | N building 2nd floor near to reception 1 emergency exit ligh
+      - 2.7 يوم | 12-10-2026 19:40 | N building 1st floor exit staircase door to ramp Area,1 emer
+      - 2.0 يوم | 13-10-2026 11:25 | N Building Ground Floor Emergency Lights are Glowing without
+
+🏢 *العمليات*
+   • أنشطة: 11 — مكتملة 1
+   • أكتر الشركات نشاطاً: Al Zawaya: 3, Housekeeping: 2, Rose Garden: 1, Fit Movers: 1, Telecon: 1
+
+🚫 *مخالفات المواقف*
+   • مخالفات: 3 — اتحلت 0، اتبلغت للقسم 1، معلقة 2
+
+📋 *تصاريح المركبات*
+   • طلبات: 13 — اتركنت 2، Noted 9، بدون رد 2

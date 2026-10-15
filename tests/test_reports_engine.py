@@ -17,6 +17,7 @@ from reports_engine.date_utils import (
     is_within_freshness,
 )
 from reports_engine import tickets_db
+from live_data import requires_live_data
 from reports_engine.config_loader import get_config
 from reports_engine import manager as manager_mod
 from reports_engine.manager import ReportsManager, _keyword_at_word_start, _is_completion, _find_activity_to_complete, classify_operations_message, _vendor_from_recent_activity, _is_exact_closure, find_open_ticket_by_shared_word, is_closure_text
@@ -445,27 +446,17 @@ class TestOperationsScenarios(unittest.TestCase):
                 self.assertEqual(_is_completion(text.lower(), self.ops["completion"]), expected)
 
 
-class _FixedNow(datetime):
-    fixed = datetime(2026, 10, 15, 10, 0, tzinfo=DUBAI_TZ)
-
-    @classmethod
-    def now(cls, tz=None):
-        return cls.fixed
-
 
 class TestReportPeriodAndOperationsFixes(unittest.TestCase):
     def test_date_without_shift_is_full_operational_day(self):
-        with mock.patch.object(manager_mod, "datetime", _FixedNow):
+        with mock.patch.dict("os.environ", {"REPORTS_NOW": "2026-10-15T10:00:00+04:00"}):
             self.assertEqual(ReportsManager._default_period("14-10-2026", None), ("14-10-2026", "Full"))
             self.assertEqual(ReportsManager._default_period(None, None), ("15-10-2026", "Day"))
             self.assertEqual(ReportsManager._default_period("14-10-2026", "Night"), ("14-10-2026", "Night"))
             self.assertEqual(ReportsManager._default_period("week", None), ("week", None))
-            # 02:00 on the 15th: "today" still means the 14th's operational day
-            _FixedNow.fixed = datetime(2026, 10, 15, 2, 0, tzinfo=DUBAI_TZ)
-            try:
-                self.assertEqual(ReportsManager._default_period("15-10-2026", None), ("14-10-2026", "Full"))
-            finally:
-                _FixedNow.fixed = datetime(2026, 10, 15, 10, 0, tzinfo=DUBAI_TZ)
+        # 02:00 on the 15th: "today" still means the 14th's operational day
+        with mock.patch.dict("os.environ", {"REPORTS_NOW": "2026-10-15T02:00:00+04:00"}):
+            self.assertEqual(ReportsManager._default_period("15-10-2026", None), ("14-10-2026", "Full"))
         start, end = ReportsManager._get_shift_range(None, "14-10-2026", "Full")
         self.assertEqual((start.hour, start.day, end.hour, end.day), (5, 14, 5, 15))
 
@@ -741,6 +732,7 @@ class TestManualCorrectionsAndOwnerKpis(unittest.TestCase):
         self.assertEqual(out[0]["resolved_by"], "owner")
         self.assertNotIn("resolved_by", out[1])  # reopened -> no longer "done by Raja"
 
+    @requires_live_data
     def test_report_returns_numbered_items_and_applies_correction(self):
         from reports_engine.corrections_db import save_correction
         m = ReportsManager()
@@ -755,6 +747,7 @@ class TestManualCorrectionsAndOwnerKpis(unittest.TestCase):
         self.assertEqual(ids2[in_shift["message_id"]], "Done")
         self.assertNotIn(carried["message_id"], ids2)  # a fixed old ticket no longer carries over
 
+    @requires_live_data
     def test_owner_kpis_sections(self):
         from reports_engine.owner_kpis import generate_owner_kpis
         text = generate_owner_kpis(ReportsManager())["text"]
@@ -815,6 +808,7 @@ class TestSqliteMessageStore(unittest.TestCase):
         self.assertEqual(texts["excel"], texts["sqlite"])
 
 
+@requires_live_data
 class TestOwnerDigestAndOverdue(unittest.TestCase):
     def test_overdue_lists_only_open_tickets_older_than_48h(self):
         from reports_engine.owner_digest import generate_overdue
@@ -846,6 +840,49 @@ class TestOwnerDigestAndOverdue(unittest.TestCase):
         text = generate_morning_digest(ReportsManager(), now=datetime(2026, 10, 14, 8, 0, tzinfo=DUBAI_TZ))["text"]
         for part in ("ملخص الصباح", "الصيانة", "الحريق والسلامة", "مخالفات المواقف", "تصاريح اليوم", "مفتوحة الآن"):
             self.assertIn(part, text)
+
+
+class TestPrivacyAndMasterData(unittest.TestCase):
+    def test_ts_hr_markers_match_config(self):
+        import re as _re
+        ts = (Path(__file__).resolve().parent.parent / "src" / "privacy.ts").read_text()
+        ts_markers = _re.findall(r"'([^']+)'", ts.split("HR_MARKERS = [")[1].split("];")[0])
+        self.assertEqual(ts_markers, get_config()["exclude"]["leave_markers"])
+
+    def test_purge_hr_respects_retention(self):
+        import sqlite3
+        from reports_engine import messages_db
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "m.db"
+            old_ms = int((datetime.now(DUBAI_TZ) - timedelta(days=400)).timestamp() * 1000)
+            new_ms = int(datetime.now(DUBAI_TZ).timestamp() * 1000)
+            with sqlite3.connect(db) as c:
+                messages_db.ensure_schema(c)
+                c.executemany(
+                    "INSERT INTO messages (message_id, timestamp_text, group_name, text, ts_utc_ms) VALUES (?,?,?,?,?)",
+                    [("hr-old", "", "g", "Leave Details : Full name : X", old_ms),
+                     ("hr-new", "", "g", "Leave Details : Full name : Y", new_ms),
+                     ("fault-old", "", "g", "Q building speed gate out of service", old_ms)])
+            markers = get_config()["exclude"]["leave_markers"]
+            self.assertEqual(messages_db.purge_hr(db, None, markers), 0)  # default: keep forever
+            self.assertEqual(messages_db.purge_hr(db, 365, markers), 1)
+            with sqlite3.connect(db) as c:
+                left = {r[0] for r in c.execute("SELECT message_id FROM messages")}
+            self.assertEqual(left, {"hr-new", "fault-old"})
+
+    def test_display_name_hides_phone_numbers(self):
+        from reports_engine import master_data
+        self.assertEqual(master_data.display_name("Shrikant Yadav (209852118868213)"), "Shrikant Yadav")
+        with mock.patch.object(master_data, "load", return_value={"staff": {"209852118868213": {"name": "Eng. Shrikant", "team": "FM"}}}):
+            self.assertEqual(master_data.display_name("Shrikant Yadav (209852118868213)"), "Eng. Shrikant")
+        self.assertEqual(master_data.display_name(None), "")
+
+    def test_building_aliases(self):
+        from reports_engine import master_data
+        self.assertEqual(master_data.building_from_aliases("Light not working at Q blk ground floor"), "Q")
+        self.assertIsNone(master_data.building_from_aliases("Lobby light not working"))
+        bld, _, heading = WhatsAppParser().extract_building_and_floor("Light not working at q-blk 2nd floor")
+        self.assertEqual((bld, heading), ("Q", "Building Q"))
 
 
 class TestSlaHiddenFromReports(unittest.TestCase):
@@ -940,6 +977,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
+@requires_live_data
 class TestDataQualityReport(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

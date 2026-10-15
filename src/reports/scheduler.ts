@@ -207,6 +207,7 @@ export function startMeydanScheduler(bot: Bot) {
 function startOwnerDailyMessages(bot: Bot) {
     const digestOn = process.env.ENABLE_MORNING_DIGEST !== 'false';
     const overdueOn = process.env.ENABLE_OVERDUE_REMINDERS !== 'false';
+    const dqOn = process.env.ENABLE_DAILY_DQ !== 'false';
     const digestHour = Number(process.env.MORNING_DIGEST_HOUR ?? 8);
     const overdueFrom = Number(process.env.OVERDUE_REMINDER_FROM_HOUR ?? 9);
     const overdueTo = Number(process.env.OVERDUE_REMINDER_TO_HOUR ?? 20);
@@ -228,6 +229,17 @@ function startOwnerDailyMessages(bot: Bot) {
                     console.log(`🌅 Morning digest sent to ${config.allowedUserIds.length} owner(s).`);
                 } else {
                     await alertOwner('report-morning-digest', `فشل ملخص الصباح: ${res.error || 'no text'}`);
+                }
+            }
+
+            // Daily data-quality metrics for the operational day that just ended (stored + anomaly alert)
+            if (dqOn && hour === 5 && !hasReportBeenSent(`dq_daily_${date}`)) {
+                markReportAsSent(`dq_daily_${date}`);
+                const dq = await runReportEngine('dq_daily');
+                if (!dq.success) {
+                    await alertOwner('report-dq-daily', `فشل حساب مقاييس جودة البيانات اليومية: ${dq.error || 'unknown'}`);
+                } else if (dq.anomalies?.length) {
+                    await alertOwner(`dq-anomaly-${date}`, dq.text || dq.anomalies.join('\n'), { force: true });
                 }
             }
 

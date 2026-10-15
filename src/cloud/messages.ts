@@ -4,6 +4,7 @@ import path from 'path';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getFirestoreDb } from '../db/index.js';
 import { config } from '../config.js';
+import { isHrMessage } from '../privacy.js';
 
 export const WHATSAPP_COLLECTION = 'whatsapp_messages';
 
@@ -122,6 +123,7 @@ export async function backfillFromExcel(excelPath: string): Promise<{ uploaded: 
             rawTimestamp,
             timestampMs,
         };
+        if (isHrMessage(msg.text)) { skipped++; continue; } // HR / leave messages stay on the server
         batch.set(fsdb.collection(WHATSAPP_COLLECTION).doc(docIdFor(messageId)), { ...toFirestoreFields(msg), backfilledFromExcel: true }, { merge: true });
         uploaded++;
         if (++pending === 400) {

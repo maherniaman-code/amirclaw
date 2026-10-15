@@ -1,0 +1,58 @@
+# 🔧 Maintenance Summary – Meydan FM
+
+📅 Shift: Day Shift (13-10-2026)
+
+📍 Building M
+1. M Building back side right side barrier is not opening or closing, inform the concerned team to come and work on it ⏳ [Carried over] 🔴 5x in 7 days
+   ⏰ Reported: 12-10-2026 06:12
+   🕐 Open: 3.2d
+   ⚠️ Pending
+2. M Building Inside Service Lift, Steel Holder is Shaking and not Stable. Need to Fix. ⏳ [Carried over] 🔴 5x in 7 days
+   ⏰ Reported: 12-10-2026 08:46
+   🕐 Open: 3.1d
+   ⚠️ Pending
+3. M Building Ground Floor Inside Fire Fighting Pump Room, 1 Hanging Light is not Working. Need to Check and Rectify. ⏳ [Carried over] 🔴 5x in 7 days
+   ⏰ Reported: 12-10-2026 08:47
+   🕐 Open: 3.1d
+   ⚠️ Pending
+
+📍 Building N
+4. N Building 2nd Floor Procurment pantry Electrical Power issue reported need to checke @109884809226867 ⏳ [Carried over] 🔴 10x in 7 days
+   ⏰ Reported: 12-10-2026 07:05
+   🕐 Open: 3.2d
+   🔍 In Progress (This is about barrier and ele )
+5. Location: N Building, 3rd Floor, Reception Area Observation: One ceiling light bulb is hanging loose from its holder and needs to be properly secured to prevent a potential safety hazard. ⏳ [Carried over] 🔴 10x in 7 days
+   ⏰ Reported: 12-10-2026 07:26
+   🕐 Open: 3.2d
+   🔍 In Progress (IMDAD Team Is checking)
+6. N Building 2nd Floor Male Washroom Muslim shower water control Push Button is free need to Rectify @109884809226867 ⏳ [Carried over] 🔴 10x in 7 days
+   ⏰ Reported: 12-10-2026 13:13
+   🕐 Open: 2.9d
+   ⚠️ Pending
+7. N Building Ground Floor Lift Loby Area infront Of Reception one Cielling light is Blinking need to check @109884809226867 🔴 10x in 7 days
+   ⏰ Reported: 13-10-2026 06:31
+   🕐 Open: 2.2d
+   🔍 In Progress (Currently light off condition.)
+8. N building 1st Floor Security Control Room AC is not Cold need to Increase AC @109884809226867 ⚠️ [Possible repeat of ticket from 12-10-2026 07:54] 🔴 10x in 7 days
+   ⏰ Reported: 13-10-2026 07:52
+   🕐 Open: 2.2d
+   ✅ Done — Person 49
+
+📍 Building P
+9. P building ground floor inside service lift there is one of the lights not working properly need to check by technician ⏳ [Carried over]
+   ⏰ Reported: 13-10-2026 03:20
+   🕐 Open: 2.4d
+   ⚠️ Pending
+
+📍 Building Q
+10. Q building first floor Speed Gate is out of service 🔴 4x in 7 days
+   ⏰ Reported: 13-10-2026 10:52
+   🕐 Open: 2.0d
+   ⚠️ Pending
+
+━━━━━━━━━━
+🎯 Summary
+• Completed: 1 of 10
+• Open: 9
+• Safety priority: 4 tickets
+• Teams: N/A

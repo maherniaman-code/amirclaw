@@ -4,6 +4,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from .sender_resolver import clean_sender_name
+from .master_data import display_name
 from .date_utils import format_report_timestamp
 from .config_loader import get_config
 
@@ -166,7 +167,7 @@ def generate_maintenance_report_text(events: List[Dict[str, Any]], summary_stats
                 resolved_by = item.get("resolved_by")
                 done_line = "   ✅ Done"
                 if resolved_by:
-                    done_line += f" — {resolved_by}"
+                    done_line += f" — {display_name(resolved_by)}"
                 lines.append(done_line)
             elif "progress" in st.lower():
                 note = item.get("progress_note") or "Checking"
@@ -254,7 +255,7 @@ def generate_fire_safety_report_text(events: List[Dict[str, Any]], summary_stats
                 resolved_by = item.get("resolved_by")
                 done_line = "   ✅ Done"
                 if resolved_by:
-                    done_line += f" — {resolved_by}"
+                    done_line += f" — {display_name(resolved_by)}"
                 lines.append(done_line)
             elif "progress" in st.lower():
                 note = item.get("progress_note") or "Inspecting"
@@ -354,14 +355,14 @@ def generate_parking_violations_report_text(events: List[Dict[str, Any]], summar
 
         issue_desc = item.get("text") or "Parking violation"
         reported_dt = format_report_timestamp(item.get("datetime") or item.get("raw_datetime"))
-        sender = clean_sender_name(item.get("sender") or "Security")
+        sender = display_name(item.get("sender")) or "Security"
         photo_ref = item.get("photo_ref") or "N/A"
         st = item.get("status", "Reported")
 
         lines.append(f"{item_idx}. {issue_desc}")
         lines.append(f"   ⏰ Reported: {reported_dt} | 👤 Reported by: {sender}")
         lines.append(f"   📷 Photo: {photo_ref}")
-        closed_by = clean_sender_name(item["resolved_by"]) if item.get("resolved_by") else ""
+        closed_by = display_name(item["resolved_by"]) if item.get("resolved_by") else ""
         if "rectified" in st.lower() or "done" in st.lower():
             lines.append(f"   ✅ Status: Rectified" + (f" — {closed_by}" if closed_by else ""))
         elif st.lower().startswith("closed"):
@@ -394,7 +395,7 @@ def generate_vehicle_permissions_report_text(events: List[Dict[str, Any]], summa
         plate = item.get("plate_no", "N/A")
         make = item.get("car_make", "N/A")
         validity = item.get("validity") or "N/A"
-        requester = clean_sender_name(item.get("sender") or "Requester")
+        requester = display_name(item.get("sender")) or "Requester"
         time_str = format_report_timestamp(item.get("datetime") or item.get("raw_datetime"))
         st = item.get("status", "Pending")
 

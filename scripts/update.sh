@@ -50,6 +50,7 @@ if ! $PY -c "import sys; from reports_engine import messages_db as m; sys.exit(0
     echo "🗄️  Importing WhatsApp Excel history into SQLite (first run)..."
     $PY -m reports_engine.messages_db
 fi
+$PY -m reports_engine.messages_db --fill-ts >/dev/null  # exact times for rows stored before the column existed
 
 # Health checks
 status=$(pm2 jlist | $PY -c "import sys,json; a=[p for p in json.load(sys.stdin) if p['name']=='$APP']; print(a[0]['pm2_env']['status'] if a else 'missing')")

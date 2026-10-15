@@ -30,7 +30,8 @@ export const MESSAGES_SCHEMA = `
         quoted_message_id TEXT,   -- NULL = reply info not recorded, '' = not a reply
         thumb_jpeg        BLOB,
         media_file        TEXT,
-        inserted_at       TEXT DEFAULT CURRENT_TIMESTAMP
+        inserted_at       TEXT DEFAULT CURRENT_TIMESTAMP,
+        ts_utc_ms         INTEGER  -- exact message time; NULL for rows imported from Excel before it existed
     );
     CREATE INDEX IF NOT EXISTS ix_messages_group ON messages(group_name);
     CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
@@ -42,10 +43,13 @@ function getDb(): Database.Database {
         db = new Database(MESSAGES_DB_PATH);
         db.pragma('journal_mode = WAL'); // reports read while the bot writes
         db.exec(MESSAGES_SCHEMA);
+        // Databases created before ts_utc_ms existed get the column added in place
+        const cols = (db.prepare('PRAGMA table_info(messages)').all() as any[]).map((c) => c.name);
+        if (!cols.includes('ts_utc_ms')) db.exec('ALTER TABLE messages ADD COLUMN ts_utc_ms INTEGER');
         insertStmt = db.prepare(`
             INSERT OR IGNORE INTO messages
-                (message_id, timestamp_text, group_name, sender, text, media_type, quoted_message_id, thumb_jpeg, media_file)
-            VALUES (@messageId, @timestamp, @groupName, @sender, @text, @mediaType, @quotedMessageId, @thumb, @mediaFile)
+                (message_id, timestamp_text, group_name, sender, text, media_type, quoted_message_id, thumb_jpeg, media_file, ts_utc_ms)
+            VALUES (@messageId, @timestamp, @groupName, @sender, @text, @mediaType, @quotedMessageId, @thumb, @mediaFile, @tsMs)
         `);
     }
     return db;
@@ -70,6 +74,7 @@ async function loadThumbnail(thumbnailPath?: string, mediaLocalPath?: string): P
 export interface StoredMessage {
     messageId: string;
     timestamp: string;
+    timestampMs?: number;
     groupName: string;
     sender: string;
     text: string;
@@ -94,6 +99,7 @@ export async function storeWhatsAppMessage(m: StoredMessage): Promise<void> {
         quotedMessageId: m.quotedMessageId === undefined ? null : m.quotedMessageId,
         thumb,
         mediaFile: m.mediaFileName || null,
+        tsMs: m.timestampMs ?? null,
     });
 }
 

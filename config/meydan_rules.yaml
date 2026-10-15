@@ -553,3 +553,9 @@ cleaning_exclude_if_also:
   - vendor: "fit movers"
     keyword: "installing"
     reason: "vendor operation, not cleaning"
+
+# HR / leave messages (names, staff IDs, dates) stay on the server: they are not mirrored to
+# Firestore and are removed from the cloud-backup copy. Days to keep them in the local message
+# database; null = keep forever. Detected with exclude.leave_markers.
+privacy:
+  hr_retention_days: null

@@ -9,7 +9,7 @@ import io
 from datetime import datetime, time, timedelta
 from typing import Any, Dict, List, Optional
 
-from .date_utils import DUBAI_TZ, format_report_timestamp
+from .date_utils import DUBAI_TZ, format_report_timestamp, now_dubai
 from .manager import ReportsManager
 
 OVERDUE_HOURS = 48
@@ -38,7 +38,7 @@ def _open_tickets(manager: ReportsManager, report: str, now: datetime) -> List[D
 def generate_overdue(manager: ReportsManager, min_hours: float = OVERDUE_HOURS,
                      now: Optional[datetime] = None) -> Dict[str, Any]:
     """Open maintenance / fire-safety tickets older than min_hours, oldest first."""
-    now = now or datetime.now(DUBAI_TZ)
+    now = now or now_dubai()
     items = []
     for report in ("maintenance", "fire_safety"):
         for t in _open_tickets(manager, report, now):
@@ -73,7 +73,7 @@ def _ticket_lines(title: str, manager: ReportsManager, report: str, now: datetim
 
 
 def generate_morning_digest(manager: ReportsManager, now: Optional[datetime] = None) -> Dict[str, Any]:
-    now = now or datetime.now(DUBAI_TZ)
+    now = now or now_dubai()
     since = datetime.combine((now - timedelta(days=1)).date(), time(17, 0), tzinfo=DUBAI_TZ)  # night shift start
 
     lines = [

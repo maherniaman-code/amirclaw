@@ -97,6 +97,8 @@ _initialized_paths: set = set()
 
 def get_correction_for_message(message_id: str, group_name: str = "", text: str = "") -> Optional[Dict[str, Any]]:
     """Checks if there is an exact message correction or a group/keyword specific rule."""
+    if os.environ.get("REPORTS_IGNORE_CORRECTIONS") == "1":  # classification evaluation: rules only
+        return None
     path = os.environ.get("REPORTS_DB_PATH") or DEFAULT_DB_PATH
     if path not in _initialized_paths:  # a fresh DB file (new server / tests) has no table yet
         init_corrections_table()

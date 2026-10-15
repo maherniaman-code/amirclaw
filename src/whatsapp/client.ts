@@ -15,6 +15,7 @@ import { appendWhatsAppMessage, ensureExcelInitialized, flushWhatsAppMessages, E
 import { config } from '../config.js';
 import { mirrorWhatsAppMessage } from '../cloud/messages.js';
 import { recordGroupActivity } from '../monitoring/alerts.js';
+import { isHrMessage } from '../privacy.js';
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
 const SESSION_DIR = path.join(WORKSPACE_DIR, 'whatsapp_session');
@@ -244,6 +245,7 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
             await appendWhatsAppMessage({
                 messageId,
                 timestamp: dateStr,
+                timestampMs: tsSeconds * 1000,
                 groupName,
                 sender: senderDisplay,
                 text: effectiveText,
@@ -253,7 +255,7 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
                 thumbnailPath,
                 quotedMessageId: quotedMessageId || undefined,
             });
-            mirrorWhatsAppMessage({
+            if (!isHrMessage(effectiveText)) mirrorWhatsAppMessage({
                 messageId,
                 groupJid: jid,
                 groupName,
