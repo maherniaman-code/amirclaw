@@ -462,7 +462,9 @@ export async function startWhatsAppClient(): Promise<void> {
             currentQrBuffer = null;
             currentQrText = null;
             console.log('✅ WhatsApp connected successfully! Now listening to group messages in READ-ONLY mode.');
-            if (!backfillScheduled) {
+            // Old-message recovery is off by default (WhatsApp did not answer on the server, 15-10);
+            // HISTORY_BACKFILL=on in .env turns it back on
+            if (!backfillScheduled && process.env.HISTORY_BACKFILL === 'on') {
                 backfillScheduled = true;
                 setTimeout(() => { runVideoBackfill().catch((e) => console.warn('Video backfill failed:', e?.message || e)); }, 60_000);
             }
