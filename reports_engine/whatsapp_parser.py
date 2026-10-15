@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 import openpyxl
 
+from . import messages_db
 from .config_loader import get_config, BASE_DIR
 from .date_utils import parse_datetime, DUBAI_TZ, ARABIC_TO_WESTERN_DIGITS, is_within_freshness
 from .sender_resolver import SenderResolver
@@ -69,14 +70,28 @@ class WhatsAppParser:
         self._cache_mtime: Optional[float] = None
         self._cache_has_images: bool = False
 
+    def _message_source(self) -> Tuple[str, Path]:
+        """
+        "sqlite" when the bot's message database next to the workbook has finished its Excel
+        import, else "excel". REPORTS_SOURCE=excel|sqlite forces one (tests, troubleshooting).
+        """
+        db = messages_db.db_path_for(self.excel_path)
+        mode = os.environ.get("REPORTS_SOURCE", "auto").lower()
+        if mode == "sqlite" and db.exists():
+            return "sqlite", db
+        if mode == "auto" and messages_db.is_ready(db):
+            return "sqlite", db
+        return "excel", self.excel_path
+
     def load_messages(self, load_images: bool = False) -> List[Dict[str, Any]]:
-        """Loads and parses raw messages from Excel, supporting 7 and 8 column layouts and optional embedded drawings."""
-        if not self.excel_path.exists():
+        """Loads and parses raw messages (SQLite store or Excel, same row layout) with optional photos."""
+        source, path = self._message_source()
+        if not path.exists():
             return []
 
-        # Return cached result if file unchanged and image requirement is met
+        # Return cached result if the source is unchanged and image requirement is met
         try:
-            current_mtime = self.excel_path.stat().st_mtime
+            current_mtime = (source, messages_db.source_mtime(path) if source == "sqlite" else path.stat().st_mtime)
             if (
                 self.raw_messages
                 and self._cache_mtime == current_mtime
@@ -84,18 +99,20 @@ class WhatsAppParser:
             ):
                 return self.raw_messages
         except Exception:
-            pass
+            current_mtime = None
 
-        wb = openpyxl.load_workbook(str(self.excel_path), data_only=True, read_only=True)
-        ws = wb.active
         self.raw_messages = []
-        images_by_row = extract_xlsx_images(self.excel_path) if load_images else {}
-
-        raw_rows = []
-        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-            if row and len(row) >= 5:
-                raw_rows.append((row_idx, row))
-        wb.close()
+        if source == "sqlite":
+            raw_rows, images_by_row = messages_db.read_rows(path, load_images)
+        else:
+            wb = openpyxl.load_workbook(str(path), data_only=True, read_only=True)
+            ws = wb.active
+            images_by_row = extract_xlsx_images(path) if load_images else {}
+            raw_rows = []
+            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row and len(row) >= 5:
+                    raw_rows.append((row_idx, row))
+            wb.close()
 
         # First pass: build sender ID map
         for _, row in raw_rows:
@@ -146,10 +163,7 @@ class WhatsAppParser:
         self.raw_messages.sort(key=lambda m: m["datetime"] or datetime.min.replace(tzinfo=DUBAI_TZ))
 
         # Update cache metadata
-        try:
-            self._cache_mtime = self.excel_path.stat().st_mtime
-        except Exception:
-            pass
+        self._cache_mtime = current_mtime
         self._cache_has_images = load_images
 
         return self.raw_messages

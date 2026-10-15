@@ -11,8 +11,9 @@ import { ensureExcelInitialized } from './whatsapp/excel.js';
 import { textToSpeech, getUserVoiceSettings, setUserAlwaysVoice, setUserVoiceKey, ARABIC_VOICES } from './tts.js';
 import { startReminderScheduler, listUserReminders } from './reminders.js';
 import { startMeydanScheduler } from './reports/scheduler.js';
-import { handleReportAction, handleReportCallback, sendWhatsAppExcel } from './reports/telegram_handlers.js';
+import { handleReportAction, handleReportCallback, handleCorrectionCallback, sendWhatsAppExcel } from './reports/telegram_handlers.js';
 import { startCloudBackupScheduler } from './cloud/backup.js';
+import { initAlerts, startWhatsAppWatchdog } from './monitoring/alerts.js';
 
 // Validate configuration and initialize database
 validateConfig();
@@ -35,6 +36,9 @@ if (!fs.existsSync(DOWNLOADS_DIR)) {
 }
 
 const bot = new Bot(config.telegramBotToken);
+// Owner alerts (report failures, WhatsApp down/logged out, no messages, Excel save errors)
+initAlerts(bot);
+startWhatsAppWatchdog(getWhatsAppStatus);
 const groq = new Groq({ apiKey: config.groqApiKey || 'placeholder' });
 
 // Start the proactive reminder scheduler
@@ -683,7 +687,7 @@ function isBlockedByReportGuard(text: string): boolean {
 bot.on('callback_query:data', async (ctx) => {
     try {
         const data = ctx.callbackQuery.data || '';
-        const handled = await handleReportCallback(ctx, data);
+        const handled = (await handleCorrectionCallback(ctx, data)) || (await handleReportCallback(ctx, data));
         if (!handled) {
             try { await ctx.answerCallbackQuery(); } catch (_) {}
         }

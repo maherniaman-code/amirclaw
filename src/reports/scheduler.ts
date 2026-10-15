@@ -4,6 +4,7 @@ import path from 'path';
 import Database from 'better-sqlite3';
 import { config } from '../config.js';
 import { runReportEngine } from './bridge.js';
+import { alertOwner } from '../monitoring/alerts.js';
 
 let _schedulerDb: any = null;
 
@@ -139,9 +140,11 @@ export function startMeydanScheduler(bot: Bot) {
                                 }
                             } else {
                                 console.error(`Scheduled ${rType} report failed:`, res.error);
+                                await alertOwner(`report-${rType}`, `فشل التقرير التلقائي (${rType}) لشفت ${shiftName} ${shiftDate}: ${res.error || 'no text'}`);
                             }
                         } catch (rErr: any) {
                             console.error(`Error generating scheduled ${rType} report:`, rErr.message);
+                            await alertOwner(`report-${rType}`, `خطأ في التقرير التلقائي (${rType}) لشفت ${shiftName} ${shiftDate}: ${rErr.message}`);
                         }
                     }
                     // Mark sent only after all reports attempted
@@ -183,11 +186,14 @@ export function startMeydanScheduler(bot: Bot) {
                         for (const userId of config.reportChatIds) {
                             await sendTelegramReport(bot, userId, res.text, res.excelPath);
                         }
+                    } else {
+                        await alertOwner('report-parking', `فشل تقرير المواقف التلقائي (${slot} ${dateStr}): ${res.error || 'no text'}`);
                     }
                 }
             }
         } catch (err: any) {
             console.error('Error in Meydan scheduler tick:', err.message);
+            await alertOwner('scheduler-tick', `خطأ في جدولة التقارير: ${err.message}`);
         }
     }, 60000); // Check every minute
 
@@ -215,12 +221,24 @@ function startWeeklyDataQualityReport(bot: Bot) {
             const res = await runReportEngine('data_quality');
             if (!res.success || !res.text) {
                 console.error('Weekly data quality report failed:', res.error);
+                await alertOwner('report-data-quality', `فشل تقرير جودة البيانات الأسبوعي: ${res.error || 'no text'}`);
                 return;
             }
             for (const userId of config.allowedUserIds) {
                 await sendTelegramReport(bot, userId, res.text);
             }
             console.log(`🩺 Weekly data quality report sent to ${config.allowedUserIds.length} owner(s).`);
+
+            // Owner KPI summary right after data quality (SLA etc. stay owner-only)
+            const kpi = await runReportEngine('owner_kpis');
+            if (kpi.success && kpi.text) {
+                for (const userId of config.allowedUserIds) {
+                    await sendTelegramReport(bot, userId, kpi.text);
+                }
+                console.log(`📈 Weekly owner KPI summary sent to ${config.allowedUserIds.length} owner(s).`);
+            } else {
+                await alertOwner('report-owner-kpis', `فشل الملخص الأسبوعي للمالك: ${kpi.error || 'no text'}`);
+            }
         } catch (err: any) {
             console.error('Error in weekly data quality report:', err.message);
         }

@@ -1,7 +1,7 @@
 import { Keyboard, InlineKeyboard, InputFile } from 'grammy';
 import path from 'path';
 import fs from 'fs';
-import { runReportEngine } from './bridge.js';
+import { runReportEngine, saveCorrection } from './bridge.js';
 import { config } from '../config.js';
 import { EXCEL_PATH, ensureExcelInitialized, flushWhatsAppMessages } from '../whatsapp/excel.js';
 
@@ -64,6 +64,7 @@ export const REPORT_BUTTONS = {
     cleaning: '🧹 Cleaning Report (Meydan)',
     dataQuality: '🩺 Data Quality — Last 7 Days',
     whatsappExcel: '📊 WhatsApp Messages Excel',
+    ownerKpis: '📈 Weekly KPIs (Owner)',
 };
 
 export function getMeydanReportsKeyboard(): Keyboard {
@@ -91,6 +92,8 @@ export function getMeydanReportsKeyboard(): Keyboard {
         .text(REPORT_BUTTONS.cleaning)
         .row()
         .text(REPORT_BUTTONS.dataQuality)
+        .text(REPORT_BUTTONS.ownerKpis)
+        .row()
         .text(REPORT_BUTTONS.whatsappExcel)
         .row()
         .text(REPORT_BUTTONS.correctClassification)
@@ -162,6 +165,74 @@ export async function sendWhatsAppExcel(ctx: any): Promise<void> {
     });
 }
 
+// ── Quick correction buttons ────────────────────────────────────────────────
+// Callback data: cor:<report m|f|o>:<action d|p|x|u>:<message id>  (< 64 bytes)
+export const COR_CB_PREFIX = 'cor';
+const COR_REPORTS: Record<string, { code: string; label: string; doneStatus: string; openStatus: string }> = {
+    maintenance: { code: 'm', label: 'maintenance', doneStatus: 'Done', openStatus: 'Pending' },
+    fire_safety: { code: 'f', label: 'fire_safety', doneStatus: 'Done', openStatus: 'Pending' },
+    operations: { code: 'o', label: 'operations', doneStatus: 'Completed', openStatus: 'Reported' },
+};
+const COR_BY_CODE = Object.fromEntries(Object.entries(COR_REPORTS).map(([engine, v]) => [v.code, { engine, ...v }]));
+const MAX_CORRECTION_ROWS = 25; // 4 buttons per row, Telegram allows 100 per message
+
+export function buildCorrectionKeyboard(engine: string, items: { no: number; id: string }[]): InlineKeyboard | null {
+    const r = COR_REPORTS[engine];
+    if (!r || !items.length) return null;
+    const kb = new InlineKeyboard();
+    for (const it of items.slice(0, MAX_CORRECTION_ROWS)) {
+        const base = `${COR_CB_PREFIX}:${r.code}`;
+        kb.text(`#${it.no} ✅`, `${base}:d:${it.id}`)
+            .text(`#${it.no} ↩️`, `${base}:p:${it.id}`)
+            .text(`#${it.no} ❌`, `${base}:x:${it.id}`)
+            .text(`#${it.no} 🔁`, `${base}:u:${it.id}`)
+            .row();
+    }
+    return kb;
+}
+
+async function sendCorrectionButtons(ctx: any, engine: string, items?: { no: number; id: string }[]) {
+    const kb = buildCorrectionKeyboard(engine, items || []);
+    if (!kb) return;
+    await ctx.reply(
+        '✏️ تصحيح سريع — رقم البند كما في التقرير:\n' +
+        '✅ تم إصلاحه   ↩️ ما زال مفتوح   ❌ ليس تذكرة   🔁 مكرر\n' +
+        'التصحيح يُحفظ ويظهر في كل التقارير القادمة.',
+        { reply_markup: kb },
+    );
+}
+
+export async function handleCorrectionCallback(ctx: any, data: string): Promise<boolean> {
+    const parts = data.split(':');
+    if (parts[0] !== COR_CB_PREFIX || parts.length !== 4) return false;
+    const [, code, action, messageId] = parts;
+    const r = COR_BY_CODE[code];
+    if (!r || !messageId) return false;
+
+    const by = ctx.from?.username || ctx.from?.first_name || String(ctx.from?.id || 'telegram');
+    let ok = false;
+    let msg = '';
+    if (action === 'd') {
+        ok = await saveCorrection(messageId, r.label, r.doneStatus, by, 'telegram: done');
+        msg = '✅ تم تسجيله كمُنجز';
+    } else if (action === 'p') {
+        ok = await saveCorrection(messageId, r.label, r.openStatus, by, 'telegram: still open');
+        msg = '↩️ تم تسجيله كمفتوح';
+    } else if (action === 'x') {
+        ok = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: not a ticket');
+        msg = '❌ لن يظهر في التقارير';
+    } else if (action === 'u') {
+        ok = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: duplicate');
+        msg = '🔁 حُذف كمكرر';
+    } else {
+        return false;
+    }
+    try {
+        await ctx.answerCallbackQuery({ text: ok ? `${msg} — أعد طلب التقرير لترى التحديث` : '❌ فشل حفظ التصحيح', show_alert: !ok });
+    } catch (_) {}
+    return true;
+}
+
 export async function handleReportAction(ctx: any, input: string): Promise<boolean> {
     const trimmed = (input || '').trim();
 
@@ -229,14 +300,10 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
     // 10. Correct Classification
     if (trimmed === REPORT_BUTTONS.correctClassification) {
         await ctx.reply(
-            '✏️ *Manual Classification Correction (Rule Learning without AI)*\n\n' +
-            'To correct any message classification, send:\n' +
-            '`/correct <message_id> <target_report> [status]`\n\n' +
-            '_Example:_\n' +
-            '`/correct MSG_123 maintenance Done`\n' +
-            '`/correct MSG_456 operations Reported`\n\n' +
-            'Available target reports: `maintenance`, `fire_safety`, `operations`, `violations`, `permissions`, `ignore`.',
-            { parse_mode: 'Markdown' }
+            '✏️ تصحيح التصنيف\n\n' +
+            'اطلب تقرير الصيانة أو الحريق أو العمليات من الأزرار. بعد التقرير تصلك رسالة فيها أزرار لكل بند:\n' +
+            '✅ تم إصلاحه   ↩️ ما زال مفتوح   ❌ ليس تذكرة   🔁 مكرر\n\n' +
+            'التصحيح يُحفظ ويُطبّق على كل التقارير القادمة.',
         );
         return true;
     }
@@ -274,6 +341,17 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
     // 16. Cleaning Report
     if (trimmed === REPORT_BUTTONS.cleaning || trimmed === '/cleaning') {
         await ctx.reply('🧹 اختر تاريخ تقرير النظافة:', { reply_markup: datePicker('cleaning', 'النظافة') });
+        return true;
+    }
+
+    if (trimmed === REPORT_BUTTONS.ownerKpis || trimmed === '/kpis') {
+        await ctx.reply('📈 جاري تجهيز ملخص الأسبوع...');
+        const res = await runReportEngine('owner_kpis');
+        if (res.success && res.text) {
+            await replyReportTextAndExcel(ctx, res.text);
+        } else {
+            await ctx.reply(`❌ فشل ملخص الأسبوع: ${res.error || 'خطأ غير معروف'}`);
+        }
         return true;
     }
 
@@ -393,6 +471,7 @@ export async function handleReportCallback(ctx: any, data: string): Promise<bool
     // Standard report text + Excel
     if (res.success && res.text) {
         await replyReportTextAndExcel(ctx, res.text, res.excelPath);
+        await sendCorrectionButtons(ctx, mapping.engine, res.items);
     } else {
         await ctx.reply(`❌ فشل إنتاج تقرير ${label}: ${res.error || 'خطأ غير معروف'}`);
     }

@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { config } from '../config.js';
+import { alertOwner } from '../monitoring/alerts.js';
+import { storeWhatsAppMessage } from './store.js';
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
 export const EXCEL_PATH = path.join(WORKSPACE_DIR, 'whatsapp_messages.xlsx');
@@ -352,6 +354,7 @@ export async function flushWhatsAppMessages(): Promise<void> {
         }
     } catch (err: any) {
         console.error('Error flushing WhatsApp messages to Excel:', err);
+        alertOwner('excel-flush', `فشل حفظ رسائل واتساب في ملف الإكسل: ${err?.message || err}. الرسائل محفوظة مؤقتاً وسيُعاد المحاولة.`).catch(() => {});
         pendingEntries = [...batch, ...pendingEntries];
     } finally {
         isFlushing = false;
@@ -372,6 +375,24 @@ function scheduleFlush(): void {
  * Queue a WhatsApp message for batch insertion.
  */
 export async function appendWhatsAppMessage(entry: WhatsAppMessageEntry): Promise<void> {
+    // SQLite copy for the reports engine (INSERT OR IGNORE, so repeats are harmless)
+    storeWhatsAppMessage({
+        messageId: entry.messageId,
+        timestamp: entry.timestamp,
+        groupName: entry.groupName,
+        sender: entry.sender,
+        text: entry.text,
+        mediaBadge: formatMediaTypeBadge(entry.mediaType),
+        // Same semantics as the Excel column: absent column = not recorded, '' = not a reply
+        quotedMessageId: config.enableQuotedMessageId ? (entry.quotedMessageId || '') : null,
+        thumbnailPath: entry.thumbnailPath,
+        mediaLocalPath: entry.mediaLocalPath,
+        mediaFileName: entry.mediaFileName,
+    }).catch((err) => {
+        console.error('Error storing WhatsApp message in SQLite:', err);
+        alertOwner('sqlite-store', `فشل حفظ رسالة واتساب في قاعدة البيانات: ${err?.message || err}`).catch(() => {});
+    });
+
     if (knownMessageIds.has(entry.messageId)) return;
     pendingEntries.push(entry);
 
