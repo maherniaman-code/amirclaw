@@ -458,6 +458,20 @@ class ReportsManager:
         target = find_ticket_by_id(tickets, quoted_id)
         if target or quoted_id:
             return target, "quoted"
+        # Several confirmations of one repair ("Light replaced", "Done", photo "Light replaced")
+        # from the same person minutes apart belong to the ticket they just closed.
+        ev_dt = ev.get("datetime")
+        words = _content_words(ev["text"].lower())
+        if isinstance(ev_dt, datetime):
+            for t in tickets.values():
+                closed_at = t.get("closed_at")
+                if t.get("resolved_by") != ev.get("sender") or not isinstance(closed_at, datetime):
+                    continue
+                if not 0 <= (ev_dt - closed_at).total_seconds() <= self.config.get("same_closer_minutes", 10) * 60:
+                    continue
+                closing_words = set().union(*(_content_words(c) for c in t.get("closure_texts", [""])))
+                if words <= closing_words:  # a repeat ("Done", same wording), not news about another fault
+                    return t, "same closer"
         target = find_open_ticket_by_shared_word(
             tickets, ev.get("datetime"), ev["text"], self.config.get("reply_link_hours", 12)
         )
@@ -560,6 +574,8 @@ class ReportsManager:
                     if is_closure:
                         target_ticket["status"] = "Done"
                         target_ticket["resolved_by"] = ev["sender"]
+                        target_ticket.setdefault("closed_at", ev.get("datetime"))
+                        target_ticket.setdefault("closure_texts", []).append(t_low)
                     elif is_progress:
                         target_ticket["status"] = "In Progress"
                         target_ticket["progress_note"] = text[:30]
@@ -769,6 +785,8 @@ class ReportsManager:
                     if is_closure:
                         target_ticket["status"] = "Done"
                         target_ticket["resolved_by"] = ev["sender"]
+                        target_ticket.setdefault("closed_at", ev.get("datetime"))
+                        target_ticket.setdefault("closure_texts", []).append(t_low)
                     elif is_progress:
                         target_ticket["status"] = "In Progress"
                         target_ticket["progress_note"] = text[:30]
@@ -1092,43 +1110,32 @@ class ReportsManager:
         unlinked: List[Dict[str, Any]] = []
         source_audit: List[Dict[str, Any]] = []
 
+        pv_cfg = self.config.get("parking_violation", {})
+        reported_kws = pv_cfg.get("reported_replies", ["reported", "notified", "informed"])
+        rectified_kws = pv_cfg.get("rectified_replies", ["removed", "rectified", "done"])
+        progress_kws = self.config.get("in_progress", ["checking", "notified to", "will replace"])
+        link_minutes = self.config.get("reply_link_minutes", 60)
+
+        def latest_open_violation(ev_dt: Optional[datetime]) -> Optional[Dict[str, Any]]:
+            best = None
+            for v in violations.values():
+                v_dt = v.get("datetime")
+                is_open = v["status"] == "Reported" or v["status"].startswith("In Progress")
+                if is_open and isinstance(v_dt, datetime) and isinstance(ev_dt, datetime) \
+                        and 0 < (ev_dt - v_dt).total_seconds() <= link_minutes * 60 \
+                        and (best is None or v_dt > best["datetime"]):
+                    best = v
+            return best
+
         for ev in grouped_events:
             msg_id = ev["message_id"]
             text = ev["text"]
             quoted_id = ev.get("quoted_message_id", "")
-
-            # Check if this is a follow-up reply using config closure/progress keywords + ack filter
-            closure_kws = self.config.get("closure", ["done", "resolved", "replaced", "rectified", "cleared", "removed"])
-            progress_kws = self.config.get("in_progress", ["checking", "notified to", "will replace"])
             t_low = text.lower()
-            is_closure_reply = is_closure_text(t_low, closure_kws)
-            is_progress_reply = any(p in t_low for p in progress_kws)
-            is_reply = is_closure_reply or is_progress_reply or self.parser.is_non_operational(text) or "updated:" in t_low
-            if is_reply:
-                if quoted_id and quoted_id in violations:
-                    if is_closure_reply or "removed" in t_low:
-                        violations[quoted_id]["status"] = "Rectified"
-                    elif is_progress_reply:
-                        violations[quoted_id]["status"] = f"In Progress ({text[:30]})"
-                    source_audit.append({
-                        "message_id": msg_id,
-                        "group_name": ms_grp,
-                        "sender": ev["sender"],
-                        "raw_datetime": ev["raw_datetime"],
-                        "quoted_message_id": quoted_id,
-                        "audit_status": f"Linked reply -> Violation {quoted_id}",
-                    })
-                else:
-                    unlinked.append({
-                        "message_id": msg_id,
-                        "reason": "Unlinked violation follow-up reply",
-                        "text": text,
-                        "sender": ev["sender"],
-                        "raw_datetime": ev["raw_datetime"],
-                    })
-                continue
 
-            parsed_viol = self.parser.parse_parking_violation(ev)
+            # A WhatsApp Reply to a known violation is always a follow-up; otherwise a new violation wins
+            quoted_target = find_ticket_by_id(violations, quoted_id) if quoted_id else None
+            parsed_viol = None if quoted_target else self.parser.parse_parking_violation(ev)
             if parsed_viol:
                 violations[msg_id] = parsed_viol
                 source_audit.append({
@@ -1139,6 +1146,45 @@ class ReportsManager:
                     "quoted_message_id": quoted_id,
                     "audit_status": "Parking Violation",
                 })
+                continue
+
+            is_rectified = is_closure_text(t_low, rectified_kws)
+            is_reported = is_closure_text(t_low, reported_kws)
+            is_progress = any(p in t_low for p in progress_kws)
+            is_ack = self.parser.is_non_operational(text) or "updated:" in t_low
+            if not (quoted_target or is_rectified or is_reported or is_progress or is_ack):
+                continue  # unrelated group traffic (slot counts, chatter)
+
+            target, link_method = quoted_target, "quoted"
+            if not target and (is_rectified or is_reported or is_progress):
+                target, link_method = latest_open_violation(ev.get("datetime")), "proximity"
+            if not target:
+                unlinked.append({
+                    "message_id": msg_id,
+                    "reason": "Unlinked violation follow-up reply",
+                    "text": text,
+                    "sender": ev["sender"],
+                    "raw_datetime": ev["raw_datetime"],
+                })
+                continue
+
+            if is_rectified:
+                target["status"] = "Rectified"
+                target["resolved_by"] = ev["sender"]
+            elif is_reported:
+                target["status"] = "Closed – reported to concerned department"
+                target["resolved_by"] = ev["sender"]
+            elif is_progress:
+                target["status"] = f"In Progress ({text[:30]})"
+            target.setdefault("source_message_ids", [target["message_id"]]).append(msg_id)
+            source_audit.append({
+                "message_id": msg_id,
+                "group_name": ms_grp,
+                "sender": ev["sender"],
+                "raw_datetime": ev["raw_datetime"],
+                "quoted_message_id": quoted_id,
+                "audit_status": f"Linked ({link_method}) reply -> Violation {target['message_id']}",
+            })
 
         viol_list = list(violations.values())
         unique_violations, flagged_dups = deduplicate_events(viol_list)
@@ -1146,11 +1192,13 @@ class ReportsManager:
 
         total = len(unique_violations)
         rectified = sum(1 for v in unique_violations if "rectified" in v["status"].lower())
-        pending = total - rectified
+        closed = sum(1 for v in unique_violations if v["status"].lower().startswith("closed"))
+        pending = total - rectified - closed
 
         summary_stats = {
             "total": total,
             "rectified": rectified,
+            "closed": closed,
             "pending": pending,
         }
 
@@ -1189,6 +1237,7 @@ class ReportsManager:
             "photo_mapping": photo_mapping,
             "total": total,
             "rectified": rectified,
+            "closed": closed,
             "pending": pending,
         }
 
@@ -1205,36 +1254,29 @@ class ReportsManager:
         unlinked: List[Dict[str, Any]] = []
         source_audit: List[Dict[str, Any]] = []
 
+        vp_cfg = self.config.get("vehicle_permission", {})
+        perm_replies = [r.lower() for r in vp_cfg.get("replies", ["parked in vip slot", "noted"])]
+        link_minutes = vp_cfg.get("reply_link_minutes", 120)
+
+        def open_requests_before(ev_dt: Optional[datetime]) -> List[Dict[str, Any]]:
+            """Not-yet-parked requests within link_minutes before ev_dt, newest first."""
+            out = []
+            for pm in permissions.values():
+                p_dt = pm.get("datetime")
+                if "parked" not in pm["status"].lower() and isinstance(p_dt, datetime) and isinstance(ev_dt, datetime) \
+                        and 0 < (ev_dt - p_dt).total_seconds() <= link_minutes * 60:
+                    out.append(pm)
+            return sorted(out, key=lambda pm: pm["datetime"], reverse=True)
+
         for ev in grouped_events:
             msg_id = ev["message_id"]
             text = ev["text"]
             quoted_id = ev.get("quoted_message_id", "")
+            t_low = text.lower().strip()
 
-            # Check if this is a permission reply — read from config
-            perm_replies = [r.lower() for r in self.config.get("vehicle_permission", {}).get("replies", ["parked in vip slot", "noted"])]
-            is_reply = self.parser.is_non_operational(text) or any(r in text.lower() for r in perm_replies)
-            if is_reply:
-                if quoted_id and quoted_id in permissions:
-                    permissions[quoted_id]["status"] = "Parked in VIP slot" if "parked" in text.lower() else "Noted"
-                    source_audit.append({
-                        "message_id": msg_id,
-                        "group_name": pt_grp,
-                        "sender": ev["sender"],
-                        "raw_datetime": ev["raw_datetime"],
-                        "quoted_message_id": quoted_id,
-                        "audit_status": f"Linked reply -> Permission {quoted_id}",
-                    })
-                else:
-                    unlinked.append({
-                        "message_id": msg_id,
-                        "reason": "Unlinked permission reply",
-                        "text": text,
-                        "sender": ev["sender"],
-                        "raw_datetime": ev["raw_datetime"],
-                    })
-                continue
-
-            parsed_perm = self.parser.parse_vehicle_permission(ev)
+            # A WhatsApp Reply to a known request is a follow-up; otherwise a new request wins
+            quoted_target = find_ticket_by_id(permissions, quoted_id) if quoted_id else None
+            parsed_perm = None if quoted_target else self.parser.parse_vehicle_permission(ev)
             if parsed_perm:
                 permissions[msg_id] = parsed_perm
                 source_audit.append({
@@ -1244,6 +1286,44 @@ class ReportsManager:
                     "raw_datetime": ev["raw_datetime"],
                     "quoted_message_id": quoted_id,
                     "audit_status": "Vehicle Permission Request",
+                })
+                continue
+
+            is_short = len(t_low.split()) <= vp_cfg.get("reply_max_words", 12)
+            is_reply = is_short and (self.parser.is_non_operational(text) or any(r in t_low for r in perm_replies))
+            if not (quoted_target or is_reply):
+                continue  # slot counts, Rumble area updates, chatter
+
+            if quoted_target:
+                targets, link_method = [quoted_target], "quoted"
+            else:
+                candidates = open_requests_before(ev.get("datetime"))
+                # "All noted" acknowledges every open request; anything else the latest one
+                targets = candidates if t_low.startswith("all ") else candidates[:1]
+                link_method = "proximity"
+            if not targets:
+                unlinked.append({
+                    "message_id": msg_id,
+                    "reason": "Unlinked permission reply",
+                    "text": text,
+                    "sender": ev["sender"],
+                    "raw_datetime": ev["raw_datetime"],
+                })
+                continue
+
+            for tg in targets:
+                if "parked" in t_low:
+                    tg["status"] = "Parked in VIP slot" if "vip" in t_low else "Parked in assigned slot"
+                elif tg["status"] == "Pending":
+                    tg["status"] = "Noted"
+                tg.setdefault("source_message_ids", [tg["message_id"]]).append(msg_id)
+                source_audit.append({
+                    "message_id": msg_id,
+                    "group_name": pt_grp,
+                    "sender": ev["sender"],
+                    "raw_datetime": ev["raw_datetime"],
+                    "quoted_message_id": quoted_id,
+                    "audit_status": f"Linked ({link_method}) reply -> Permission {tg['message_id']}",
                 })
 
         perm_list = list(permissions.values())

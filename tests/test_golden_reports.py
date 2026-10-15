@@ -78,13 +78,16 @@ class TestGoldenReportsSuite(unittest.TestCase):
 
         self.assertIn("# 🧯 Fire & Safety Summary – Meydan", text)
         self.assertIn("📅 Shift: Day Shift (13-10-2026)", text)
-        self.assertIn("• Completed: 0 of 3", text)
-        self.assertIn("• Open: 3", text)
+        # 12-10 19:40 "N building 2nd floor ... emergency exit light" was posted 25s after the 3rd-floor
+        # photo by the same guard and used to be swallowed by media grouping; it is its own ticket now.
+        self.assertIn("N building 2nd floor near to reception 1 emergency exit light is not working", text)
+        self.assertIn("• Completed: 0 of 4", text)
+        self.assertIn("• Open: 4", text)
         # "not yet Rectified" follow-up must not close the 11:25 ticket
         # (scan only that ticket's block; it may also carry an "🕐 Open: …" line)
         ticket_block = re.split(r"\n(?=\d+\. |\n)", text.split("13-10-2026 11:25")[1])[0]
         self.assertIn("⚠️ Pending", ticket_block)
-        self.assertIn("• Safety priority: 2 high-risk tickets", text)
+        self.assertIn("• Safety priority: 3 high-risk tickets", text)
         # SLA is tracked in the backend only: present in the JSON, never in the report text
         self.assertNotIn("SLA", text)
         self.assertGreater(res["sla_breaches"], 0)
@@ -132,7 +135,12 @@ class TestGoldenReportsSuite(unittest.TestCase):
         self.assertIn("Plate: AA 59845 | Make: Porsche", text)
         self.assertIn("📅 Validity: Permanent", text)
         self.assertIn("• Total Requests: 6", text)
-        self.assertIn("• Pending: 6", text)
+        # Unquoted parking-team replies now update the latest open request:
+        # "Parked in VIP slot" (08:39) -> EE 80743, "Parked in the assigned slot." (11:28) -> FF 71016
+        self.assertRegex(text, r"EE 80743[\s\S]*?Status: Parked in VIP slot")
+        self.assertRegex(text, r"FF 71016[\s\S]*?Status: Parked in assigned slot")
+        self.assertIn("• Parked / Confirmed: 2 of 6", text)
+        self.assertIn("• Pending: 4", text)
 
 
 if __name__ == "__main__":

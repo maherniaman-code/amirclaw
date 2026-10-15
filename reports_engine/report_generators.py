@@ -358,8 +358,11 @@ def generate_parking_violations_report_text(events: List[Dict[str, Any]], summar
         lines.append(f"{item_idx}. {issue_desc}")
         lines.append(f"   ⏰ Reported: {reported_dt} | 👤 Reported by: {sender}")
         lines.append(f"   📷 Photo: {photo_ref}")
+        closed_by = clean_sender_name(item["resolved_by"]) if item.get("resolved_by") else ""
         if "rectified" in st.lower() or "done" in st.lower():
-            lines.append(f"   ✅ Status: Rectified")
+            lines.append(f"   ✅ Status: Rectified" + (f" — {closed_by}" if closed_by else ""))
+        elif st.lower().startswith("closed"):
+            lines.append(f"   ✅ Status: {st}" + (f" — {closed_by}" if closed_by else ""))
         else:
             lines.append(f"   ⚠️ Status: {st}")
         lines.append("")
@@ -373,6 +376,7 @@ def generate_parking_violations_report_text(events: List[Dict[str, Any]], summar
     lines.append("🎯 Summary")
     lines.append(f"• Total Violations: {summary_stats.get('total', 0)}")
     lines.append(f"• Rectified: {summary_stats.get('rectified', 0)} of {summary_stats.get('total', 0)}")
+    lines.append(f"• Closed (reported to department): {summary_stats.get('closed', 0)}")
     lines.append(f"• Pending / In Progress: {summary_stats.get('pending', 0)}")
 
     return "\n".join(lines)

@@ -419,13 +419,37 @@ operations:
     - "not clean"
 
 parking_violation:
+  # A message in the Multistory group is a violation if it contains one of these (substring match)
   keywords:
     - "ev fast charging"
     - "non-electric"
     - "remove his car"
+    - "remove her car"
     - "notify concern department"
     - "charging slot"
     - "wrong parking"
+    - "wrongly parked"
+    - "overnight"            # "Staff parked her car overnight on level 4" (15-10-2026)
+    - "double park"
+    - "blocking"
+    - "no parking"
+    - "unauthori"            # unauthorised / unauthorized
+    - "reserved slot"
+    - "disabled slot"
+    - "disabled parking"
+  # Replies that close a violation (word match, negation ignored). Applied to the quoted
+  # violation, or to the latest open one within reply_link_minutes when nothing is quoted.
+  reported_replies:          # Security escalated it -> "Closed – reported to concerned department"
+    - "reported"
+    - "notified"
+    - "informed"
+    - "escalated"
+  rectified_replies:         # Car moved -> "Rectified"
+    - "removed"
+    - "moved"
+    - "rectified"
+    - "done"
+    - "cleared"
 
 vehicle_permission:
   keywords:
@@ -434,9 +458,19 @@ vehicle_permission:
     - "car make"
     - "vip parking slot"
     - "smart parking"
+  # Replies from the parking team. "parked ..." marks the request Parked; the rest mark it Noted.
+  # Unquoted replies go to the latest open request within reply_link_minutes ("All noted" -> all of them).
   replies:
     - "parked in vip slot"
+    - "parked in the assigned slot"
+    - "parked in assigned slot"
+    - "parked at"
     - "noted"
+    - "acknowledged"
+    - "received"
+  reply_link_minutes: 120
+  # Longer unquoted messages are status updates ("Actual Car Parked Inside at 1.30 PM ..."), not replies
+  reply_max_words: 12
 
 dedupe:
   method: "difflib"

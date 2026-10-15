@@ -195,6 +195,13 @@ class WhatsAppParser:
 
         return False
 
+    @staticmethod
+    def _is_photo_only(msg: Dict[str, Any]) -> bool:
+        """An image message with no caption of its own."""
+        text = (msg.get("text") or "").strip()
+        is_image = msg.get("media_type") == "📷 Image" or "(Image)" in text
+        return is_image and text in ("", "(Image)")
+
     def group_media_events(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Attaches image rows arriving within seconds from the same sender to the corresponding text event.
@@ -234,7 +241,7 @@ class WhatsAppParser:
                     prv = messages[j]
                     if prv["sender"] == curr["sender"] and prv["datetime"]:
                         diff = abs((curr_dt - prv["datetime"]).total_seconds())
-                        if diff <= 35 and (prv["media_type"] == "📷 Image" or "(Image)" in prv["text"]):
+                        if diff <= 35 and self._is_photo_only(prv):
                             used_indices.add(j)
                             ev["source_message_ids"].insert(0, prv["message_id"])
                             if prv.get("photos_data"):
@@ -253,7 +260,10 @@ class WhatsAppParser:
                     nxt = messages[j]
                     if nxt["sender"] == curr["sender"] and nxt["datetime"]:
                         diff = abs((nxt["datetime"] - curr_dt).total_seconds())
-                        if diff <= 35:
+                        # Attach bare photos, or the caption text that follows a bare photo.
+                        # Two messages that both carry text are separate reports (e.g. 4 permission
+                        # requests sent within seconds) and must never be merged.
+                        if diff <= 35 and (self._is_photo_only(nxt) or self._is_photo_only(ev)):
                             used_indices.add(j)
                             ev["source_message_ids"].append(nxt["message_id"])
                             if nxt.get("photos_data"):
@@ -475,7 +485,7 @@ class WhatsAppParser:
             return None
 
         # Level / Floor
-        lvl_m = re.search(r"(?:level|floor)\s*(\d+)", text, re.IGNORECASE)
+        lvl_m = re.search(r"\b(?:level|lvl|lv|floor)\.?\s*(\d+)", text, re.IGNORECASE)
         lvl = f"Level {lvl_m.group(1)}" if lvl_m else "Unspecified Level"
 
         # Slot number
@@ -498,6 +508,7 @@ class WhatsAppParser:
             "photos_data": photos_data,
             "photo_ref": photo_ref,
             "quoted_message_id": event.get("quoted_message_id", ""),
+            "source_message_ids": event.get("source_message_ids", [event["message_id"]]),
         }
 
     # ─────────────────────────────────────────────────────────────

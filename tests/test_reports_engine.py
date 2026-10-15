@@ -605,6 +605,115 @@ class TestUndatedReportsRespectChosenDate(unittest.TestCase):
         self.assertEqual(ReportsManager._with_period_line(text, None), text)
 
 
+class TestParkingViolationsRealDay(unittest.TestCase):
+    """Multistory group, 15-10-2026: two overnight-parking violations, Akash replies "Reported"."""
+
+    GROUP = "Multistory Parking Building Meydan"
+
+    def _msg(self, mid, h, m, sender, text, quoted=""):
+        dt = datetime(2026, 10, 15, h, m, tzinfo=DUBAI_TZ)
+        return {"message_id": mid, "datetime": dt, "raw_datetime": dt.strftime("%m/%d/%Y, %I:%M:%S %p"),
+                "group_name": self.GROUP, "sender": sender, "text": text, "media_type": "Text",
+                "photo_preview": "", "photos_data": [], "photo_ref": "N/A", "quoted_message_id": quoted}
+
+    def _run(self, msgs, target_date="15-10-2026"):
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), \
+                tempfile.TemporaryDirectory() as tmp, mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            return m.generate_parking_violations(target_date=target_date)
+
+    def test_overnight_violations_and_reported_reply_close_ticket(self):
+        msgs = [
+            self._msg("V1", 3, 52, "beesyal Sunar (86535303090361)", "Smart parking staff overnight car parked at lvl 4 slot 363"),
+            self._msg("V2", 7, 7, "JUNIOR (126569045606449)", "@Mohan  Staff parked her car overnight on level 4."),
+            self._msg("R1", 7, 31, "Akash (219378423463939)", "Reported", quoted="V2"),
+        ]
+        res = self._run(msgs, target_date="14-10-2026")  # 03:52 and 07:07 on the 15th -> 14th op-day ends 05:00
+        self.assertIn("📍 Level 4, Slot 363", res["text"])
+        res = self._run(msgs)
+        text = res["text"]
+        self.assertIn("Staff parked her car overnight on level 4.", text)
+        self.assertIn("✅ Status: Closed – reported to concerned department — Akash", text)
+        self.assertIn("• Closed (reported to department): 1", text)
+        self.assertEqual(res["closed"], 1)
+
+    def test_unquoted_reply_links_to_latest_open_violation_within_window(self):
+        msgs = [
+            self._msg("V2", 7, 7, "JUNIOR", "Staff parked her car overnight on level 4."),
+            self._msg("R1", 7, 40, "Akash", "Car removed"),
+        ]
+        self.assertIn("✅ Status: Rectified — Akash", self._run(msgs)["text"])
+        late = [msgs[0], self._msg("R2", 9, 30, "Akash", "Reported")]  # 2h23m later -> not linked
+        self.assertIn("⚠️ Status: Reported", self._run(late)["text"])
+
+    def test_violation_text_mentioning_reported_is_still_a_violation(self):
+        msgs = [self._msg("V3", 8, 0, "JUNIOR", "Car parked overnight on lvl 3 slot 210, reported to supervisor")]
+        text = self._run(msgs)["text"]
+        self.assertIn("📍 Level 3, Slot 210", text)
+        self.assertIn("• Total Violations: 1", text)
+
+
+def _wa_msg(mid, day, h, m, sec, group, sender, text, media="💬 Text", quoted=""):
+    dt = datetime(2026, 10, day, h, m, sec, tzinfo=DUBAI_TZ)
+    return {"message_id": mid, "datetime": dt, "raw_datetime": dt.strftime("%m/%d/%Y, %I:%M:%S %p"),
+            "group_name": group, "sender": sender, "text": text, "media_type": media,
+            "photo_preview": "", "photos_data": [], "photo_ref": "N/A", "quoted_message_id": quoted}
+
+
+class TestMediaGroupingKeepsSeparateTexts(unittest.TestCase):
+    def test_texts_seconds_apart_are_not_merged(self):
+        # Real case 15-10 06:23: Akash sent 4 permission requests within seconds
+        g, a = "Parking Team at Meydan", "Akash"
+        msgs = [_wa_msg(f"P{i}", 15, 6, 23, i * 5, g, a, f"Dear Team, Kindly allow this vehicle. Plate no : X {i}")
+                for i in range(4)]
+        self.assertEqual(len(WhatsAppParser().group_media_events(msgs)), 4)
+
+    def test_photo_still_attaches_to_its_text(self):
+        g, s = "Fire & Safety Team Meydan", "Peace"
+        msgs = [
+            _wa_msg("T1", 12, 19, 39, 42, g, s, "N building 3rd floor exit light not working", media="📷 Image"),
+            _wa_msg("I1", 12, 19, 39, 50, g, s, "(Image)", media="📷 Image"),
+            # Real case: a second captioned photo 25s later is a separate fault, not part of the first
+            _wa_msg("T2", 12, 19, 40, 7, g, s, "N building 2nd floor exit light not working", media="📷 Image"),
+        ]
+        evs = WhatsAppParser().group_media_events(msgs)
+        self.assertEqual([e["source_message_ids"] for e in evs], [["T1", "I1"], ["T2"]])
+
+
+class TestVehiclePermissionReplies(unittest.TestCase):
+    G = "Parking Team at Meydan"
+
+    def _run(self, msgs):
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), \
+                tempfile.TemporaryDirectory() as tmp, mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            return m.generate_vehicle_permissions()
+
+    def test_replies_link_to_latest_request_and_counts_are_ignored(self):
+        req = lambda mid, h, mi, plate: _wa_msg(mid, 13, h, mi, 0, self.G, "Akash",
+                                                f"Dear Team, Kindly allow this vehicle in VIP parking slot only for today. Plate no : {plate}")
+        msgs = [
+            req("R1", 7, 54, "EE 80743"),
+            _wa_msg("A1", 13, 8, 39, 0, self.G, "Stephen", "Parked in VIP slot @Akash"),
+            req("R2", 12, 51, "AA 59845"),
+            _wa_msg("A2", 13, 12, 52, 0, self.G, "Stephen", "Acknowledged"),
+            _wa_msg("C1", 13, 13, 30, 0, self.G, "Saiful",
+                    "*Actual Car Parked Inside at 1.30 PM In* *N: Building* *P: Building* N building total parking 0 :- 02 1 :- 0"),
+        ]
+        text = self._run(msgs)["text"]
+        self.assertRegex(text, r"EE 80743[\s\S]*?Status: Parked in VIP slot")
+        self.assertRegex(text, r"AA 59845[\s\S]*?Status: Noted")      # count report must not mark it parked
+        self.assertIn("• Parked / Confirmed: 1 of 2", text)
+
+    def test_all_noted_acknowledges_every_open_request(self):
+        msgs = [_wa_msg(f"R{i}", 15, 6, 23, i * 5, self.G, "Akash",
+                        f"Dear Team, Kindly allow this vehicle in the podium only for today. Plate no : M {i}")
+                for i in range(3)]
+        msgs.append(_wa_msg("A", 15, 7, 22, 0, self.G, "Stephen", "All Noted"))
+        text = self._run(msgs)["text"]
+        self.assertEqual(text.count("Status: Noted"), 3)
+
+
 class TestSlaHiddenFromReports(unittest.TestCase):
     def test_sla_breach_not_rendered_in_report_text(self):
         item = {
