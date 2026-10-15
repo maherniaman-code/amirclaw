@@ -168,3 +168,13 @@ export function reportGroupsFromRules(yamlText: string): string[] {
     }
     return out;
 }
+
+/**
+ * Which history WhatsApp sends may reach the bot. Baileys drops every history sync unless this
+ * says yes (its default follows syncFullHistory, which is off). Only the "on demand" answers to
+ * the recovery requests above are let through; the bulk history sent on (re)link stays ignored.
+ */
+export const ON_DEMAND_SYNC_TYPE = 6; // proto.HistorySync.HistorySyncType.ON_DEMAND
+export function acceptHistorySync(msg: { syncType?: number | null }): boolean {
+    return msg?.syncType === ON_DEMAND_SYNC_TYPE;
+}

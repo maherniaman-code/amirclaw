@@ -1,4 +1,4 @@
-import { VideoBackfill, backfillSummary, reportGroupsFromRules, PAGE_SIZE, MAX_ATTEMPTS, type BackfillDeps, type HistoryKey } from '../src/whatsapp/video_backfill.js';
+import { VideoBackfill, backfillSummary, reportGroupsFromRules, acceptHistorySync, ON_DEMAND_SYNC_TYPE, PAGE_SIZE, MAX_ATTEMPTS, type BackfillDeps, type HistoryKey } from '../src/whatsapp/video_backfill.js';
 import { readFileSync } from 'fs';
 
 function assert(cond: boolean, msg: string) {
@@ -111,6 +111,13 @@ async function main() {
     store.setMeta('k', 'v');
     assert(store.getMeta('k') === 'v' && store.getMeta('none') === null, 'meta flags for retries');
     fs.rmSync(dir, { recursive: true, force: true });
+
+    const { proto } = await import('@whiskeysockets/baileys');
+    assert(ON_DEMAND_SYNC_TYPE === proto.HistorySync.HistorySyncType.ON_DEMAND
+        && ON_DEMAND_SYNC_TYPE === proto.Message.HistorySyncNotification.HistorySyncType.ON_DEMAND, 'on-demand sync type matches WhatsApp');
+    assert(acceptHistorySync({ syncType: ON_DEMAND_SYNC_TYPE }), 'answers to our history requests reach the bot');
+    assert(!acceptHistorySync({ syncType: proto.Message.HistorySyncNotification.HistorySyncType.INITIAL_BOOTSTRAP })
+        && !acceptHistorySync({ syncType: proto.Message.HistorySyncNotification.HistorySyncType.FULL }), 'bulk history on (re)link stays ignored');
 
     console.log('ALL VIDEO BACKFILL TESTS PASSED');
 }
