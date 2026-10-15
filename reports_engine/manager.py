@@ -1,13 +1,12 @@
 """Central Manager coordinating report extraction, deduplication, generation, and Excel output."""
 
-import json
 import re
 from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 from .config_loader import get_config, BASE_DIR
-from .date_utils import DUBAI_TZ, now_dubai, parse_datetime, is_within_freshness, get_shift_for_timestamp, format_report_timestamp
+from .date_utils import DUBAI_TZ, now_dubai, parse_datetime, is_within_freshness, format_report_timestamp
 from .whatsapp_parser import WhatsAppParser
 from .deduplicator import deduplicate_events
 from .email_reader import fetch_parking_email_from_imap
@@ -317,8 +316,8 @@ class ReportsManager:
                             "status": "Valid",
                         })
 
-            # Ramp / Service Road on target date
-            if not ramp_data and grp == ms_grp and m_dt and m_dt.date() == d_obj:
+            # Ramp / Service Road on target date: the "Parking Occupancy" post is unique, so any group
+            if not ramp_data and m_dt and m_dt.date() == d_obj:
                 parsed_ramp = self.parser.parse_ramp_service_road(txt)
                 if parsed_ramp:
                     if is_within_freshness(m_dt, slot_dt, freshness_mins):
@@ -1471,6 +1470,7 @@ class ReportsManager:
 
         fault_kws = self.config.get("fault", [])
         closure_kws = self.config.get("closure", [])
+        closure_exact = self.config.get("closure_exact", [])
         in_progress_kws = self.config.get("in_progress", [])
         exclude_exact = [e.lower() for e in self.config.get("exclude", {}).get("exact_replies", [])]
         cleaning_kws = self.config.get("cleaning_keywords", [
@@ -1512,35 +1512,41 @@ class ReportsManager:
                 })
                 continue
 
-            # Skip spam: less than 5 words and no location pattern
-            if len(text_lower.split()) < 5 and not self._extract_building(text) and not self._extract_named_location(text):
-                unlinked.append({
-                    "message_id": msg_id, "reason": "Too short, no location — likely spam or noise",
-                    "text": text, "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
-                })
-                continue
-
-            is_reply = bool(quoted_id)
-            is_closure = is_closure_text(text_lower, closure_kws)
+            # Closure / progress replies ("Cleaned", "Pantry spill cleaned"), quoted or not, update
+            # the task they answer (same linking as maintenance); checked before the short-text
+            # spam filter so a one-word "Done" is not thrown away.
+            is_closure = is_closure_text(text_lower, closure_kws) or _is_exact_closure(text, closure_exact)
             is_progress = any(k in text_lower for k in in_progress_kws)
 
-            if is_reply and (is_closure or is_progress):
-                if quoted_id in tickets:
+            if is_closure or is_progress:
+                target, link_method = self._link_reply(tickets, ev, quoted_id)
+                if target:
                     if is_closure:
-                        tickets[quoted_id]["status"] = "Done"
+                        target["status"] = "Done"
+                        target["resolved_by"] = ev["sender"]
+                        target.setdefault("closed_at", ev.get("datetime"))
+                        target.setdefault("closure_texts", []).append(text_lower)
                     else:
-                        tickets[quoted_id]["status"] = f"In Progress ({text[:40]})"
+                        target["status"] = f"In Progress ({text[:40]})"
                     source_audit.append({
                         "message_id": msg_id, "group_name": grp_name,
                         "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
                         "quoted_message_id": quoted_id,
-                        "audit_status": f"Linked reply → {quoted_id}",
+                        "audit_status": f"Linked ({link_method}) -> Ticket {target['message_id']}",
                     })
                 else:
                     unlinked.append({
                         "message_id": msg_id, "reason": "Unlinked cleaning reply",
                         "text": text, "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
                     })
+                continue
+
+            # Skip spam: less than 5 words and no location pattern
+            if len(text_lower.split()) < 5 and not self._extract_building(text) and not self._extract_named_location(text):
+                unlinked.append({
+                    "message_id": msg_id, "reason": "Too short, no location — likely spam or noise",
+                    "text": text, "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
+                })
                 continue
 
             is_fault = any(re.search(r'\b' + re.escape(k) + r'\b', text_lower) for k in fault_kws)
@@ -1558,6 +1564,7 @@ class ReportsManager:
                     "floor": floor,
                     "named_location": named_loc,
                     "issue": text,
+                    "text": text,
                     "status": "Pending",
                     "priority": priority,
                     "sender": ev["sender"],

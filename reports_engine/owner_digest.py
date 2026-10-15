@@ -67,8 +67,8 @@ def _ticket_lines(title: str, manager: ReportsManager, report: str, now: datetim
     overdue = [t for t in open_now if (t.get("hours_open") or 0) > OVERDUE_HOURS]
     return [
         title,
-        f"   • مفتوحة الآن: {len(open_now)} — جديدة من الليل: {new_overnight}، اتقفلت بالليل: {closed_overnight}",
-        f"   {'⚠️' if overdue else '✅'} مفتوحة أكتر من {OVERDUE_HOURS} ساعة: {len(overdue)}",
+        f"   • Open now: {len(open_now)} — new overnight: {new_overnight}, closed overnight: {closed_overnight}",
+        f"   {'⚠️' if overdue else '✅'} Open more than {OVERDUE_HOURS} h: {len(overdue)}",
     ]
 
 
@@ -77,13 +77,13 @@ def generate_morning_digest(manager: ReportsManager, now: Optional[datetime] = N
     since = datetime.combine((now - timedelta(days=1)).date(), time(17, 0), tzinfo=DUBAI_TZ)  # night shift start
 
     lines = [
-        "🌅 *ملخص الصباح*",
-        f"📅 {now.strftime('%d-%m-%Y')} — من أمس 5 العصر حتى الآن",
+        "🌅 *Morning Digest*",
+        f"📅 {now.strftime('%d-%m-%Y')} — since yesterday 17:00",
         "",
     ]
-    lines += _ticket_lines("🔧 *الصيانة*", manager, "maintenance", now, since)
+    lines += _ticket_lines("🔧 *Maintenance*", manager, "maintenance", now, since)
     lines.append("")
-    lines += _ticket_lines("🧯 *الحريق والسلامة*", manager, "fire_safety", now, since)
+    lines += _ticket_lines("🧯 *Fire & Safety*", manager, "fire_safety", now, since)
 
     _quiet(manager.generate_parking_violations)
     viols = [v for v in manager.last_items.get("violations", [])
@@ -97,15 +97,15 @@ def generate_morning_digest(manager: ReportsManager, now: Optional[datetime] = N
 
     lines += [
         "",
-        f"🚫 *مخالفات المواقف:* {len(viols)} — اتقفلت {v_closed}، معلقة {len(viols) - v_closed}",
-        f"📋 *تصاريح اليوم:* {len(perms)} — اتركنت {p_parked}، Noted {p_noted}، بدون رد {len(perms) - p_parked - p_noted}",
+        f"🚫 *Parking violations:* {len(viols)} — closed {v_closed}, pending {len(viols) - v_closed}",
+        f"📋 *Permissions today:* {len(perms)} — parked {p_parked}, noted {p_noted}, no reply {len(perms) - p_parked - p_noted}",
     ]
 
     oldest = generate_overdue(manager, now=now)["overdue"][:3]
     if oldest:
-        lines += ["", "🔴 *أقدم التذاكر المفتوحة:*"]
+        lines += ["", "🔴 *Oldest open tickets:*"]
         for i in oldest:
-            age = f"{i['hours_open'] / 24:.1f} يوم"
+            age = f"{i['hours_open'] / 24:.1f} days"
             lines.append(f"   - {age} | {i['reported']} | {_snippet(i['text'], 55)}")
 
     return {"text": "\n".join(lines), "total": len(viols) + len(perms)}

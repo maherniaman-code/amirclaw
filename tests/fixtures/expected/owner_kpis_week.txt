@@ -1,37 +1,37 @@
-📈 *ملخص الأسبوع للمالك — آخر 7 أيام*
+📈 *Weekly Owner Summary — Last 7 Days*
 📅 08-10-2026 → 15-10-2026
 
-🔧 *الصيانة*
-   • تذاكر الأسبوع: 16 — اتقفل 4، مفتوح 12
-   • متوسط وقت الإغلاق: 0.7 ساعة (من 4 تذكرة)
-   ⚠️ مفتوحة أكتر من 24 ساعة (SLA): 9
-   • أكتر المباني أعطال: N: 6, M: 5, Q: 4
-   • أعطال متكررة: 1
-   🔴 أقدم التذاكر المفتوحة (أكتر من 48 ساعة):
-      - 3.2 يوم | 12-10-2026 06:12 | M Building back side right side barrier is not opening or cl
-      - 3.2 يوم | 12-10-2026 07:05 | N Building 2nd Floor Procurment pantry Electrical Power issu
-      - 3.2 يوم | 12-10-2026 07:26 | Location: N Building, 3rd Floor, Reception Area Observation:
-      - 3.1 يوم | 12-10-2026 08:46 | M Building Inside Service Lift, Steel Holder is Shaking and 
-      - 3.1 يوم | 12-10-2026 08:47 | M Building Ground Floor Inside Fire Fighting Pump Room, 1 Ha
+🔧 *Maintenance*
+   • Tickets this week: 16 — closed 4, open 12
+   • Average time to close: 0.7 h (over 4 tickets)
+   ⚠️ Open more than 24 h (SLA): 9
+   • Busiest buildings: N: 6, M: 5, Q: 4
+   • Repeated faults: 1
+   🔴 Oldest open tickets (more than 48 h):
+      - 3.2 days | 12-10-2026 06:12 | M Building back side right side barrier is not opening or cl
+      - 3.2 days | 12-10-2026 07:05 | N Building 2nd Floor Procurment pantry Electrical Power issu
+      - 3.2 days | 12-10-2026 07:26 | Location: N Building, 3rd Floor, Reception Area Observation:
+      - 3.1 days | 12-10-2026 08:46 | M Building Inside Service Lift, Steel Holder is Shaking and 
+      - 3.1 days | 12-10-2026 08:47 | M Building Ground Floor Inside Fire Fighting Pump Room, 1 Ha
 
-🧯 *الحريق والسلامة*
-   • تذاكر الأسبوع: 4 — اتقفل 0، مفتوح 4
-   • متوسط وقت الإغلاق: —
-   ⚠️ مفتوحة أكتر من 24 ساعة (SLA): 4
-   • أكتر المباني أعطال: N: 4
-   • أعطال متكررة: 2
-   🔴 أقدم التذاكر المفتوحة (أكتر من 48 ساعة):
-      - 2.7 يوم | 12-10-2026 19:39 | N building 3rd floor front of reception two Emergency Exit l
-      - 2.7 يوم | 12-10-2026 19:40 | N building 2nd floor near to reception 1 emergency exit ligh
-      - 2.7 يوم | 12-10-2026 19:40 | N building 1st floor exit staircase door to ramp Area,1 emer
-      - 2.0 يوم | 13-10-2026 11:25 | N Building Ground Floor Emergency Lights are Glowing without
+🧯 *Fire & Safety*
+   • Tickets this week: 4 — closed 0, open 4
+   • Average time to close: —
+   ⚠️ Open more than 24 h (SLA): 4
+   • Busiest buildings: N: 4
+   • Repeated faults: 2
+   🔴 Oldest open tickets (more than 48 h):
+      - 2.7 days | 12-10-2026 19:39 | N building 3rd floor front of reception two Emergency Exit l
+      - 2.7 days | 12-10-2026 19:40 | N building 2nd floor near to reception 1 emergency exit ligh
+      - 2.7 days | 12-10-2026 19:40 | N building 1st floor exit staircase door to ramp Area,1 emer
+      - 2.0 days | 13-10-2026 11:25 | N Building Ground Floor Emergency Lights are Glowing without
 
-🏢 *العمليات*
-   • أنشطة: 11 — مكتملة 1
-   • أكتر الشركات نشاطاً: Al Zawaya: 3, Housekeeping: 2, Rose Garden: 1, Fit Movers: 1, Telecon: 1
+🏢 *Operations*
+   • Activities: 11 — completed 1
+   • Most active vendors: Al Zawaya: 3, Housekeeping: 2, Rose Garden: 1, Fit Movers: 1, Telecon: 1
 
-🚫 *مخالفات المواقف*
-   • مخالفات: 3 — اتحلت 0، اتبلغت للقسم 1، معلقة 2
+🚫 *Parking Violations*
+   • Violations: 3 — rectified 0, reported to department 1, pending 2
 
-📋 *تصاريح المركبات*
-   • طلبات: 13 — اتركنت 2، Noted 9، بدون رد 2
+📋 *Vehicle Permissions*
+   • Requests: 13 — parked 2, noted 9, no reply 2

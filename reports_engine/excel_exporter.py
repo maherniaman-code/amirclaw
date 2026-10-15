@@ -1,7 +1,6 @@
 """Excel workbook generation for Meydan reports using openpyxl."""
 
 import io
-import os
 import time
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple

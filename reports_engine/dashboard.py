@@ -33,7 +33,7 @@ def _label(text: str) -> str:
 def _bars(rows: List[Tuple[str, float]], unit: str = "", color: str = "var(--accent)") -> str:
     """Horizontal bar chart as inline SVG: label | bar | value."""
     if not rows:
-        return '<p class="empty">لا توجد بيانات</p>'
+        return '<p class="empty">No data</p>'
     peak = max(v for _, v in rows) or 1
     h = 26
     out = [f'<svg viewBox="0 0 400 {len(rows) * h}" class="chart" direction="ltr" role="img">']
@@ -51,7 +51,7 @@ def _bars(rows: List[Tuple[str, float]], unit: str = "", color: str = "var(--acc
 def _pairs(rows: List[Tuple[str, int, int]]) -> str:
     """Opened vs closed per week: two bars per row."""
     if not rows:
-        return '<p class="empty">لا توجد بيانات</p>'
+        return '<p class="empty">No data</p>'
     peak = max(max(a, b) for _, a, b in rows) or 1
     h = 34
     out = [f'<svg viewBox="0 0 400 {len(rows) * h}" class="chart" direction="ltr" role="img">']
@@ -94,11 +94,11 @@ def generate_dashboard(manager: ReportsManager) -> Dict[str, Any]:
     overdue = [t for t in open_now if isinstance(t.get("datetime"), datetime)
                and (now - t["datetime"]).total_seconds() > 48 * 3600]
 
-    per_building = Counter(t.get("building") or "بدون مبنى" for t in recent_tickets)
+    per_building = Counter(t.get("building") or "No building" for t in recent_tickets)
     close_by_bld: Dict[str, List[float]] = defaultdict(list)
     for t in closed_recent:
         if isinstance(t.get("closed_at"), datetime):
-            close_by_bld[t.get("building") or "بدون مبنى"].append((t["closed_at"] - t["datetime"]).total_seconds() / 3600)
+            close_by_bld[t.get("building") or "No building"].append((t["closed_at"] - t["datetime"]).total_seconds() / 3600)
     weeks: Dict[str, List[int]] = defaultdict(lambda: [0, 0])
     for t in recent_tickets:
         wk = (t["datetime"] - timedelta(days=t["datetime"].weekday())).strftime("%d-%m")
@@ -106,7 +106,7 @@ def generate_dashboard(manager: ReportsManager) -> Dict[str, Any]:
         if _is_done(t):
             weeks[wk][1] += 1
     vendors = Counter(e.get("vendor") for e in recent(ops) if e.get("vendor") and e.get("vendor") != "Operations Team")
-    repeats = Counter(t.get("building") or "بدون مبنى" for t in recent_tickets if t.get("repeat_flag"))
+    repeats = Counter(t.get("building") or "No building" for t in recent_tickets if t.get("repeat_flag"))
 
     groups = manager.config.get("groups", {})
     day_counts: Dict[str, Counter] = defaultdict(Counter)
@@ -116,26 +116,26 @@ def generate_dashboard(manager: ReportsManager) -> Dict[str, Any]:
     activity = sorted(((g, sum(c.values())) for g, c in day_counts.items()), key=lambda r: -r[1])
 
     tiles = [
-        ("تذاكر مفتوحة الآن", len(open_now)),
-        (f"اتقفلت آخر {DAYS} يوم", len(closed_recent)),
-        ("متوسط وقت الإغلاق", f"{avg_close:.1f} س" if avg_close is not None else "—"),
-        ("مفتوحة > 48 ساعة", len(overdue)),
-        (f"مخالفات آخر {DAYS} يوم", len(recent(viols))),
-        (f"تصاريح آخر {DAYS} يوم", len(recent(perms))),
+        ("Open tickets now", len(open_now)),
+        (f"Closed, last {DAYS} days", len(closed_recent)),
+        ("Average time to close", f"{avg_close:.1f} h" if avg_close is not None else "—"),
+        ("Open > 48 h", len(overdue)),
+        (f"Violations, last {DAYS} days", len(recent(viols))),
+        (f"Permissions, last {DAYS} days", len(recent(perms))),
     ]
     sections = [
-        ("التذاكر حسب المبنى", _bars(per_building.most_common(8))),
-        ("مفتوحة مقابل مقفولة لكل أسبوع", _pairs([(f"أسبوع {k}", v[0], v[1]) for k, v in sorted(weeks.items())])
-         + '<p class="legend"><span class="sw warn"></span>مفتوحة <span class="sw ok"></span>مقفولة</p>'),
-        ("متوسط وقت الإغلاق حسب المبنى (ساعات)",
-         _bars(sorted(((b, sum(v) / len(v)) for b, v in close_by_bld.items()), key=lambda r: -r[1]), " س", "var(--ok)")),
-        ("أكثر الشركات نشاطاً", _bars(vendors.most_common(8), color="var(--accent2)")),
-        ("الرسائل حسب الجروب (آخر 14 يوم)", _bars(activity, color="var(--accent2)")),
-        ("الأعطال المتكررة حسب المبنى", _bars(repeats.most_common(8), color="var(--warn)")),
+        ("Tickets by building", _bars(per_building.most_common(8))),
+        ("Opened vs closed per week", _pairs([(f"Week of {k}", v[0], v[1]) for k, v in sorted(weeks.items())])
+         + '<p class="legend"><span class="sw warn"></span>opened <span class="sw ok"></span>closed</p>'),
+        ("Average time to close by building (hours)",
+         _bars(sorted(((b, sum(v) / len(v)) for b, v in close_by_bld.items()), key=lambda r: -r[1]), " h", "var(--ok)")),
+        ("Most active vendors", _bars(vendors.most_common(8), color="var(--accent2)")),
+        ("Messages by group (last 14 days)", _bars(activity, color="var(--accent2)")),
+        ("Repeated faults by building", _bars(repeats.most_common(8), color="var(--warn)")),
     ]
 
-    title = f"لوحة ميدان — {now.strftime('%d-%m-%Y')}"
-    doc = f"""<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+    title = f"Meydan Dashboard — {now.strftime('%d-%m-%Y')}"
+    doc = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{html.escape(title)}</title>
 <style>
 :root {{ --bg:#f8fafc; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
@@ -155,14 +155,14 @@ h1 {{ font-size:20px; margin:0 0 4px; }} .sub {{ color:var(--muted); margin:0 0 
 .sw {{ display:inline-block; width:10px; height:10px; border-radius:2px; margin:0 6px 0 2px; }}
 .sw.ok {{ background:var(--ok); }} .sw.warn {{ background:var(--warn); }}
 </style></head><body>
-<h1>{html.escape(title)}</h1><p class="sub">آخر {DAYS} يوماً — الصيانة والحريق والعمليات والمواقف</p>
+<h1>{html.escape(title)}</h1><p class="sub">Last {DAYS} days — maintenance, fire &amp; safety, operations and parking</p>
 <div class="tiles">{''.join(f'<div class="tile"><b>{v}</b><span>{html.escape(k)}</span></div>' for k, v in tiles)}</div>
 <div class="grid">{''.join(f'<div class="card"><h2>{html.escape(h)}</h2>{body}</div>' for h, body in sections)}</div>
 </body></html>"""
 
     out = OUTPUT_DIR / f"Meydan_Dashboard_{now.strftime('%Y%m%d_%H%M')}.html"
     out.write_text(doc, encoding="utf-8")
-    text = (f"📊 لوحة ميدان — آخر {DAYS} يوم\n"
-            f"مفتوحة الآن: {len(open_now)} | اتقفلت: {len(closed_recent)} | أكتر من 48 ساعة: {len(overdue)}\n"
-            "افتح الملف المرفق في المتصفح.")
+    text = (f"📊 Meydan Dashboard — last {DAYS} days\n"
+            f"Open now: {len(open_now)} | Closed: {len(closed_recent)} | Open > 48 h: {len(overdue)}\n"
+            "Open the attached file in a browser.")
     return {"text": text, "html_path": str(out), "total": len(recent_tickets)}

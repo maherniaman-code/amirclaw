@@ -1,9 +1,7 @@
 """Report formatters reproducing required templates character-for-character."""
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime
 
-from .sender_resolver import clean_sender_name
 from .master_data import display_name
 from .date_utils import format_report_timestamp
 from .config_loader import get_config
@@ -168,6 +166,8 @@ def generate_maintenance_report_text(events: List[Dict[str, Any]], summary_stats
                 done_line = "   ✅ Done"
                 if resolved_by:
                     done_line += f" — {display_name(resolved_by)}"
+                if item.get("manually_corrected"):
+                    done_line += " (manual)"
                 lines.append(done_line)
             elif "progress" in st.lower():
                 note = item.get("progress_note") or "Checking"
@@ -256,6 +256,8 @@ def generate_fire_safety_report_text(events: List[Dict[str, Any]], summary_stats
                 done_line = "   ✅ Done"
                 if resolved_by:
                     done_line += f" — {display_name(resolved_by)}"
+                if item.get("manually_corrected"):
+                    done_line += " (manual)"
                 lines.append(done_line)
             elif "progress" in st.lower():
                 note = item.get("progress_note") or "Inspecting"
@@ -327,9 +329,9 @@ def generate_operations_report_text(events: List[Dict[str, Any]], summary_stats:
             lines.append(f"{item_idx}. {vendor} – {activity}")
             lines.append(f"   ⏰ Date & Time: {t_str} | 📷 Photo: {photo_ref}")
             if status == "Completed":
-                lines.append(f"   ✅ Status: Completed")
+                lines.append("   ✅ Status: Completed" + (" (manual)" if item.get("manually_corrected") else ""))
             else:
-                lines.append(f"   ℹ️ Status: Reported")
+                lines.append("   ℹ️ Status: Reported")
             item_idx += 1
         lines.append("")
 
@@ -364,7 +366,7 @@ def generate_parking_violations_report_text(events: List[Dict[str, Any]], summar
         lines.append(f"   📷 Photo: {photo_ref}")
         closed_by = display_name(item["resolved_by"]) if item.get("resolved_by") else ""
         if "rectified" in st.lower() or "done" in st.lower():
-            lines.append(f"   ✅ Status: Rectified" + (f" — {closed_by}" if closed_by else ""))
+            lines.append("   ✅ Status: Rectified" + (f" — {closed_by}" if closed_by else ""))
         elif st.lower().startswith("closed"):
             lines.append(f"   ✅ Status: {st}" + (f" — {closed_by}" if closed_by else ""))
         else:
@@ -441,6 +443,8 @@ def generate_cleaning_report_text(
 
             lines.append(f"{item_idx}. {issue}")
             lines.append(f"   ⏰ Reported: {reported_dt}")
+            if ev.get("priority") == "high":
+                lines.append("   🔴 High priority")
             if "done" in status.lower() or "completed" in status.lower():
                 lines.append("   ✅ Done")
             elif "progress" in status.lower():
@@ -461,6 +465,8 @@ def generate_cleaning_report_text(
     lines.append("🎯 Summary")
     lines.append(f"• Completed: {summary_stats.get('completed', 0)} of {summary_stats.get('total', 0)}")
     lines.append(f"• Open: {summary_stats.get('open', 0)}")
+    if summary_stats.get("high_priority"):
+        lines.append(f"• High priority: {summary_stats['high_priority']}")
 
     return "\n".join(lines)
 

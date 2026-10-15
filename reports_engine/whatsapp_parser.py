@@ -9,9 +9,8 @@ import openpyxl
 
 from . import master_data, messages_db
 from .config_loader import get_config, BASE_DIR
-from .date_utils import parse_datetime, DUBAI_TZ, ARABIC_TO_WESTERN_DIGITS, is_within_freshness
+from .date_utils import parse_datetime, DUBAI_TZ, ARABIC_TO_WESTERN_DIGITS
 from .sender_resolver import SenderResolver
-from .corrections_db import get_correction_for_message
 
 import zipfile
 import xml.etree.ElementTree as ET
@@ -316,8 +315,11 @@ class WhatsAppParser:
     # ─────────────────────────────────────────────────────────────
 
     def parse_ramp_service_road(self, text: str) -> Optional[Dict[str, Any]]:
-        """Parses Ramp / Service Road occupancy report."""
-        if not re.search(r"Parking\s+Occupan[cy]+", text, re.IGNORECASE):
+        """Parses the Ramp / Service Road occupancy report ("*Parking Occupany Report* ... Podium Parking
+        Total Slots :127 Customer and visitor cars : 87 ... Partially Blocked Parking. :04")."""
+        has_heading = re.search(r"Parking\s+Oc+up[a-z]*", text, re.IGNORECASE)
+        has_body = re.search(r"ramp\s+area", text, re.IGNORECASE) and re.search(r"service\s+road", text, re.IGNORECASE)
+        if not (has_heading or has_body) or not re.search(r"\d", text):
             return None
 
         # Clean digits and spacing
@@ -331,11 +333,13 @@ class WhatsAppParser:
                 return int(m.group(1))
             return None
 
-        podium_slots = extract_val(r"Podium(?:\s+Parking)?\s+Total\s+Slots") or 127
         cust_visitor = extract_val(r"Customer\s+and\s+visitor(?:\s+cars)?")
         pod_cars = extract_val(r"P\.?o\.?d(?:\s+Cars)?")
         staff_cars = extract_val(r"Staff(?:\s+Cars)?")
         total_entered_ramp = extract_val(r"Total(?:\s+cars)?\s+Entered\s+at\s+ramp(?:\s+area)?")
+        if total_entered_ramp is None and None not in (cust_visitor, pod_cars, staff_cars):
+            total_entered_ramp = cust_visitor + pod_cars + staff_cars  # "total of the above"
+        podium_slots = extract_val(r"Podium\s+Parking\s+Total\s+Slots?") or 127
         total_parked_ramp = extract_val(r"Total(?:\s+cars)?\s+parked\s+at\s+ramp(?:\s+Area)?")
 
         # Service Road
@@ -350,7 +354,7 @@ class WhatsAppParser:
 
         return {
             "type": "ramp_service_road",
-            "podium_slots": 127,  # Fixed at 127
+            "podium_slots": podium_slots,
             "customer_visitor": cust_visitor if cust_visitor is not None else "N/A",
             "pod_cars": pod_cars if pod_cars is not None else "N/A",
             "staff_cars": staff_cars if staff_cars is not None else "N/A",

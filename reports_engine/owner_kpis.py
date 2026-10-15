@@ -25,7 +25,7 @@ def _hours_to_close(t: Dict[str, Any]) -> Optional[float]:
 def _fmt_hours(h: Optional[float]) -> str:
     if h is None:
         return "—"
-    return f"{h:.1f} ساعة" if h < 48 else f"{h / 24:.1f} يوم"
+    return f"{h:.1f} h" if h < 48 else f"{h / 24:.1f} days"
 
 
 def _ticket_section(title: str, tickets: List[Dict[str, Any]]) -> List[str]:
@@ -36,23 +36,23 @@ def _ticket_section(title: str, tickets: List[Dict[str, Any]]) -> List[str]:
     sla = [t for t in open_ if (t.get("hours_open") or 0) > SLA_HOURS]
     chronic = sorted((t for t in open_ if (t.get("hours_open") or 0) > CHRONIC_HOURS),
                      key=lambda t: t.get("hours_open") or 0, reverse=True)
-    buildings = Counter(t.get("building") or "بدون مبنى" for t in tickets)
+    buildings = Counter(t.get("building") or "No building" for t in tickets)
     repeats = sum(1 for t in tickets if t.get("repeat_flag"))
 
     lines = [
         f"{title}",
-        f"   • تذاكر الأسبوع: {len(tickets)} — اتقفل {len(done)}، مفتوح {len(open_)}",
-        f"   • متوسط وقت الإغلاق: {_fmt_hours(avg_close)}"
-        + (f" (من {len(close_times)} تذكرة)" if close_times else ""),
-        f"   {'⚠️' if sla else '✅'} مفتوحة أكتر من {SLA_HOURS} ساعة (SLA): {len(sla)}",
+        f"   • Tickets this week: {len(tickets)} — closed {len(done)}, open {len(open_)}",
+        f"   • Average time to close: {_fmt_hours(avg_close)}"
+        + (f" (over {len(close_times)} tickets)" if close_times else ""),
+        f"   {'⚠️' if sla else '✅'} Open more than {SLA_HOURS} h (SLA): {len(sla)}",
     ]
     if tickets:
         top = ", ".join(f"{b}: {n}" for b, n in buildings.most_common(3))
-        lines.append(f"   • أكتر المباني أعطال: {top}")
+        lines.append(f"   • Busiest buildings: {top}")
     if repeats:
-        lines.append(f"   • أعطال متكررة: {repeats}")
+        lines.append(f"   • Repeated faults: {repeats}")
     if chronic:
-        lines.append(f"   🔴 أقدم التذاكر المفتوحة (أكتر من {CHRONIC_HOURS} ساعة):")
+        lines.append(f"   🔴 Oldest open tickets (more than {CHRONIC_HOURS} h):")
         for t in chronic[:5]:
             text = " ".join((t.get("text") or "").split())[:60]
             lines.append(f"      - {_fmt_hours(t.get('hours_open'))} | {format_report_timestamp(t.get('datetime'))} | {text}")
@@ -82,24 +82,24 @@ def generate_owner_kpis(manager: ReportsManager) -> Dict[str, Any]:
     p_noted = sum(1 for p in perms if p.get("status") == "Noted")
 
     lines = [
-        "📈 *ملخص الأسبوع للمالك — آخر 7 أيام*",
+        "📈 *Weekly Owner Summary — Last 7 Days*",
         f"📅 {start.astimezone(DUBAI_TZ).strftime('%d-%m-%Y')} → {end.astimezone(DUBAI_TZ).strftime('%d-%m-%Y')}",
         "",
     ]
-    lines += _ticket_section("🔧 *الصيانة*", items.get("maintenance", []))
+    lines += _ticket_section("🔧 *Maintenance*", items.get("maintenance", []))
     lines.append("")
-    lines += _ticket_section("🧯 *الحريق والسلامة*", items.get("fire_safety", []))
+    lines += _ticket_section("🧯 *Fire & Safety*", items.get("fire_safety", []))
     lines += [
         "",
-        "🏢 *العمليات*",
-        f"   • أنشطة: {len(ops)} — مكتملة {ops_done}",
-        f"   • أكتر الشركات نشاطاً: {', '.join(f'{v}: {n}' for v, n in vendors.most_common(5)) or '—'}",
+        "🏢 *Operations*",
+        f"   • Activities: {len(ops)} — completed {ops_done}",
+        f"   • Most active vendors: {', '.join(f'{v}: {n}' for v, n in vendors.most_common(5)) or '—'}",
         "",
-        "🚫 *مخالفات المواقف*",
-        f"   • مخالفات: {len(viols)} — اتحلت {v_rect}، اتبلغت للقسم {v_closed}، معلقة {len(viols) - v_rect - v_closed}",
+        "🚫 *Parking Violations*",
+        f"   • Violations: {len(viols)} — rectified {v_rect}, reported to department {v_closed}, pending {len(viols) - v_rect - v_closed}",
         "",
-        "📋 *تصاريح المركبات*",
-        f"   • طلبات: {len(perms)} — اتركنت {p_parked}، Noted {p_noted}، بدون رد {len(perms) - p_parked - p_noted}",
+        "📋 *Vehicle Permissions*",
+        f"   • Requests: {len(perms)} — parked {p_parked}, noted {p_noted}, no reply {len(perms) - p_parked - p_noted}",
     ]
     return {
         "text": "\n".join(lines),

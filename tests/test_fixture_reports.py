@@ -143,10 +143,10 @@ class TestFixtureReports(unittest.TestCase):
         self.assertEqual(days[2]["metrics"]["unlinked_share"], 0.3)
         self.assertEqual(days[2]["anomalies"], [])
         spike = {"replies_quoted": 1, "replies_proximity": 2, "replies_unlinked": 6, "unlinked_share": 0.667}
-        self.assertTrue(any("لم تُربط" in a for a in dq_metrics.anomalies(spike, {"unlinked_share": [0.1, 0.2, 0.1]}, {})))
+        self.assertTrue(any("not linked" in a for a in dq_metrics.anomalies(spike, {"unlinked_share": [0.1, 0.2, 0.1]}, {})))
         groups = {"fm": "Meydan FM Team"}
         quiet = dq_metrics.anomalies({"messages:fm": 0}, {"messages:fm": [20, 25, 30]}, groups)
-        self.assertTrue(any("صامت" in a for a in quiet))
+        self.assertTrue(any("silent" in a for a in quiet))
         self.assertEqual(dq_metrics.anomalies({"messages:fm": 0}, {"messages:fm": [20]}, groups), [])  # no baseline yet
 
     def test_excel_export_round_trip(self):
@@ -166,10 +166,27 @@ class TestFixtureReports(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             res = generate_dashboard(self.manager)
         doc = Path(res["html_path"]).read_text(encoding="utf-8")
-        for part in ("لوحة ميدان", "التذاكر حسب المبنى", "متوسط وقت الإغلاق", "أكثر الشركات نشاطاً", "<svg"):
+        for part in ("Meydan Dashboard", "Tickets by building", "Average time to close", "Most active vendors", "<svg"):
             self.assertIn(part, doc)
         self.assertNotIn("http", doc.split("<body>")[1])  # self-contained: no external resources
         self.assertNotIn("(1000", doc)  # anonymized fixture ids never printed
+
+    def test_no_arabic_in_any_report(self):
+        """Owner requirement: reports are English only (Arabic is only for conversation)."""
+        import re as _re
+        from reports_engine.dashboard import generate_dashboard
+        from reports_engine.data_quality import generate_data_quality
+        from reports_engine import dq_metrics
+        arabic = _re.compile(r"[\u0600-\u06FF]")
+        with contextlib.redirect_stdout(io.StringIO()):
+            outputs = {name: build(self.manager) for name, build in CASES.items()}
+            outputs["data_quality"] = generate_data_quality(self.manager)["text"]
+            outputs["dq_daily"] = dq_metrics.generate_dq_daily(self.manager, "13-10-2026")["text"]
+            outputs["dashboard"] = Path(generate_dashboard(self.manager)["html_path"]).read_text(encoding="utf-8")
+            outputs["cleaning"] = self.manager.generate_cleaning()["text"]
+        for name, text in outputs.items():
+            with self.subTest(report=name):
+                self.assertIsNone(arabic.search(text), f"Arabic text in {name}: {arabic.findall(text)[:10]}")
 
     def test_reports_match_expected_output(self):
         EXPECTED.mkdir(exist_ok=True)

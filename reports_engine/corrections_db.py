@@ -1,7 +1,6 @@
 """SQLite persistence for manual classification corrections without AI."""
 
 import sqlite3
-from pathlib import Path
 from typing import Optional, Dict, List, Any
 from .config_loader import BASE_DIR, load_env_file
 

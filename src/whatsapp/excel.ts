@@ -355,7 +355,7 @@ export async function flushWhatsAppMessages(): Promise<void> {
         }
     } catch (err: any) {
         console.error('Error flushing WhatsApp messages to Excel:', err);
-        alertOwner('excel-flush', `فشل حفظ رسائل واتساب في ملف الإكسل: ${err?.message || err}. الرسائل محفوظة مؤقتاً وسيُعاد المحاولة.`).catch(() => {});
+        alertOwner('excel-flush', `Saving WhatsApp messages to the Excel file failed: ${err?.message || err}. They are kept in memory and retried.`).catch(() => {});
         pendingEntries = [...batch, ...pendingEntries];
     } finally {
         isFlushing = false;
@@ -392,7 +392,7 @@ export async function appendWhatsAppMessage(entry: WhatsAppMessageEntry): Promis
         mediaFileName: entry.mediaFileName,
     }).catch((err) => {
         console.error('Error storing WhatsApp message in SQLite:', err);
-        alertOwner('sqlite-store', `فشل حفظ رسالة واتساب في قاعدة البيانات: ${err?.message || err}`).catch(() => {});
+        alertOwner('sqlite-store', `Saving a WhatsApp message to the database failed: ${err?.message || err}`).catch(() => {});
     });
 
     // The SQLite store above is the source of truth; the live workbook can be switched off

@@ -86,9 +86,6 @@ export function startMeydanScheduler(bot: Bot) {
         return [h, m, s];
     });
 
-    // Polling tracker for parking report email wait
-    const parkingPollStatus: Record<string, { startedAt: number; attempts: number }> = {};
-
     setInterval(async () => {
         try {
             if (!config.enableAutomatedReports) {
@@ -141,11 +138,11 @@ export function startMeydanScheduler(bot: Bot) {
                                 }
                             } else {
                                 console.error(`Scheduled ${rType} report failed:`, res.error);
-                                await alertOwner(`report-${rType}`, `فشل التقرير التلقائي (${rType}) لشفت ${shiftName} ${shiftDate}: ${res.error || 'no text'}`);
+                                await alertOwner(`report-${rType}`, `Scheduled ${rType} report failed for ${shiftName} shift ${shiftDate}: ${res.error || 'no text'}`);
                             }
                         } catch (rErr: any) {
                             console.error(`Error generating scheduled ${rType} report:`, rErr.message);
-                            await alertOwner(`report-${rType}`, `خطأ في التقرير التلقائي (${rType}) لشفت ${shiftName} ${shiftDate}: ${rErr.message}`);
+                            await alertOwner(`report-${rType}`, `Scheduled ${rType} report error for ${shiftName} shift ${shiftDate}: ${rErr.message}`);
                         }
                     }
                     // Mark sent only after all reports attempted
@@ -188,13 +185,13 @@ export function startMeydanScheduler(bot: Bot) {
                             await sendTelegramReport(bot, userId, res.text, res.excelPath);
                         }
                     } else {
-                        await alertOwner('report-parking', `فشل تقرير المواقف التلقائي (${slot} ${dateStr}): ${res.error || 'no text'}`);
+                        await alertOwner('report-parking', `Scheduled parking report failed (${slot} ${dateStr}): ${res.error || 'no text'}`);
                     }
                 }
             }
         } catch (err: any) {
             console.error('Error in Meydan scheduler tick:', err.message);
-            await alertOwner('scheduler-tick', `خطأ في جدولة التقارير: ${err.message}`);
+            await alertOwner('scheduler-tick', `Report scheduler error: ${err.message}`);
         }
     }, 60000); // Check every minute
 
@@ -228,7 +225,7 @@ function startOwnerDailyMessages(bot: Bot) {
                     for (const userId of config.allowedUserIds) await sendTelegramReport(bot, userId, res.text);
                     console.log(`🌅 Morning digest sent to ${config.allowedUserIds.length} owner(s).`);
                 } else {
-                    await alertOwner('report-morning-digest', `فشل ملخص الصباح: ${res.error || 'no text'}`);
+                    await alertOwner('report-morning-digest', `Morning digest failed: ${res.error || 'no text'}`);
                 }
             }
 
@@ -237,7 +234,7 @@ function startOwnerDailyMessages(bot: Bot) {
                 markReportAsSent(`dq_daily_${date}`);
                 const dq = await runReportEngine('dq_daily');
                 if (!dq.success) {
-                    await alertOwner('report-dq-daily', `فشل حساب مقاييس جودة البيانات اليومية: ${dq.error || 'unknown'}`);
+                    await alertOwner('report-dq-daily', `Daily data-quality metrics failed: ${dq.error || 'unknown'}`);
                 } else if (dq.anomalies?.length) {
                     await alertOwner(`dq-anomaly-${date}`, dq.text || dq.anomalies.join('\n'), { force: true });
                 }
@@ -249,7 +246,7 @@ function startOwnerDailyMessages(bot: Bot) {
             }
         } catch (err: any) {
             console.error('Error in owner daily messages:', err.message);
-            await alertOwner('owner-daily', `خطأ في ملخص الصباح أو تذكير التذاكر المتأخرة: ${err.message}`);
+            await alertOwner('owner-daily', `Morning digest / overdue reminder error: ${err.message}`);
         }
     }, 5 * 60 * 1000);
 
@@ -261,7 +258,7 @@ function startOwnerDailyMessages(bot: Bot) {
 export async function sendOverdueReminders(bot: Bot): Promise<number> {
     const res = await runReportEngine('overdue');
     if (!res.success) {
-        await alertOwner('report-overdue', `فشل فحص التذاكر المتأخرة: ${res.error || 'unknown'}`);
+        await alertOwner('report-overdue', `Overdue ticket check failed: ${res.error || 'unknown'}`);
         return 0;
     }
     const pending = (res.overdue || []).filter((t) => !hasReportBeenSent(`overdue_${t.id}`));
@@ -303,7 +300,7 @@ function startWeeklyDataQualityReport(bot: Bot) {
             const res = await runReportEngine('data_quality');
             if (!res.success || !res.text) {
                 console.error('Weekly data quality report failed:', res.error);
-                await alertOwner('report-data-quality', `فشل تقرير جودة البيانات الأسبوعي: ${res.error || 'no text'}`);
+                await alertOwner('report-data-quality', `Weekly data-quality report failed: ${res.error || 'no text'}`);
                 return;
             }
             for (const userId of config.allowedUserIds) {
@@ -319,7 +316,7 @@ function startWeeklyDataQualityReport(bot: Bot) {
                 }
                 console.log(`📈 Weekly owner KPI summary sent to ${config.allowedUserIds.length} owner(s).`);
             } else {
-                await alertOwner('report-owner-kpis', `فشل الملخص الأسبوعي للمالك: ${kpi.error || 'no text'}`);
+                await alertOwner('report-owner-kpis', `Weekly owner KPI summary failed: ${kpi.error || 'no text'}`);
             }
         } catch (err: any) {
             console.error('Error in weekly data quality report:', err.message);

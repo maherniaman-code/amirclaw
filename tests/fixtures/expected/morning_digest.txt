@@ -1,18 +1,18 @@
-🌅 *ملخص الصباح*
-📅 15-10-2026 — من أمس 5 العصر حتى الآن
+🌅 *Morning Digest*
+📅 15-10-2026 — since yesterday 17:00
 
-🔧 *الصيانة*
-   • مفتوحة الآن: 12 — جديدة من الليل: 2، اتقفلت بالليل: 0
-   ⚠️ مفتوحة أكتر من 48 ساعة: 9
+🔧 *Maintenance*
+   • Open now: 12 — new overnight: 2, closed overnight: 0
+   ⚠️ Open more than 48 h: 9
 
-🧯 *الحريق والسلامة*
-   • مفتوحة الآن: 4 — جديدة من الليل: 0، اتقفلت بالليل: 0
-   ⚠️ مفتوحة أكتر من 48 ساعة: 4
+🧯 *Fire & Safety*
+   • Open now: 4 — new overnight: 0, closed overnight: 0
+   ⚠️ Open more than 48 h: 4
 
-🚫 *مخالفات المواقف:* 2 — اتقفلت 1، معلقة 1
-📋 *تصاريح اليوم:* 7 — اتركنت 0، Noted 6، بدون رد 1
+🚫 *Parking violations:* 2 — closed 1, pending 1
+📋 *Permissions today:* 7 — parked 0, noted 6, no reply 1
 
-🔴 *أقدم التذاكر المفتوحة:*
-   - 3.2 يوم | 12-10-2026 06:12 | M Building back side right side barrier is not opening 
-   - 3.2 يوم | 12-10-2026 07:05 | N Building 2nd Floor Procurment pantry Electrical Power
-   - 3.2 يوم | 12-10-2026 07:26 | Location: N Building, 3rd Floor, Reception Area Observa
+🔴 *Oldest open tickets:*
+   - 3.2 days | 12-10-2026 06:12 | M Building back side right side barrier is not opening 
+   - 3.2 days | 12-10-2026 07:05 | N Building 2nd Floor Procurment pantry Electrical Power
+   - 3.2 days | 12-10-2026 07:26 | Location: N Building, 3rd Floor, Reception Area Observa
