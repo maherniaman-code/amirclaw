@@ -7,7 +7,7 @@ groups:
   fm: "Meydan FM Team💪"
   fire_safety: "Fire & Safety Team Meydan"
   operations: "Meydan - Security Team"
-  cleaning: "cleaning matters at meydan"
+  cleaning: "Cleaning Matters at Meydan"   # exact WhatsApp name (group names are matched ignoring case)
 
 # Parking capacities
 capacities:
@@ -26,6 +26,9 @@ timing:
   timezone: "Asia/Dubai"
   parking_slots: ["10:00", "12:00", "14:00"]
   freshness_window_minutes: 60
+  # Reports read their period plus this many days before it (replies, carry-over of open
+  # tickets). Keeps reports fast with years of imported chat history; older open tickets drop off.
+  report_history_days: 30
   email_slot_tolerance_minutes: 5 # Configurable tolerance for matching email timestamp to slot (±5 mins)
   email_poll_interval_seconds: 60
   email_poll_timeout_minutes: 5
@@ -54,6 +57,10 @@ exclude:
     - "👍"
     - "clear"
     - "all clear"
+    # WhatsApp placeholders (chat exports, deleted messages)
+    - "this message was deleted"
+    - "you deleted this message"
+    - "<media omitted>"
   leave_markers:
     - "leave details"
     - "start date"
@@ -83,6 +90,67 @@ fault:
   - "require maintenance"
   - "electrical power issue"
   - "cooling is very low"
+  # Chat exports 07-15 Oct: "this floor is in demage condition need to be fixed"
+  - "damage"
+  - "demage"
+  - "need to be fixed"
+  - "needs to be fixed"
+  - "need to be repaired"
+  - "needs to be repaired"
+  - "not closing properly"
+  # FM group history 2024-2026 (chat export): how faults are asked for
+  - "please inspect"
+  - "inspect and fix"
+  - "inspect and rectify"
+  - "investigate and rectify"
+  - "please investigate"
+  - "rectify the issue"
+  - "do the needful"
+  - "needs urgent attention"
+  - "needs attention"
+  - "need attention"
+  - "needs maintenance"
+  - "needs minor maintenance"
+  - "need to be adjusted"
+  - "needs to be adjusted"
+  - "need to be replaced"
+  - "needs to be replaced"
+  - "please fix"
+  - "kindly fix"
+  - "fix it"
+  - "check and fix"
+  - "to fix the"
+  # ... and what is wrong
+  - "very warm"
+  - "very hot"
+  - "too hot"
+  - "very cold"
+  - "too cold"
+  - "increase ac"
+  - "increase the ac"
+  - "raise the ac"
+  - "reduce the ac"
+  - "turn on the ac"
+  - "is blocked"
+  - "are blocked"
+  - "has fallen"
+  - "fell down"
+  - "peeling"
+  - "sinking"
+  - "detached"
+  - "not secure"
+  - "no electricity"
+  - "no water"
+  - "water is not coming"
+  - "non-functional"
+  - "non functional"
+  - "not functional"
+  - "stopped working"
+  - "has problem"
+  - "have problem"
+  - "having problem"
+  - "hv problem"
+  - "inadequate lighting"
   # 15-10: "Service lift no 7 is opening and closing on its own ... prevent any entrapment"
   - "on its own"
   - "entrapment"
@@ -187,6 +255,31 @@ in_progress:
   - "will clean"
   - "will mop"
   - "team is checking"
+  # Technicians' promises (FM history): "Will do the needful", "We will fix it as soon as possible"
+  - "will do the needful"
+  - "will fix"
+  - "will rectify"
+  - "will arrange"
+
+# Fault phrases that only ask for action ("do the needful", "fix it"): they make a ticket only
+# when the message also says where (building) or what (light, door, AC ...); otherwise they
+# chase an earlier ticket ("Kindly do the needful asap").
+fault_request_only:
+  - "do the needful"
+  - "fix it"
+  - "please fix"
+  - "kindly fix"
+  - "check and fix"
+  - "to fix the"
+  - "rectify the issue"
+  - "please inspect"
+  - "please investigate"
+  - "investigate and rectify"
+  - "inspect and rectify"
+  - "inspect and fix"
+  - "need to check"
+  - "need to fix"
+  - "need to rectify"
 
 followup_not_ticket:
   - "follow up"
@@ -196,7 +289,7 @@ followup_not_ticket:
   - "urgent action required"
   - "daily issues"
 
-building_regex: "\\b(?:(?:building|bldg|block|gate|tower|zone)\\s*[:-]?\\s*([PNMQ])|([PNMQ])\\s*[:-]?\\s*(?:building|bldg|block|gate|tower|zone|level))\\b"
+building_regex: "\\b(?:(?:building|bldg|block|gate|tower|zone)\\s*[:/-]?\\s*([PNMQ])|([PNMQ])\\s*[:/-]?\\s*(?:building|bldg|block|gate|tower|zone|level))\\b"
 floor_regex: "(ground floor|\\bgf\\b|\\d+(?:st|nd|rd|th)?\\s*floor|level\\s*\\d+)"
 
 teams:
@@ -252,6 +345,16 @@ operations:
     - "honeywell"
     - "johnson controls"
     - "siemens"
+    # Chat exports 07-15 Oct
+    - "danway"
+    - "adeco"
+    - "dallmayr"
+    # Security group history 2023-2026 (chat export)
+    - "vision safety"
+    - "siraj power"
+    - "airwell"
+    - "blue haus"
+    - "avs"            # automatic doors ("AVS staff maintaining and fixing the entrance slide door")
   # Other spellings guards use -> canonical vendor name above
   vendor_aliases:
     "house keeping": "housekeeping"
@@ -262,10 +365,39 @@ operations:
     "imdad ": "imdaad"
     "rose garden team": "rose garden"
     "e&": "etisalat"
+    "fit mover": "fit movers"     # "Fit mover's", "Fit mover vendors" (word start, so also "fit movers")
+    "fitmovers": "fit movers"
+    "fit & movers": "fit movers"
+    "fit and movers": "fit movers"
 
   # An activity that names no company takes the vendor of the latest activity that does,
   # within this many minutes (follow-up posts of the same job). 0 disables it.
   vendor_inherit_minutes: 60
+  # Company names written in capitals in the report
+  vendor_acronyms: ["avs", "dewa", "g4s"]
+
+  # Not vendor work even when an activity word appears (Security history 2023-2026):
+  # promises ("vendor will come to fix it"), instructions ("pls ask them to remove it")
+  # and incident report templates ("Type of incident: ... Description: ...").
+  not_activity:
+    - "on the way"
+    - "will come"
+    - "will fix"
+    - "pls ask"
+    - "please ask"
+    - "kindly ask"
+    - "do not let"
+    - "till vendor"
+    - "type of issue"
+    - "type of incident"
+    - "activation report"
+    - "has been informed"
+    - "please inform"
+    - "pls inform"
+    - "kindly inform"
+    - "ask avs"
+    - "ask them"
+  # An activity with no company or party named must say where it happens ("Car removed." is not one)
 
   # Someone doing work without a company name. Counts like a vendor for the fault rule
   # but is shown as "Operations Team".
@@ -549,6 +681,13 @@ cleaning_keywords:
   - "sanitise"
   - "disinfect"
   - "hygiene"
+  # "we need to carry out high-pressure washing activities" (chat export 13-10)
+  - "washing"
+  - "pressure wash"
+  - "high-pressure"
+  - "scrub"
+  - "vacuum"
+  - "polish"
   - "نظاف"
   - "تنظيف"
   - "كنس"

@@ -12,7 +12,7 @@ from .deduplicator import deduplicate_events
 from .email_reader import fetch_parking_email_from_imap
 from .corrections_db import get_correction_for_message
 from .corrections_db import get_correction_for_message as _correction_for
-from .tickets_db import enrich_ticket, same_issue, CHRONIC_HOURS
+from .tickets_db import enrich_ticket, same_issue, issue_words, CHRONIC_HOURS
 from . import warehouse
 from .report_generators import (
     generate_parking_report_text,
@@ -90,6 +90,29 @@ def _is_reply_ok(ev: Dict[str, Any], t_low: str) -> bool:
         return False
     words = " ".join(re.sub(r"[^\w\s]", " ", t_low).split())
     return words in _REPLY_OK_WORDS or (not words and any(e in t_low for e in ("👍", "✅", "👌")))
+
+
+def _fault_after_fix(t_low: str, fault_kws: List[str], closure_kws: List[str]) -> bool:
+    """
+    A fix word followed by fault wording describes a fault, not a repair: "Two external lights
+    installed above the elevators are not working" (chat export 07-10). The opposite order
+    ("valve leakage issue resolved") stays a report of a fix.
+    """
+    faults = [t_low.rfind(k.lower()) for k in fault_kws if k and k.lower() in t_low]
+    fixes = [m.start() for k in closure_kws for m in re.finditer(rf"\b{re.escape(k.lower())}\b", t_low)]
+    return bool(faults) and bool(fixes) and max(faults) > max(fixes)
+
+
+def _plate_key(plate: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", (plate or "").upper())
+
+
+def _request_for_plate(permissions: Dict[str, Dict[str, Any]], text: str) -> Optional[Dict[str, Any]]:
+    """Latest request whose plate number appears in a reply ("FF-71016 parked ...")."""
+    found = {_plate_key(p) for p in re.findall(r"\b[A-Z]{1,3}[\s-]?\d{3,6}\b", text.upper())}
+    found.discard("")
+    hits = [pm for pm in permissions.values() if _plate_key(pm.get("plate_no", "")) in found]
+    return max(hits, key=lambda pm: pm.get("datetime") or datetime.min.replace(tzinfo=DUBAI_TZ)) if hits else None
 
 
 def _resolve_quote_chain(tickets: Dict[str, Dict[str, Any]], chain: Dict[str, str], quoted_id: str) -> str:
@@ -466,6 +489,21 @@ class ReportsManager:
             end = datetime.combine(d + timedelta(days=1), time(5, 0), tzinfo=DUBAI_TZ)
         return start, end
 
+    def _in_window(self, msgs: List[Dict[str, Any]], target_date: Optional[str],
+                   target_shift: Optional[str]) -> List[Dict[str, Any]]:
+        """
+        Messages a report needs: its period plus timing.report_history_days before it (replies to
+        and carry-over of recent tickets) and after it (later fixes). Years of imported chat history would otherwise slow every
+        report and list long-forgotten tickets as open. "all" keeps everything.
+        """
+        days = self.config.get("timing", {}).get("report_history_days", 30)
+        if not days or target_date == "all":
+            return msgs
+        start, end = self._resolve_date_range(target_date, target_shift)
+        # Before: replies and carry-over of recent tickets. After: fixes reported in the following days.
+        start, end = start - timedelta(days=days), end + timedelta(days=days)
+        return [m for m in msgs if not isinstance(m.get("datetime"), datetime) or start <= m["datetime"] < end]
+
     def _resolve_date_range(self, target_date: Optional[str], target_shift: Optional[str]) -> Tuple[datetime, datetime]:
         now = now_dubai()
         if target_date == "all":
@@ -635,6 +673,7 @@ class ReportsManager:
         target_date, target_shift = self._default_period(target_date, target_shift)
 
         all_msgs = self.parser.load_messages(load_images=True)  # thumbnails for the Excel
+        all_msgs = self._in_window(all_msgs, target_date, target_shift)
         fm_grp = self.config.get("groups", {}).get("fm", "Meydan FM Team💪")
         fm_msgs = [m for m in all_msgs if m["group_name"] == fm_grp]
         grouped_events = self.parser.group_media_events(fm_msgs)
@@ -673,6 +712,8 @@ class ReportsManager:
             # Check if this is a short reply / closure / follow-up / ack
             is_closure = (is_closure_text(t_low, closure_kws) or _is_exact_closure(text, closure_exact)
                           or _is_reply_ok(ev, t_low))
+            if is_closure and not quoted_id and _fault_after_fix(t_low, fault_kws, closure_kws):
+                is_closure = False
             is_progress = any(p in t_low for p in progress_kws)
             is_ack = self.parser.is_non_operational(text)
             # A negated fix ("not yet rectified") is a follow-up, unless the message also describes a
@@ -732,7 +773,12 @@ class ReportsManager:
                 self_fixed = False
 
             # A non-reply message is a ticket ONLY if it matches fault keywords (or manual correction)
-            has_fault = any(k in t_low for k in fault_kws) or (corr and corr.get("target_status"))
+            matched_faults = [k for k in fault_kws if k in t_low]
+            has_fault = bool(matched_faults) or (corr and corr.get("target_status"))
+            request_only = [k.lower() for k in self.config.get("fault_request_only", [])]
+            if matched_faults and not (corr and corr.get("target_status")) and all(k.lower() in request_only for k in matched_faults) \
+                    and not self.parser.extract_building_and_floor(text)[0] and not issue_words(text):
+                has_fault = False   # "Kindly do the needful asap": asks again, names no place or object
             if not has_fault:
                 unlinked.append({
                     "message_id": msg_id,
@@ -888,6 +934,7 @@ class ReportsManager:
         target_date, target_shift = self._default_period(target_date, target_shift)
 
         all_msgs = self.parser.load_messages(load_images=True)  # thumbnails for the Excel
+        all_msgs = self._in_window(all_msgs, target_date, target_shift)
         fs_grp = self.config.get("groups", {}).get("fire_safety", "Fire & Safety Team Meydan")
         fs_msgs = [m for m in all_msgs if m["group_name"] == fs_grp]
         grouped_events = self.parser.group_media_events(fs_msgs)
@@ -914,6 +961,8 @@ class ReportsManager:
 
             is_closure = (is_closure_text(t_low, closure_kws) or _is_exact_closure(text, closure_exact)
                           or _is_reply_ok(ev, t_low))
+            if is_closure and not quoted_id and _fault_after_fix(t_low, fault_kws, closure_kws):
+                is_closure = False
             is_progress = any(p in t_low for p in progress_kws)
             is_ack = self.parser.is_non_operational(text)
             # A negated fix ("not yet rectified") is a follow-up, unless the message also describes a
@@ -1094,6 +1143,7 @@ class ReportsManager:
         target_date, target_shift = self._default_period(target_date, target_shift)
 
         all_msgs = self.parser.load_messages(load_images=True)  # photos for the 📷 line and Photos sheet
+        all_msgs = self._in_window(all_msgs, target_date, target_shift)
         sec_grp = self.config.get("groups", {}).get("operations", "Meydan - Security Team")
         sec_msgs = [m for m in all_msgs if m["group_name"] == sec_grp]
         grouped_events = self.parser.group_media_events(sec_msgs)
@@ -1153,6 +1203,19 @@ class ReportsManager:
             # Identify if it is an operational activity (faults belong to maintenance)
             category, vendor_hit = classify_operations_message(text, ops_cfg)
 
+            # Promises, instructions and incident reports are not vendor work
+            if category == "activity" and any(k in t_low for k in ops_cfg.get("not_activity", [])):
+                needs_review.append({
+                    "message_id": msg_id, "reason": "Promise, instruction or incident report, not an activity",
+                    "text": text, "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
+                })
+                continue
+            if category == "activity" and not vendor_hit \
+                    and _keyword_at_word_start(t_low, ops_cfg.get("parties", [])) is None \
+                    and not self.parser.extract_building_and_floor(text)[0] \
+                    and not re.search(r"\b(?:floor|level|lobby|parking|podium|rooftop|roof|basement|gate|room)\b", t_low):
+                category = "none"   # "Car removed." / "It has be removed": no company, no party, no place
+
             if category != "activity":
                 needs_review.append({
                     "message_id": msg_id,
@@ -1169,7 +1232,9 @@ class ReportsManager:
             vendor_source = None
             inferred_from = None
             if vendor_hit:
-                vendor_name, vendor_source = vendor_hit.title(), "named"
+                acronyms = [a.lower() for a in ops_cfg.get("vendor_acronyms", [])]
+                vendor_name = vendor_hit.upper() if vendor_hit.lower() in acronyms else vendor_hit.title()
+                vendor_source = "named"
             else:
                 inferred_from = _vendor_from_recent_activity(events, ev.get("datetime"), ops_cfg.get("vendor_inherit_minutes", 60))
                 if inferred_from:
@@ -1262,6 +1327,7 @@ class ReportsManager:
     # ─────────────────────────────────────────────────────────────
     def generate_parking_violations(self, target_date: Optional[str] = None) -> Dict[str, Any]:
         all_msgs = self.parser.load_messages(load_images=True)
+        all_msgs = self._in_window(all_msgs, target_date, None)
         ms_grp = self.config.get("groups", {}).get("parking_multistory", "Multistory Parking Building Meydan")
         ms_msgs = [m for m in all_msgs if m["group_name"] == ms_grp]
         grouped_events = self.parser.group_media_events(ms_msgs)
@@ -1409,6 +1475,7 @@ class ReportsManager:
     # ─────────────────────────────────────────────────────────────
     def generate_vehicle_permissions(self, target_date: Optional[str] = None) -> Dict[str, Any]:
         all_msgs = self.parser.load_messages()
+        all_msgs = self._in_window(all_msgs, target_date, None)
         pt_grp = self.config.get("groups", {}).get("parking_team", "Parking Team at Meydan")
         pt_msgs = [m for m in all_msgs if m["group_name"] == pt_grp]
         grouped_events = self.parser.group_media_events(pt_msgs)
@@ -1464,8 +1531,12 @@ class ReportsManager:
                 })
                 continue
 
+            plate_target = None if quoted_target else _request_for_plate(permissions, text)
             if quoted_target:
                 targets, link_method = [quoted_target], "quoted"
+            elif plate_target:
+                # "FF-71016 parked in the assigned slot." names the car: link to that request
+                targets, link_method = [plate_target], "plate"
             else:
                 candidates = open_requests_before(ev.get("datetime"))
                 # "All noted" acknowledges every open request; anything else the latest one
@@ -1539,7 +1610,7 @@ class ReportsManager:
     def _extract_building(self, text: str) -> Optional[str]:
         pat = self.config.get(
             "building_regex",
-            r"\b(?:(?:building|bldg|block|gate|tower|zone)\s*[:-]?\s*([PNMQ])|([PNMQ])\s*[:-]?\s*(?:building|bldg|block|gate|tower|zone|level))\b",
+            r"\b(?:(?:building|bldg|block|gate|tower|zone)\s*[:/-]?\s*([PNMQ])|([PNMQ])\s*[:/-]?\s*(?:building|bldg|block|gate|tower|zone|level))\b",
         )
         m = re.search(pat, text, re.IGNORECASE)
         if not m:
@@ -1571,6 +1642,7 @@ class ReportsManager:
     def generate_cleaning(self, target_date: Optional[str] = None) -> Dict[str, Any]:
         """Report 7 — Cleaning Summary – Meydan (group: cleaning matters at meydan)."""
         all_msgs = self.parser.load_messages(load_images=False)
+        all_msgs = self._in_window(all_msgs, target_date, None)
         grp_name = self.config.get("groups", {}).get("cleaning", "cleaning matters at meydan")
         grp_msgs = [m for m in all_msgs if m["group_name"] == grp_name]
         grouped_events = self.parser.group_media_events(grp_msgs)
@@ -1668,6 +1740,13 @@ class ReportsManager:
                 building = self._extract_building(text)
                 floor = self._extract_floor(text)
                 named_loc = self._extract_named_location(text)
+                if not (building or floor or named_loc):
+                    # "You can clean available areas" is an instruction, not a task: tasks say where
+                    unlinked.append({
+                        "message_id": msg_id, "reason": "Cleaning message without a location",
+                        "text": text, "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
+                    })
+                    continue
                 priority = "high" if any(k in text_lower for k in priority_high_kws) else "normal"
 
                 tickets[msg_id] = {

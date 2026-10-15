@@ -52,6 +52,10 @@ class TestReprocess(unittest.TestCase):
         self.assertFalse((self.tmp / ".reprocess_tmp").exists())
         self.assertEqual(list(self.reports_dir.iterdir()), [], "no Excel files in the real reports folder")
 
+    def test_rebuild_can_be_limited_to_recent_days(self):
+        s = reprocess(self.workbook, self.tickets, self.warehouse, apply=False, max_days=2)
+        self.assertEqual(s["days"], 3)   # 13, 14 and 15 Oct (REPORTS_NOW is 15-10)
+
     def test_apply_backs_up_and_rebuilds_both_stores(self):
         s = self.run_it(apply=True)
         ids = _ids(self.tickets)

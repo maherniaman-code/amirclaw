@@ -892,7 +892,7 @@ class TestCleaningReportAndParkingRamp(unittest.TestCase):
             return getattr(m, fn)(**kw)
 
     def test_cleaning_tasks_priority_routine_and_quoted_closure(self):
-        g = "cleaning matters at meydan"
+        g = "Cleaning Matters at Meydan"
         msgs = [
             _wa_msg("C1", 15, 8, 0, 0, g, "Guard", "N building lobby floor is dirty near the main door please clean"),
             _wa_msg("C2", 15, 8, 30, 0, g, "Guard", "Urgent clean needed, vomit in Q building 2nd floor male washroom"),
@@ -913,7 +913,7 @@ class TestCleaningReportAndParkingRamp(unittest.TestCase):
         self.assertIn("✅ Done", lobby)
 
     def test_cleaning_unquoted_closure_closes_a_task_instead_of_opening_one(self):
-        g = "cleaning matters at meydan"
+        g = "Cleaning Matters at Meydan"
         msgs = [
             _wa_msg("C1", 15, 8, 0, 0, g, "Guard", "M building pantry 3rd floor has a big spill on the floor please clean"),
             _wa_msg("C2", 15, 8, 25, 0, g, "Cleaner", "Pantry spill cleaned"),
@@ -922,7 +922,7 @@ class TestCleaningReportAndParkingRamp(unittest.TestCase):
         self.assertEqual((res["total"], res["completed"]), (1, 1))
 
     def test_cleaning_negated_closure_is_a_new_task(self):
-        g = "cleaning matters at meydan"
+        g = "Cleaning Matters at Meydan"
         msgs = [_wa_msg("C1", 15, 10, 0, 0, g, "Guard", "Q building ground floor washroom still not cleaned, please send cleaner")]
         res = self._run("generate_cleaning", msgs, target_date="15-10-2026")
         self.assertEqual((res["total"], res["completed"]), (1, 0))
@@ -1156,6 +1156,132 @@ class TestRealMessages15OctEvening(unittest.TestCase):
         g = "Meydan - Security Team"
         msgs = [_wa_msg("F1", 15, 19, 50, 5, g, "Shail", "Follow-up please inform to imdaad @35253125156942", media="🎬 Video", quoted="X")]
         self.assertEqual(self._run("generate_operations", msgs).last_items.get("operations", []), [])
+
+
+class TestChatExports07to15Oct(unittest.TestCase):
+    """Cases from the phone chat exports (07-15 Oct), including days before the bot recorded."""
+
+    def _run(self, fn, msgs, **kw):
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            res = getattr(m, fn)(**kw)
+        return m, res
+
+    def test_fix_word_before_fault_wording_is_a_new_fault(self):
+        g = "Meydan FM Team💪"
+        msgs = [
+            _wa_msg("L1", 12, 2, 12, 0, g, "Chris", "Two external lights installed above the elevators near Imdad's old store are not working and require maintenance."),
+            _wa_msg("D1", 12, 9, 0, 0, g, "Sunil", "Q-Building, 1st floor, Data center, this floor is in demage condition need to be fixed.."),
+            _wa_msg("V1", 12, 19, 0, 0, g, "Shahid", "N building 3 floor meeting room value leakage issue resolved"),
+        ]
+        m, _ = self._run("generate_maintenance", msgs, target_date="11-10-2026", target_shift="Full")
+        m2, _ = self._run("generate_maintenance", msgs, target_date="12-10-2026", target_shift="Full")
+        status = {t["message_id"]: t["status"] for t in m.last_items["maintenance"] + m2.last_items["maintenance"]}
+        self.assertEqual(status, {"L1": "Pending", "D1": "Pending", "V1": "Done"})
+
+    def test_new_vendors_and_fit_mover_spellings(self):
+        ops = get_config()["operations"]
+        for text, vendor in (("4vendor's from Fit mover's they are removing furniture from M building", "fit movers"),
+                             ("Fit mover vendors packing the all office furnitures", "fit movers"),
+                             ("P building LV room DANWAY Company staff working now do inspection", "danway"),
+                             ("02 Adeco vendors fixing new TV inside payment office", "adeco"),
+                             ("Dallmayr vendor doing coffee machine servicing at Q building", "dallmayr")):
+            with self.subTest(text=text[:30]):
+                self.assertEqual(classify_operations_message(text, ops), ("activity", vendor))
+
+    def test_permissions_from_exports(self):
+        g = "Parking Team at Meydan"
+        msgs = [
+            _wa_msg("R1", 8, 8, 23, 0, g, "Akash", "Dear Team,\nKindly allow this vehicle in the parking slot ( M 96 ) only for today.\n\nPlate no : FF 71016\nCar make :Jetour"),
+            _wa_msg("R2", 7, 14, 54, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in VIP parking slot for 08/10/2026.\n\nPlate no : H 5226"),
+            _wa_msg("R3", 7, 17, 42, 0, g, "Akash", "Dear Team,\n\nKindly allow the below vehicle to park in the VIP parking slot in the basement whenever the staff arrives.\n\nPlate No: V 26158"),
+            _wa_msg("X1", 7, 11, 38, 0, g, "Mohan", "Pls allow today"),
+            _wa_msg("P1", 8, 15, 8, 0, g, "Sathish", "FF-71016 parked in the assigned slot."),
+        ]
+        m, _ = self._run("generate_vehicle_permissions", msgs)
+        items = {p["message_id"]: p for p in m.last_items["permissions"]}
+        self.assertNotIn("X1", items)                         # no plate, short: not a request
+        self.assertEqual(items["R1"]["status"], "Parked in assigned slot")   # reply names the plate
+        self.assertEqual(items["R2"]["validity"], "for 08/10/2026")
+        self.assertEqual(items["R3"]["validity"], "whenever the staff arrives")
+
+    def test_cleaning_from_exports(self):
+        g = "Cleaning Matters at Meydan"
+        msgs = [
+            _wa_msg("C1", 9, 20, 3, 0, g, "Chris", "N/building rooftop pump room Found in this condition please inform concern team to clean it", media="📷 Image"),
+            _wa_msg("C2", 13, 23, 34, 0, g, "Cm", "Dear,\n Q Building external area to move their vehicles.\ncan u inform the owners of the cars parked  to the other side, as we need to carry out high-pressure washing activities.", media="📷 Image"),
+            _wa_msg("C3", 13, 23, 59, 0, g, "Chris", "You can clean available areas"),
+        ]
+        _, res9 = self._run("generate_cleaning", msgs, target_date="09-10-2026")
+        _, res13 = self._run("generate_cleaning", msgs, target_date="13-10-2026")
+        self.assertIn("1. N/building rooftop pump room", res9["text"])
+        self.assertIn("1. Q Building external area to move their vehicles.", res13["text"])
+        self.assertNotIn("available areas", res13["text"])
+        self.assertEqual(res13["total"], 1)
+
+    def test_group_names_match_ignoring_case(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.append(["Message ID", "Date & Time", "Group Name", "Sender", "Message", "Type", "Photo Preview", "Quoted Message ID"])
+            ws.append(["G1", "10/13/2026, 11:34:00 PM", "cleaning matters at meydan", "Cm", "Q Building lobby is dirty", "💬 Text", "", ""])
+            path = Path(tmp) / "wa.xlsx"
+            wb.save(path)
+            with mock.patch.dict("os.environ", {"REPORTS_SOURCE": "excel"}):
+                msgs = WhatsAppParser(path).load_messages(load_images=False)
+        self.assertEqual(msgs[0]["group_name"], "Cleaning Matters at Meydan")
+
+    def test_fm_history_fault_wording(self):
+        """FM group 2024-2026: real faults the old keywords missed, and replies that are not faults."""
+        g = "Meydan FM Team💪"
+        texts = {
+            "F1": "P bldg 1st floor reception is very warm. Please increase AC urgently",
+            "F2": "Hi Imdaad Team, Smart Parking, Ground Floor Male Washroom, the hand washing sink is blocked.",
+            "F3": "Dear Imdaad Team, Please note that the ceiling in Q Building, 5th floor, Server Room 1 has fallen",
+            "F4": "Hi Imdaad Team, Non-functional lights in the pump room on the rooftop of M Building. Please investigate and rectify the issue.",
+            "F5": "M building 5th floor staff pantry there is no electricity on all socket",
+            "N1": "Kindly do the needful asap",
+            "N2": "Noted Will do the needful",
+            "N3": "We will fix it as soon as possible",
+        }
+        msgs = [_wa_msg(k, 13, 8, i, 0, g, "Staff", v) for i, (k, v) in enumerate(texts.items())]
+        m, _ = self._run("generate_maintenance", msgs, target_date="13-10-2026", target_shift="Full")
+        self.assertEqual(sorted(t["message_id"] for t in m.last_items["maintenance"]), ["F1", "F2", "F3", "F4", "F5"])
+
+    def test_security_history_operations(self):
+        g = "Meydan - Security Team"
+        texts = {
+            "A1": "Vision safety staff in M Building they are doing PPM work.",
+            "A2": "Pump shifting to chiller yard at Q building roof top by AIRWELL vendor",
+            "A3": "AVS staff maintaining and fixing the entrance slide door issue",
+            "A4": "\"M\" building 1st floor Inside digital office vander of Fit & movers 4 workers removing 2 visitors chairs",
+            "X1": "Car removed.",
+            "X2": "Tomorrow morning, vendor will come to fix it",
+            "X3": "Pls ask them to remove it urgently from the there",
+            "X4": "Location:'P 'GF IDF room Date : 22/08/2024 Time: 21:03 Type of incident:minor Description: During patrolling",
+        }
+        msgs = [_wa_msg(k, 13, 9, i * 5, 0, g, "Guard", v) for i, (k, v) in enumerate(texts.items())]
+        m, _ = self._run("generate_operations", msgs, target_date="13-10-2026", target_shift="Full")
+        got = {e["message_id"]: e["vendor"] for e in m.last_items["operations"]}
+        self.assertEqual(got, {"A1": "Vision Safety", "A2": "Airwell", "A3": "AVS", "A4": "Fit Movers"})
+
+    def test_reports_read_only_their_window(self):
+        """Years of imported history: a report reads its period +/- report_history_days, nothing older."""
+        g = "Meydan FM Team💪"
+        msgs = [
+            _wa_msg("OLD", 1, 9, 0, 0, g, "Sunil", "M Building 2nd floor pantry tap is leaking need to check"),
+            _wa_msg("NEW", 14, 9, 0, 0, g, "Sunil", "Q Building 3rd floor light not working"),
+        ]
+        msgs[0]["datetime"] = msgs[0]["datetime"].replace(year=2025)   # 01-10-2025: a year before
+        m, _ = self._run("generate_maintenance", msgs, target_date="15-10-2026", target_shift="Full")
+        self.assertEqual([t["message_id"] for t in m.last_items["maintenance"]], ["NEW"])
+        self.assertEqual(get_config()["timing"]["report_history_days"], 30)
+
+    def test_deleted_message_placeholder_is_noise(self):
+        p = WhatsAppParser.__new__(WhatsAppParser)
+        p.config = get_config()
+        self.assertTrue(p.is_non_operational("This message was deleted"))
 
 
 class TestSlaHiddenFromReports(unittest.TestCase):

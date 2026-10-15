@@ -348,7 +348,7 @@ def generate_operations_report_text(events: List[Dict[str, Any]], summary_stats:
 def clean_title(text: str) -> str:
     """Ticket text as a title: no leading "FYI..." / @mentions, no unresolved numeric @ids, one line."""
     t = re.sub(r"@\d{6,}", "", text or "")
-    t = re.sub(r"^\s*(?:(?:fyi|dear\s+team)\b[\s.,:;!-]*|@\S+[\s,:;-]*)+", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"^\s*(?:(?:fyi|dear(?:\s+(?:team|sir|all))?|hi(?:\s+team)?|hello(?:\s+team)?)\b[\s.,:;!-]*|@\S+[\s,:;-]*)+", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\s+([.,;:])", r"\1", re.sub(r"\s+", " ", t)).strip()
     return t or re.sub(r"\s+", " ", text or "").strip()
 
@@ -447,7 +447,7 @@ def generate_cleaning_report_text(
     for bld, evs in sorted(buildings.items()):
         lines.append(f"📍 Building {bld}" if bld != "General" else "📍 General Area")
         for ev in evs:
-            issue = ev.get("issue") or ev.get("text") or "Cleaning task"
+            issue = clean_title(ev.get("issue") or ev.get("text") or "") or "Cleaning task"
             reported_dt = format_report_timestamp(ev.get("datetime") or ev.get("raw_datetime"))
             status = ev.get("status", "Pending")
 

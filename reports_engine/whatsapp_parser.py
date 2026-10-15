@@ -167,6 +167,11 @@ class WhatsAppParser:
             })
 
         # Sort chronologically by parsed datetime
+        # Configured group names win over WhatsApp's capitalisation ("Cleaning Matters at Meydan")
+        canonical = {str(g).strip().lower(): g for g in self.config.get("groups", {}).values()}
+        for m in self.raw_messages:
+            m["group_name"] = canonical.get(m["group_name"].strip().lower(), m["group_name"])
+
         self.raw_messages.sort(key=lambda m: m["datetime"] or datetime.min.replace(tzinfo=DUBAI_TZ))
 
         # Update cache metadata
@@ -464,7 +469,7 @@ class WhatsAppParser:
         """Extracts building (P, N, M, Q) and floor, returning (building, floor, clean_location)."""
         bld_pat = self.config.get(
             "building_regex",
-            r"\b(?:(?:building|bldg|block|gate|tower|zone)\s*[:-]?\s*([PNMQ])|([PNMQ])\s*[:-]?\s*(?:building|bldg|block|gate|tower|zone|level))\b",
+            r"\b(?:(?:building|bldg|block|gate|tower|zone)\s*[:/-]?\s*([PNMQ])|([PNMQ])\s*[:/-]?\s*(?:building|bldg|block|gate|tower|zone|level))\b",
         )
         bld_match = re.search(bld_pat, text, re.IGNORECASE)
         bld = None
@@ -565,12 +570,18 @@ class WhatsAppParser:
             if bare:
                 plate_no = ", ".join(b.strip() for b in bare)
 
+        # A short line with no plate ("Pls allow today" under someone else's request) is not a request
+        if plate_no == "N/A" and len(plain.split()) < 8:
+            return None
+
         # Car Make: e.g. "Car make :GMC", "Car make: Mitsubishi Pajero", "Car make :Tesla (white )"
         make_m = re.search(r"car\s*make\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9\s()\-./]*?)(?=\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
         car_make = re.sub(r"\s+\)", ")", make_m.group(1).strip()) if make_m else "N/A"
 
         # Validity: e.g. "only for 3 days from today 13/10/2026 until 15/10/2026", "only for today", "only today"
-        valid_m = re.search(r"(only\s+for\s+\d+\s+days[^\n\.]*|only\s+for\s+today[^\n\.]*|only\s+today[^\n\.]*|today\s+only[^\n\.]*|from\s+\d+/\d+/\d+\s+until\s+\d+/\d+/\d+)", plain, re.IGNORECASE)
+        valid_m = re.search(r"(only\s+for\s+\d+\s+days?[^\n\.]*|only\s+for\s+today[^\n\.]*|only\s+today[^\n\.]*|today\s+only[^\n\.]*"
+                            r"|from\s+\d+/\d+/\d+\s+until\s+\d+/\d+/\d+|for\s+tomorrow[^\n]*?(?=\.|\n|$)"
+                            r"|for\s+\d{1,2}/\d{1,2}/\d{2,4}(?:\s+only[^\n\.]*)?|whenever\s+the\s+staff\s+arrives)", plain, re.IGNORECASE)
         if valid_m:
             validity = valid_m.group(1).strip().rstrip(".").strip()
         elif "permanent" in t_low:
