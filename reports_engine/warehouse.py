@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .config_loader import BASE_DIR
-from .date_utils import DUBAI_TZ, now_dubai
+from .date_utils import now_dubai
 
 RULES_FILE = BASE_DIR / "config" / "meydan_rules.yaml"
 

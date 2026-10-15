@@ -61,53 +61,53 @@ def generate_data_quality(manager: ReportsManager) -> Dict[str, Any]:
 
     warnings: List[str] = []
     if silent_days:
-        warnings.append(f"أيام بدون أي رسالة ({len(silent_days)}) — غالباً البوت كان مفصول عن الواتساب")
+        warnings.append(f"Days with no messages at all ({len(silent_days)}) — the bot was probably disconnected from WhatsApp")
     if unparsed_dates:
-        warnings.append(f"{unparsed_dates} رسالة تاريخها ما انقرى — مش ظاهرة في أي تقرير")
+        warnings.append(f"{unparsed_dates} message(s) with an unreadable date — they appear in no report")
     if reply_info_reliable and ls["replies_proximity"] > ls["replies_quoted"]:
-        warnings.append("ربط الردود بالتخمين (قرب الوقت) أكتر من الربط بالـ Reply — احتمال إغلاق غلط")
+        warnings.append("More replies were linked by inference than by WhatsApp Reply — some closures may be wrong")
     if ls["tickets"] and ls["tickets_without_building"] / ls["tickets"] > 0.2:
-        warnings.append("أكتر من 20% من التذاكر بدون مبنى")
+        warnings.append("More than 20% of tickets have no building")
     if no_plate:
-        warnings.append(f"{no_plate} طلب تصريح بدون رقم لوحة")
+        warnings.append(f"{no_plate} permission request(s) without a plate number")
 
     ok, warn = "✅", "⚠️"
     lines = [
-        "🩺 *تقرير جودة الداتا — آخر 7 أيام*",
+        "🩺 *Data Quality Report — Last 7 Days*",
         f"📅 {start.astimezone(DUBAI_TZ).strftime('%d-%m-%Y')} → {end.astimezone(DUBAI_TZ).strftime('%d-%m-%Y')}",
         "",
-        f"📥 *الرسائل:* {len(period)}",
+        f"📥 *Messages:* {len(period)}",
     ]
     lines += [f"   • {name}: {count}" for name, count in per_group.items()]
     lines += [
-        f"{warn if silent_days else ok} أيام بدون رسائل: {', '.join(silent_days) if silent_days else 'لا يوجد'}",
-        f"{warn if unparsed_dates else ok} تواريخ ما انقرتش: {unparsed_dates}",
+        f"{warn if silent_days else ok} Days without messages: {', '.join(silent_days) if silent_days else 'none'}",
+        f"{warn if unparsed_dates else ok} Unreadable dates: {unparsed_dates}",
         "",
-        "↩️ *استخدام الـ Reply في الواتساب*",
-        (f"   • {with_reply} من {len(captured)} رسالة ({_pct(with_reply, len(captured))})"
-         + (f" — البوت سجّل معلومة الرد لـ {len(captured)} من {len(period)} رسالة بس" if len(captured) < len(period) else "")
-         if captured else "   • البوت لسه ما سجّلش معلومة الرد لأي رسالة في الفترة دي"),
+        "↩️ *WhatsApp Reply usage*",
+        (f"   • {with_reply} of {len(captured)} messages ({_pct(with_reply, len(captured))})"
+         + (f" — reply info was recorded for only {len(captured)} of {len(period)} messages" if len(captured) < len(period) else "")
+         if captured else "   • No reply info recorded for any message in this period yet"),
         "",
-        "🔗 *ربط ردود الإغلاق بالتذاكر (صيانة + حريق)*",
-        f"   • بالـ Reply: {ls['replies_quoted']} ({_pct(ls['replies_quoted'], linked_total)})",
-        f"   • بالتخمين (قرب الوقت): {ls['replies_proximity']} ({_pct(ls['replies_proximity'], linked_total)})",
-        f"   • ما اتربطتش: {ls['replies_unlinked']} ({_pct(ls['replies_unlinked'], linked_total)})",
+        "🔗 *Closing replies linked to tickets (maintenance + fire)*",
+        f"   • By WhatsApp Reply: {ls['replies_quoted']} ({_pct(ls['replies_quoted'], linked_total)})",
+        f"   • By inference (time / shared word): {ls['replies_proximity']} ({_pct(ls['replies_proximity'], linked_total)})",
+        f"   • Not linked: {ls['replies_unlinked']} ({_pct(ls['replies_unlinked'], linked_total)})",
     ]
     if not reply_info_reliable:
-        lines.append("   ℹ️ معلومة الـ Reply ما اتسجلتش لأغلب رسائل الفترة، فمقارنة Reply مقابل التخمين مش دقيقة لسه")
+        lines.append("   ℹ️ Reply info is missing for most messages in this period, so Reply vs inference is not reliable yet")
     lines += [
         "",
-        "🏢 *التذاكر*",
-        f"{warn if ls['tickets'] and ls['tickets_without_building'] / ls['tickets'] > 0.2 else ok} بدون مبنى: "
-        f"{ls['tickets_without_building']} من {ls['tickets']} ({_pct(ls['tickets_without_building'], ls['tickets'])})",
+        "🏢 *Tickets*",
+        f"{warn if ls['tickets'] and ls['tickets_without_building'] / ls['tickets'] > 0.2 else ok} Without building: "
+        f"{ls['tickets_without_building']} of {ls['tickets']} ({_pct(ls['tickets_without_building'], ls['tickets'])})",
         "",
-        "🚗 *طلبات التصاريح*",
-        f"{warn if no_plate else ok} بدون رقم لوحة: {no_plate} من {len(perms)}",
-        f"   • بدون نوع العربية: {no_make} من {len(perms)}",
+        "🚗 *Permission requests*",
+        f"{warn if no_plate else ok} Without plate number: {no_plate} of {len(perms)}",
+        f"   • Without car make: {no_make} of {len(perms)}",
         "",
         "━━━━━━━━━━",
     ]
-    lines += [f"⚠️ {w}" for w in warnings] if warnings else ["✅ مفيش مشاكل في جودة الداتا الأسبوع ده"]
+    lines += [f"⚠️ {w}" for w in warnings] if warnings else ["✅ No data-quality problems this week"]
 
     return {
         "text": "\n".join(lines),

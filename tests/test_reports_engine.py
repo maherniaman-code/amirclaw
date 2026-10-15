@@ -5,9 +5,8 @@ import tempfile
 import openpyxl
 import unittest
 from unittest import mock
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from reports_engine.date_utils import (
     DUBAI_TZ,
@@ -19,20 +18,16 @@ from reports_engine.date_utils import (
 from reports_engine import tickets_db
 from live_data import requires_live_data
 from reports_engine.config_loader import get_config
-from reports_engine import manager as manager_mod
 from reports_engine.manager import ReportsManager, _keyword_at_word_start, _is_completion, _find_activity_to_complete, classify_operations_message, _vendor_from_recent_activity, _is_exact_closure, find_open_ticket_by_shared_word, is_closure_text
 from reports_engine.repair_tickets import repair_tickets
 from reports_engine.email_reader import parse_parking_email_body
 from reports_engine.sender_resolver import SenderResolver
-from reports_engine.deduplicator import deduplicate_events, calculate_similarity
+from reports_engine.deduplicator import deduplicate_events
 from reports_engine.whatsapp_parser import WhatsAppParser
 from reports_engine.report_generators import (
     generate_parking_report_text,
     generate_maintenance_report_text,
     generate_fire_safety_report_text,
-    generate_operations_report_text,
-    generate_parking_violations_report_text,
-    generate_vehicle_permissions_report_text,
 )
 
 
@@ -751,7 +746,7 @@ class TestManualCorrectionsAndOwnerKpis(unittest.TestCase):
     def test_owner_kpis_sections(self):
         from reports_engine.owner_kpis import generate_owner_kpis
         text = generate_owner_kpis(ReportsManager())["text"]
-        for section in ("الصيانة", "الحريق والسلامة", "العمليات", "مخالفات المواقف", "تصاريح المركبات", "SLA"):
+        for section in ("Maintenance", "Fire & Safety", "Operations", "Parking Violations", "Vehicle Permissions", "SLA"):
             self.assertIn(section, text)
 
 
@@ -838,7 +833,7 @@ class TestOwnerDigestAndOverdue(unittest.TestCase):
     def test_morning_digest_sections(self):
         from reports_engine.owner_digest import generate_morning_digest
         text = generate_morning_digest(ReportsManager(), now=datetime(2026, 10, 14, 8, 0, tzinfo=DUBAI_TZ))["text"]
-        for part in ("ملخص الصباح", "الصيانة", "الحريق والسلامة", "مخالفات المواقف", "تصاريح اليوم", "مفتوحة الآن"):
+        for part in ("Morning Digest", "Maintenance", "Fire & Safety", "Parking violations", "Permissions today", "Open now"):
             self.assertIn(part, text)
 
 
@@ -883,6 +878,104 @@ class TestPrivacyAndMasterData(unittest.TestCase):
         self.assertIsNone(master_data.building_from_aliases("Lobby light not working"))
         bld, _, heading = WhatsAppParser().extract_building_and_floor("Light not working at q-blk 2nd floor")
         self.assertEqual((bld, heading), ("Q", "Building Q"))
+
+
+class TestCleaningReportAndParkingRamp(unittest.TestCase):
+    """Reports with no real data yet: cleaning group and the Ramp / Service Road occupancy post."""
+
+    def _run(self, fn, msgs, **kw):
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), \
+                tempfile.TemporaryDirectory() as tmp, mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)), \
+                mock.patch("reports_engine.manager.fetch_parking_email_from_imap", return_value=(None, "email missing or unavailable")):
+            return getattr(m, fn)(**kw)
+
+    def test_cleaning_tasks_priority_routine_and_quoted_closure(self):
+        g = "cleaning matters at meydan"
+        msgs = [
+            _wa_msg("C1", 15, 8, 0, 0, g, "Guard", "N building lobby floor is dirty near the main door please clean"),
+            _wa_msg("C2", 15, 8, 30, 0, g, "Guard", "Urgent clean needed, vomit in Q building 2nd floor male washroom"),
+            _wa_msg("C3", 15, 9, 0, 0, g, "Guard", "Rose garden team watering the plants at GSU room entrance area"),
+            _wa_msg("C4", 15, 9, 10, 0, g, "Cleaner", "ok"),
+            _wa_msg("C5", 15, 9, 20, 0, g, "Cleaner", "Cleaned", quoted="C1"),
+        ]
+        res = self._run("generate_cleaning", msgs, target_date="15-10-2026")
+        text = res["text"]
+        self.assertIn("Full Day (15-10-2026)", text)
+        self.assertEqual(res["total"], 2)            # watering is a routine visit, "ok" is noise
+        self.assertEqual(res["completed"], 1)        # C1 closed by the quoted "Cleaned"
+        vomit = text[text.index("vomit"):]
+        self.assertIn("🔴 High priority", vomit.split("\n\n")[0])   # urgent task is flagged
+        self.assertNotIn("🔴", text[text.index("lobby floor"):].split("\n\n")[0])
+        self.assertIn("• High priority: 1", text)
+        lobby = text[text.index("lobby floor"):].split("\n\n")[0]
+        self.assertIn("✅ Done", lobby)
+
+    def test_cleaning_unquoted_closure_closes_a_task_instead_of_opening_one(self):
+        g = "cleaning matters at meydan"
+        msgs = [
+            _wa_msg("C1", 15, 8, 0, 0, g, "Guard", "M building pantry 3rd floor has a big spill on the floor please clean"),
+            _wa_msg("C2", 15, 8, 25, 0, g, "Cleaner", "Pantry spill cleaned"),
+        ]
+        res = self._run("generate_cleaning", msgs, target_date="15-10-2026")
+        self.assertEqual((res["total"], res["completed"]), (1, 1))
+
+    def test_cleaning_negated_closure_is_a_new_task(self):
+        g = "cleaning matters at meydan"
+        msgs = [_wa_msg("C1", 15, 10, 0, 0, g, "Guard", "Q building ground floor washroom still not cleaned, please send cleaner")]
+        res = self._run("generate_cleaning", msgs, target_date="15-10-2026")
+        self.assertEqual((res["total"], res["completed"]), (1, 0))
+
+    def test_parking_ramp_and_service_road_section(self):
+        g = "Multistory Parking Building Meydan"
+        post = ("Parking Occupancy\nCustomer and visitor cars: 12\nP.O.D Cars: 3\nStaff Cars: 40\n"
+                "Total cars Entered at ramp area: 55\nTotal cars parked at ramp Area: 50\n"
+                "Total Slot Service Road: 127\nTotal Car Entered Service Road: 20\n"
+                "Total Car parked at service road: 18\nPartially Blocked Parking: 2")
+        msgs = [_wa_msg("R1", 15, 9, 55, 0, g, "Guard", post)]
+        text = self._run("generate_parking", msgs, slot_request="10:00", report_date="15-10-2026")["text"]
+        for line in ("• Customer and Visitors: 12", "• P.O.D: 3", "• Staff: 40", "• Total car Entered : 55",
+                     "• Total Car Parking at Ramp Area: 50", "• Cars entered: 20", "• Total Occupied Slots : 18",
+                     "• Partially Blocked Parking : 2"):
+            self.assertIn(line, text)
+
+    REAL_OCCUPANCY = ("*Parking Occupany Report*\nDate : 12-10-2026 Time 11:30 AM\nPodium Parking Total Slots :127 "
+                      "Customer and visitor cars : 87 P.o.d Cars : 05 Staff Cars  : 118 Total cars Entered at ramp area  : 210 "
+                      "Total cars parked at ramp Area  :158 Total Slot Service Road  : 120 Total Car Entered Service Road:  131 "
+                      "Total Car parked at service road  : 117 Partially Blocked Parking.      :04")
+
+    def test_parking_real_occupancy_post_from_parking_team_group(self):
+        """The team's real post (heading typo "Occupany", one line) in Parking Team at Meydan."""
+        msgs = [_wa_msg("R1", 12, 11, 34, 0, "Parking Team at Meydan", "Guard", self.REAL_OCCUPANCY)]
+        res = self._run("generate_parking", msgs, slot_request="12:00", report_date="12-10-2026")
+        text = res["text"]
+        for line in ("• Customer and Visitors: 87", "• P.O.D: 5", "• Staff: 118", "• Total car Entered : 210",
+                     "• Total Car Parking at Ramp Area: 158", "• Cars entered: 131", "• Total Occupied Slots : 117",
+                     "• Partially Blocked Parking : 4"):
+            self.assertIn(line, text)
+
+    def test_occupancy_total_entered_defaults_to_sum_of_the_three(self):
+        from reports_engine.whatsapp_parser import WhatsAppParser
+        p = WhatsAppParser.__new__(WhatsAppParser)
+        r = p.parse_ramp_service_road("Parking Occupancy Report\nCustomer and visitor cars : 87\nP.o.d Cars : 05\n"
+                                      "Staff Cars : 118\nTotal cars parked at ramp Area : 158")
+        self.assertEqual(r["total_cars_entered_ramp"], 210)
+        self.assertIsNone(p.parse_ramp_service_road("Kindly allow this vehicle in the podium only for today"))
+        self.assertIsNone(p.parse_ramp_service_road("N building ramp area light not working"))
+
+    def test_rumble_both_real_formats(self):
+        from reports_engine.whatsapp_parser import WhatsAppParser
+        p = WhatsAppParser.__new__(WhatsAppParser)
+        old = p.parse_rumble_area("Date 13th October 2026\nRumble area location \nTime09:30AM \n"
+                                  "Total car's parking at Rumble area now are 209 car's \nBus 🚌  00 car")
+        new = p.parse_rumble_area("Date15-10-2026 \nRumble area location \nTime09:30AM\n"
+                                  "Total cars parking at Rumble area now are 243cars\nBus 🚌 00car")
+        self.assertEqual((old["total_cars"], old["bus"]), (209, 0))
+        self.assertEqual((new["total_cars"], new["bus"]), (243, 0))
+
+    def test_parking_ramp_missing_shows_na(self):
+        text = self._run("generate_parking", [], slot_request="10:00", report_date="15-10-2026")["text"]
+        self.assertIn("• Customer and Visitors: N/A", text)
 
 
 class TestSlaHiddenFromReports(unittest.TestCase):
@@ -996,5 +1089,5 @@ class TestDataQualityReport(unittest.TestCase):
     def test_reply_warning_needs_recorded_reply_info(self):
         m = self.res["metrics"]
         if m["messages"] and m["reply_captured"] / m["messages"] < 0.8:
-            self.assertNotIn("أكتر من الربط بالـ Reply", self.res["text"])
-            self.assertIn("مش دقيقة لسه", self.res["text"])
+            self.assertNotIn("More replies were linked by inference", self.res["text"])
+            self.assertIn("not reliable yet", self.res["text"])

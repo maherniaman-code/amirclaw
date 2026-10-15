@@ -21,29 +21,29 @@ function getDubaiDateStr(daysAgo = 0): string {
 function datePicker(reportType: string, _label: string): InlineKeyboard {
     const p = RPT_CB_PREFIX;
     return new InlineKeyboard()
-        .text('📅 اليوم',       `${p}:${reportType}:today`)
-        .text('📅 أمس',         `${p}:${reportType}:yesterday`)
+        .text('📅 Today',       `${p}:${reportType}:today`)
+        .text('📅 Yesterday',         `${p}:${reportType}:yesterday`)
         .row()
-        .text('📆 آخر أسبوع',   `${p}:${reportType}:week`)
-        .text('🗓️ الشهر',       `${p}:${reportType}:month`);
+        .text('📆 Last 7 days',   `${p}:${reportType}:week`)
+        .text('🗓️ This month',       `${p}:${reportType}:month`);
 }
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
-    maintenance:    '🔧 الصيانة',
-    fire_safety:    '🧯 الحريق والسلامة',
-    operations:     '🏢 العمليات',
-    violations:     '🚫 مخالفات المواقف',
-    permissions:    '📋 تصاريح المركبات',
-    cleaning:       '🧹 النظافة',
-    parking:        '🅿️ المواقف',
-    parking_latest: '🅿️ المواقف (آخر فترة)',
-    parking_1000:   '🅿️ المواقف 10:00',
-    parking_1200:   '🅿️ المواقف 12:00',
-    parking_1400:   '🅿️ المواقف 14:00',
-    parking_today:  '📅 مواقف اليوم',
-    parking_prev:   '⏮️ الفترة السابقة',
-    parking_excel:  '📥 إكسل المواقف',
-    parking_review: '🔍 مراجعة البيانات',
+    maintenance:    '🔧 Maintenance',
+    fire_safety:    '🧯 Fire & Safety',
+    operations:     '🏢 Operations',
+    violations:     '🚫 Parking Violations',
+    permissions:    '📋 Vehicle Permissions',
+    cleaning:       '🧹 Cleaning',
+    parking:        '🅿️ Parking',
+    parking_latest: '🅿️ Parking (latest)',
+    parking_1000:   '🅿️ Parking 10:00',
+    parking_1200:   '🅿️ Parking 12:00',
+    parking_1400:   '🅿️ Parking 14:00',
+    parking_today:  '📅 Parking today',
+    parking_prev:   '⏮️ Previous period',
+    parking_excel:  '📥 Parking Excel',
+    parking_review: '🔍 Data review',
 };
 
 export const REPORT_BUTTONS = {
@@ -147,7 +147,7 @@ async function replyReportTextAndExcel(ctx: any, text: string, excelPath?: strin
             });
         } catch (docErr: any) {
             console.error('Failed to send Excel document:', docErr.message);
-            await ctx.reply('⚠️ Excel تم إنشاؤه لكن فشل إرساله (ربما حجمه كبير).').catch(() => {});
+            await ctx.reply('⚠️ The Excel file was created but could not be sent (it may be too large).').catch(() => {});
         }
     }
 }
@@ -170,7 +170,7 @@ export async function sendWhatsAppExcel(ctx: any): Promise<void> {
     const sizeKB = (stats.size / 1024).toFixed(1);
 
     await ctx.replyWithDocument(new InputFile(filePath, 'whatsapp_messages.xlsx'), {
-        caption: `📊 ملف إكسل رسائل الواتساب\nالحجم: ${sizeKB} KB\nآخر تحديث: ${stats.mtime.toLocaleString('ar-EG', { timeZone: config.timeZone })}`,
+        caption: `📊 WhatsApp messages Excel\nSize: ${sizeKB} KB\nLast updated: ${stats.mtime.toLocaleString('en-GB', { timeZone: config.timeZone })}`,
     });
 }
 
@@ -204,20 +204,20 @@ export function buildCorrectionKeyboard(engine: string, items: { no: number; id:
 export function buildOverdueMessage(items: OverdueTicket[]): { text: string; keyboard: InlineKeyboard } {
     const shown = items.slice(0, MAX_CORRECTION_ROWS);
     const kb = new InlineKeyboard();
-    const lines = ['⏰ تذاكر مفتوحة أكثر من 48 ساعة:', ''];
+    const lines = ['⏰ Tickets open for more than 48 hours:', ''];
     shown.forEach((it, i) => {
         const n = i + 1;
         const r = COR_REPORTS[it.report];
         const icon = it.report === 'fire_safety' ? '🧯' : '🔧';
         const days = (it.hours_open / 24).toFixed(1);
-        lines.push(`#${n} ${icon} ${it.building ? `مبنى ${it.building} — ` : ''}${days} يوم — ${it.reported}`);
+        lines.push(`#${n} ${icon} ${it.building ? `Building ${it.building} — ` : ''}${days} days — ${it.reported}`);
         lines.push(`   ${it.text}`);
-        kb.text(`#${n} ✅ اتصلحت`, `${COR_CB_PREFIX}:${r.code}:d:${it.id}`)
-            .text(`#${n} ❌ ليست تذكرة`, `${COR_CB_PREFIX}:${r.code}:x:${it.id}`)
+        kb.text(`#${n} ✅ Fixed`, `${COR_CB_PREFIX}:${r.code}:d:${it.id}`)
+            .text(`#${n} ❌ Not a ticket`, `${COR_CB_PREFIX}:${r.code}:x:${it.id}`)
             .row();
     });
-    if (items.length > shown.length) lines.push('', `و${items.length - shown.length} تذكرة أخرى في تقرير الصيانة.`);
-    lines.push('', 'اضغط ✅ إذا اتصلحت فعلاً، أو ❌ إذا لم تكن عطلاً. لن أذكّرك بنفس التذكرة مرة ثانية.');
+    if (items.length > shown.length) lines.push('', `+${items.length - shown.length} more in the next reminder.`);
+    lines.push('', 'Press ✅ if it is actually fixed, or ❌ if it was not a fault. Each ticket is reminded only once.');
     return { text: lines.join('\n'), keyboard: kb };
 }
 
@@ -225,9 +225,9 @@ async function sendCorrectionButtons(ctx: any, engine: string, items?: { no: num
     const kb = buildCorrectionKeyboard(engine, items || []);
     if (!kb) return;
     await ctx.reply(
-        '✏️ تصحيح سريع — رقم البند كما في التقرير:\n' +
-        '✅ تم إصلاحه   ↩️ ما زال مفتوح   ❌ ليس تذكرة   🔁 مكرر\n' +
-        'التصحيح يُحفظ ويظهر في كل التقارير القادمة.',
+        '✏️ Quick corrections — item numbers as in the report:\n' +
+        '✅ fixed   ↩️ still open   ❌ not a ticket   🔁 duplicate\n' +
+        'Corrections are saved and applied to every later report.',
         { reply_markup: kb },
     );
 }
@@ -241,25 +241,40 @@ export async function handleCorrectionCallback(ctx: any, data: string): Promise<
 
     const by = ctx.from?.username || ctx.from?.first_name || String(ctx.from?.id || 'telegram');
     let ok = false;
-    let msg = '';
+    let label = '';
     if (action === 'd') {
         ok = await saveCorrection(messageId, r.label, r.doneStatus, by, 'telegram: done');
-        msg = '✅ تم تسجيله كمُنجز';
+        label = 'marked fixed';
     } else if (action === 'p') {
         ok = await saveCorrection(messageId, r.label, r.openStatus, by, 'telegram: still open');
-        msg = '↩️ تم تسجيله كمفتوح';
+        label = 'marked still open';
     } else if (action === 'x') {
         ok = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: not a ticket');
-        msg = '❌ لن يظهر في التقارير';
+        label = 'removed (not a ticket)';
     } else if (action === 'u') {
         ok = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: duplicate');
-        msg = '🔁 حُذف كمكرر';
+        label = 'removed (duplicate)';
     } else {
         return false;
     }
     try {
-        await ctx.answerCallbackQuery({ text: ok ? `${msg} — أعد طلب التقرير لترى التحديث` : '❌ فشل حفظ التصحيح', show_alert: !ok });
+        await ctx.answerCallbackQuery({
+            text: ok ? `✔ Saved: ${label}. Request the report again to see it.` : '❌ Could not save the correction',
+            show_alert: !ok,
+        });
     } catch (_) {}
+    // Keep a visible record on the message itself: the pressed item's buttons become "✔ #n <label>"
+    if (ok) {
+        try {
+            const rows: any[][] = ctx.callbackQuery?.message?.reply_markup?.inline_keyboard || [];
+            const updated = rows.map((row) => {
+                if (!row.some((b: any) => b.callback_data === data)) return row;
+                const num = String(row[0]?.text || '').split(' ')[0];
+                return [{ text: `✔ ${num} ${label}`, callback_data: `${COR_CB_PREFIX}:noop` }];
+            });
+            if (rows.length) await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: updated } });
+        } catch (_) {}
+    }
     return true;
 }
 
@@ -281,96 +296,96 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
 
     // 2. Parking Report - Latest
     if (trimmed === REPORT_BUTTONS.parkingLatest || trimmed === '/parking') {
-        await ctx.reply('🅿️ اختر تاريخ تقرير المواقف (آخر فترة):', { reply_markup: datePicker('parking_latest', 'المواقف') });
+        await ctx.reply('🅿️ Parking report (latest) — choose a date:', { reply_markup: datePicker('parking_latest', 'Parking') });
         return true;
     }
 
     // 3. Parking 10:00
     if (trimmed === REPORT_BUTTONS.parking10) {
-        await ctx.reply('🅿️ اختر تاريخ تقرير المواقف — 10:00:', { reply_markup: datePicker('parking_1000', 'المواقف 10:00') });
+        await ctx.reply('🅿️ Parking report 10:00 — choose a date:', { reply_markup: datePicker('parking_1000', 'Parking 10:00') });
         return true;
     }
 
     // 4. Parking 12:00
     if (trimmed === REPORT_BUTTONS.parking12) {
-        await ctx.reply('🅿️ اختر تاريخ تقرير المواقف — 12:00:', { reply_markup: datePicker('parking_1200', 'المواقف 12:00') });
+        await ctx.reply('🅿️ Parking report 12:00 — choose a date:', { reply_markup: datePicker('parking_1200', 'Parking 12:00') });
         return true;
     }
 
     // 5. Parking 14:00
     if (trimmed === REPORT_BUTTONS.parking14) {
-        await ctx.reply('🅿️ اختر تاريخ تقرير المواقف — 14:00:', { reply_markup: datePicker('parking_1400', 'المواقف 14:00') });
+        await ctx.reply('🅿️ Parking report 14:00 — choose a date:', { reply_markup: datePicker('parking_1400', 'Parking 14:00') });
         return true;
     }
 
     // 6. Parking - Today
     if (trimmed === REPORT_BUTTONS.parkingToday) {
-        await ctx.reply('📅 اختر تاريخ تقرير مواقف اليوم:', { reply_markup: datePicker('parking_today', 'مواقف اليوم') });
+        await ctx.reply('📅 Parking today — choose a date:', { reply_markup: datePicker('parking_today', 'Parking today') });
         return true;
     }
 
     // 7. Parking - Previous Period
     if (trimmed === REPORT_BUTTONS.parkingPrev) {
-        await ctx.reply('⏮️ اختر تاريخ الفترة السابقة:', { reply_markup: datePicker('parking_prev', 'الفترة السابقة') });
+        await ctx.reply('⏮️ Previous parking period — choose a date:', { reply_markup: datePicker('parking_prev', 'Previous period') });
         return true;
     }
 
     // 8. Download Parking Excel
     if (trimmed === REPORT_BUTTONS.downloadParkingExcel) {
-        await ctx.reply('📥 اختر تاريخ لتحميل ملف الإكسل:', { reply_markup: datePicker('parking_excel', 'إكسل المواقف') });
+        await ctx.reply('📥 Parking Excel — choose a date:', { reply_markup: datePicker('parking_excel', 'Parking Excel') });
         return true;
     }
 
     // 9. Review Missing / Conflicting Data
     if (trimmed === REPORT_BUTTONS.reviewConflicts) {
-        await ctx.reply('🔍 اختر تاريخ مراجعة التعارضات:', { reply_markup: datePicker('parking_review', 'مراجعة البيانات') });
+        await ctx.reply('🔍 Data review — choose a date:', { reply_markup: datePicker('parking_review', 'Data review') });
         return true;
     }
 
     // 10. Correct Classification
     if (trimmed === REPORT_BUTTONS.correctClassification) {
         await ctx.reply(
-            '✏️ تصحيح التصنيف\n\n' +
-            'اطلب تقرير الصيانة أو الحريق أو العمليات من الأزرار. بعد التقرير تصلك رسالة فيها أزرار لكل بند:\n' +
-            '✅ تم إصلاحه   ↩️ ما زال مفتوح   ❌ ليس تذكرة   🔁 مكرر\n\n' +
-            'التصحيح يُحفظ ويُطبّق على كل التقارير القادمة.',
+            '✏️ Correct classification\n\n' +
+            'Request a Maintenance, Fire & Safety or Operations report from the buttons. After the report you get buttons for every item:\n' +
+            '✅ fixed   ↩️ still open   ❌ not a ticket   🔁 duplicate\n\n' +
+            'Corrections are saved and applied to every later report.',
         );
         return true;
     }
 
     // 11. Maintenance Report (Meydan FM)
     if (trimmed === REPORT_BUTTONS.maintenance || trimmed === '/maintenance') {
-        await ctx.reply('🔧 اختر تاريخ تقرير الصيانة:', { reply_markup: datePicker('maintenance', 'الصيانة') });
+        await ctx.reply('🔧 Maintenance report — choose a date:', { reply_markup: datePicker('maintenance', 'Maintenance') });
         return true;
     }
 
     // 12. Fire & Safety Report
     if (trimmed === REPORT_BUTTONS.fireSafety || trimmed === '/fire_safety') {
-        await ctx.reply('🧯 اختر تاريخ تقرير الحريق والسلامة:', { reply_markup: datePicker('fire_safety', 'الحريق') });
+        await ctx.reply('🧯 Fire & Safety report — choose a date:', { reply_markup: datePicker('fire_safety', 'Fire & Safety') });
         return true;
     }
 
     // 13. Operations Report
     if (trimmed === REPORT_BUTTONS.operations || trimmed === '/operations') {
-        await ctx.reply('🏢 اختر تاريخ تقرير العمليات:', { reply_markup: datePicker('operations', 'العمليات') });
+        await ctx.reply('🏢 Operations report — choose a date:', { reply_markup: datePicker('operations', 'Operations') });
         return true;
     }
 
     // 14. Parking Violations Report
     if (trimmed === REPORT_BUTTONS.violations || trimmed === '/violations') {
-        await ctx.reply('🚫 اختر تاريخ تقرير المخالفات:', { reply_markup: datePicker('violations', 'المخالفات') });
+        await ctx.reply('🚫 Parking violations — choose a date:', { reply_markup: datePicker('violations', 'Violations') });
         return true;
     }
 
     // 15. Vehicle Permissions Report
     if (trimmed === REPORT_BUTTONS.permissions || trimmed === '/permissions') {
-        await ctx.reply('📋 اختر تاريخ تقرير التصاريح:', { reply_markup: datePicker('permissions', 'التصاريح') });
+        await ctx.reply('📋 Vehicle permissions — choose a date:', { reply_markup: datePicker('permissions', 'Permissions') });
         return true;
     }
 
     // 16. Cleaning Report
     if (trimmed === REPORT_BUTTONS.cleaning || trimmed === '/cleaning') {
-        await ctx.reply('🧹 اختر تاريخ تقرير النظافة:', { reply_markup: datePicker('cleaning', 'النظافة') });
+        await ctx.reply('🧹 Cleaning report — choose a date:', { reply_markup: datePicker('cleaning', 'Cleaning') });
         return true;
     }
 
@@ -379,18 +394,18 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
         if (res.success && res.text) {
             await replyReportTextAndExcel(ctx, res.text);
         } else {
-            await ctx.reply(`❌ فشل ملخص الصباح: ${res.error || 'خطأ غير معروف'}`);
+            await ctx.reply(`❌ Morning digest failed: ${res.error || 'unknown error'}`);
         }
         return true;
     }
 
     if (trimmed === REPORT_BUTTONS.dashboard || trimmed === '/dashboard') {
-        await ctx.reply('📊 جاري تجهيز اللوحة...');
+        await ctx.reply('📊 Preparing the dashboard...');
         const res = await runReportEngine('dashboard');
         if (res.success && res.htmlPath && fs.existsSync(res.htmlPath)) {
             await ctx.replyWithDocument(new InputFile(res.htmlPath, path.basename(res.htmlPath)), { caption: res.text });
         } else {
-            await ctx.reply(`❌ فشل تجهيز اللوحة: ${res.error || 'خطأ غير معروف'}`);
+            await ctx.reply(`❌ Dashboard failed: ${res.error || 'unknown error'}`);
         }
         return true;
     }
@@ -398,9 +413,9 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
     if (trimmed === '/overdue') {
         const res = await runReportEngine('overdue');
         if (!res.success) {
-            await ctx.reply(`❌ فشل جلب التذاكر المتأخرة: ${res.error || 'خطأ غير معروف'}`);
+            await ctx.reply(`❌ Overdue list failed: ${res.error || 'unknown error'}`);
         } else if (!res.overdue?.length) {
-            await ctx.reply('✅ لا توجد تذاكر مفتوحة أكثر من 48 ساعة.');
+            await ctx.reply('✅ No tickets open for more than 48 hours.');
         } else {
             const { text, keyboard } = buildOverdueMessage(res.overdue);
             await ctx.reply(text, { reply_markup: keyboard });
@@ -409,12 +424,12 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
     }
 
     if (trimmed === REPORT_BUTTONS.ownerKpis || trimmed === '/kpis') {
-        await ctx.reply('📈 جاري تجهيز ملخص الأسبوع...');
+        await ctx.reply('📈 Preparing the weekly summary...');
         const res = await runReportEngine('owner_kpis');
         if (res.success && res.text) {
             await replyReportTextAndExcel(ctx, res.text);
         } else {
-            await ctx.reply(`❌ فشل ملخص الأسبوع: ${res.error || 'خطأ غير معروف'}`);
+            await ctx.reply(`❌ Weekly summary failed: ${res.error || 'unknown error'}`);
         }
         return true;
     }
@@ -425,12 +440,12 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
     }
 
     if (trimmed === REPORT_BUTTONS.dataQuality || trimmed === '/dataquality') {
-        await ctx.reply('🩺 جاري فحص جودة الداتا لآخر 7 أيام...');
+        await ctx.reply('🩺 Checking data quality for the last 7 days...');
         const res = await runReportEngine('data_quality');
         if (res.success && res.text) {
             await replyReportTextAndExcel(ctx, res.text);
         } else {
-            await ctx.reply(`❌ فشل تقرير جودة الداتا: ${res.error || 'خطأ غير معروف'}`);
+            await ctx.reply(`❌ Data-quality report failed: ${res.error || 'unknown error'}`);
         }
         return true;
     }
@@ -466,7 +481,7 @@ export async function handleReportCallback(ctx: any, data: string): Promise<bool
     if (!mapping) return false;
 
     const DATE_LABELS: Record<string, string> = {
-        today: 'اليوم', yesterday: 'أمس', week: 'آخر أسبوع', month: 'الشهر',
+        today: 'today', yesterday: 'yesterday', week: 'last 7 days', month: 'this month',
     };
     const dateLabel = DATE_LABELS[dateKey] ?? dateKey;
 
@@ -476,7 +491,7 @@ export async function handleReportCallback(ctx: any, data: string): Promise<bool
                : dateKey; // 'week' or 'month' passed verbatim
     const label = REPORT_TYPE_LABELS[reportKey] || REPORT_TYPE_LABELS[mapping.engine] || reportKey;
 
-    try { await ctx.answerCallbackQuery({ text: `⏳ جاري إنتاج تقرير ${label} — ${dateLabel}...` }); } catch (_) {}
+    try { await ctx.answerCallbackQuery({ text: `⏳ Generating ${label} — ${dateLabel}...` }); } catch (_) {}
 
     // Resolve dynamic slot for parking_prev
     let slot = mapping.slot;
@@ -506,10 +521,10 @@ export async function handleReportCallback(ctx: any, data: string): Promise<bool
                 });
             } catch (docErr: any) {
                 console.error('Failed to send parking Excel:', docErr.message);
-                await ctx.reply('⚠️ تعذّر إرسال ملف الإكسل (ربما حجمه كبير).').catch(() => {});
+                await ctx.reply('⚠️ Could not send the Excel file (it may be too large).').catch(() => {});
             }
         } else {
-            await ctx.reply('⚠️ لا يمكن إنشاء ملف الإكسل في الوقت الحالي.');
+            await ctx.reply('⚠️ The Excel file cannot be created right now.');
         }
         return true;
     }
@@ -517,11 +532,11 @@ export async function handleReportCallback(ctx: any, data: string): Promise<bool
     // Special handling: diagnostics review
     if (mapping.isReview) {
         const diagnostics = res.diagnostics || [];
-        let diagMsg = `🔍 *مراجعة البيانات — ${dateLabel}:*\n\n`;
+        let diagMsg = `🔍 *Data review — ${dateLabel}:*\n\n`;
         if (diagnostics.length === 0) {
-            diagMsg += '✅ جميع مصادر المواقف مكتملة ومتطابقة رياضياً بدون تعارضات.';
+            diagMsg += '✅ All parking sources are complete and consistent, no conflicts.';
         } else {
-            diagMsg += `⚠️ وُجد ${diagnostics.length} ملاحظة:\n\n`;
+            diagMsg += `⚠️ ${diagnostics.length} issue(s) found:\n\n`;
             diagnostics.forEach((d, idx) => { diagMsg += `• [${idx + 1}] ${d}\n`; });
         }
         try {
@@ -537,7 +552,7 @@ export async function handleReportCallback(ctx: any, data: string): Promise<bool
         await replyReportTextAndExcel(ctx, res.text, res.excelPath);
         await sendCorrectionButtons(ctx, mapping.engine, res.items);
     } else {
-        await ctx.reply(`❌ فشل إنتاج تقرير ${label}: ${res.error || 'خطأ غير معروف'}`);
+        await ctx.reply(`❌ Failed: ${res.error || 'unknown error'}`);
     }
     return true;
 }

@@ -74,17 +74,17 @@ def anomalies(metrics: Dict[str, float], history: Dict[str, List[float]], group_
     """Plain-language problems for the owner. Needs at least 3 earlier days for baselines."""
     out = []
     if metrics.get("unparsed_dates", 0) > 0:
-        out.append(f"{int(metrics['unparsed_dates'])} رسالة بتاريخ لم يُقرأ")
+        out.append(f"{int(metrics['unparsed_dates'])} message(s) with an unreadable date")
     for key, name in group_names.items():
         past = history.get(f"messages:{key}", [])
         if len(past) >= 3 and statistics.median(past) >= 5 and metrics.get(f"messages:{key}", 0) == 0:
-            out.append(f"جروب «{name}» صامت تماماً (المعتاد حوالي {statistics.median(past):.0f} رسالة يومياً)")
+            out.append(f"Group '{name}' was completely silent (usually about {statistics.median(past):.0f} messages a day)")
     replies = metrics.get("replies_quoted", 0) + metrics.get("replies_proximity", 0) + metrics.get("replies_unlinked", 0)
     past_share = history.get("unlinked_share", [])
     if replies >= 5 and metrics.get("unlinked_share", 0) > max(0.3, 2 * (statistics.median(past_share) if len(past_share) >= 3 else 0.15)):
-        out.append(f"{metrics['unlinked_share']:.0%} من ردود الصيانة/الحريق لم تُربط بتذكرة — ربما تغيّرت طريقة الكتابة")
+        out.append(f"{metrics['unlinked_share']:.0%} of maintenance/fire replies were not linked to a ticket — the writing style may have changed")
     if metrics.get("tickets", 0) >= 5 and metrics.get("no_building_share", 0) > 0.3:
-        out.append(f"{metrics['no_building_share']:.0%} من التذاكر بدون رقم مبنى")
+        out.append(f"{metrics['no_building_share']:.0%} of tickets have no building")
     return out
 
 
@@ -104,6 +104,6 @@ def generate_dq_daily(manager: ReportsManager, date: Optional[str] = None) -> Di
         manager.config.get("privacy", {}).get("hr_retention_days"),
         manager.config.get("exclude", {}).get("leave_markers", []),
     )
-    text = (f"🩺 مراقبة جودة البيانات — {date}\n" + "\n".join(f"⚠️ {p}" for p in problems)) if problems else \
-        f"✅ جودة البيانات ليوم {date} طبيعية ({int(metrics['messages_total'])} رسالة)"
+    text = (f"🩺 Data-quality check — {date}\n" + "\n".join(f"⚠️ {p}" for p in problems)) if problems else \
+        f"✅ Data quality for {date} is normal ({int(metrics['messages_total'])} messages)"
     return {"text": text, "total": int(metrics["messages_total"]), "anomalies": problems, "metrics": metrics}

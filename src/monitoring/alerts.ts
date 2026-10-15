@@ -76,22 +76,22 @@ export function startWhatsAppWatchdog(
             const st = getStatus();
             const now = Date.now();
             if (st.loggedOut) {
-                await alertOwner('wa-logged-out', 'واتساب خرج من الحساب (logged out). أرسل /whatsapp للبوت وامسح رمز QR من جديد، وإلا لن تُسجَّل أي رسائل.');
+                await alertOwner('wa-logged-out', 'WhatsApp is logged out. Send /whatsapp to the bot and scan the new QR code, otherwise no messages are captured.');
             } else if (st.status !== 'connected' && st.statusSince && now - st.statusSince > WA_DOWN_ALERT_MS) {
                 const mins = Math.round((now - st.statusSince) / 60_000);
-                await alertOwner('wa-down', `واتساب غير متصل منذ ${mins} دقيقة (الحالة: ${st.status}). الرسائل لا تُسجَّل والتقارير ستكون ناقصة.`);
+                await alertOwner('wa-down', `WhatsApp has been disconnected for ${mins} min (status: ${st.status}). Messages are not being captured, so reports will be incomplete.`);
                 downAlerted = true;
             } else if (st.status === 'connected' && downAlerted) {
                 downAlerted = false;
                 clearAlert('wa-down');
-                await alertOwner('wa-up', '✅ عاد اتصال واتساب.', { force: true });
+                await alertOwner('wa-up', '✅ WhatsApp is connected again.', { force: true });
             }
 
             if (st.status === 'connected') {
                 const latest = Math.max(0, ...lastGroupActivity.values());
                 if (shouldAlertSilence(latest, now, watchStartedAt, dubaiHour())) {
                     const hrs = Math.round((now - Math.max(latest, watchStartedAt)) / 3_600_000);
-                    await alertOwner('wa-silence', `لم تصل أي رسالة من جروبات واتساب منذ حوالي ${hrs} ساعات رغم أن الاتصال يبدو سليماً. تأكد أن الحساب ما زال في الجروبات.`);
+                    await alertOwner('wa-silence', `No WhatsApp group message for about ${hrs} h although the connection looks fine. Check the account is still in the groups.`);
                 }
             }
         } catch (err: any) {

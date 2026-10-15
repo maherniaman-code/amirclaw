@@ -1,7 +1,7 @@
 """Persistent ticket store for cross-shift SLA, trend detection, and resolved_by tracking."""
 import sqlite3
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
 from .config_loader import BASE_DIR
