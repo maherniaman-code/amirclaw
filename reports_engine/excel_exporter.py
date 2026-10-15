@@ -279,6 +279,7 @@ def generate_violations_excel(
     ws_review = wb.create_sheet("Needs Review & Unlinked")
     ws_review.append(["Item ID", "Type / Reason", "Message Text", "Sender", "Timestamp"])
     for r in unlinked_or_needs_review:
+        r = _review_row(r)
         ws_review.append([
             r.get("message_id", "N/A"),
             r.get("reason", "Unlinked reply"),
@@ -313,6 +314,47 @@ def generate_violations_excel(
     }
 
 
+def _review_row(r: Dict[str, Any]) -> Dict[str, Any]:
+    """Flatten deduplicator flags ({type, current_event/earlier_event | event_a/event_b}) into a review row."""
+    if "type" not in r:
+        return r
+    later = r.get("current_event") or r.get("event_b") or {}
+    earlier = r.get("earlier_event") or r.get("event_a") or {}
+    pct = f"{r['similarity']:.0%} similar" if isinstance(r.get("similarity"), (int, float)) else "similar"
+    when = format_report_timestamp(earlier.get("datetime") or earlier.get("raw_datetime"))
+    return {
+        "message_id": later.get("message_id", "N/A"),
+        "reason": f"{r['type']} ({pct} to {earlier.get('message_id', 'N/A')} at {when})",
+        "text": later.get("text", "N/A"),
+        "sender": later.get("sender", "N/A"),
+        "datetime": later.get("datetime"),
+        "raw_datetime": later.get("raw_datetime"),
+    }
+
+
+def _embed_row_thumbnails(ws, events: List[Dict[str, Any]], col_letter: str, first_row: int, max_px: int = 80) -> None:
+    """Small inline preview of each event's first photo (WhatsApp thumbnails are already compressed)."""
+    from openpyxl.drawing.image import Image as OpenpyxlImage
+    has_any = False
+    for offset, ev in enumerate(events):
+        photos = ev.get("photos_data") or []
+        raw = photos[0].get("bytes") if photos else None
+        if not raw:
+            continue
+        try:
+            img = OpenpyxlImage(io.BytesIO(raw))
+            scale = min(1.0, max_px / max(img.width, img.height))
+            img.width, img.height = int(img.width * scale), int(img.height * scale)
+            row = first_row + offset
+            ws.add_image(img, f"{col_letter}{row}")
+            ws.row_dimensions[row].height = max(ws.row_dimensions[row].height or 15, img.height * 0.75 + 6)
+            has_any = True
+        except Exception:
+            continue
+    if has_any:
+        ws.column_dimensions[col_letter].width = max_px / 7 + 2
+
+
 def generate_generic_report_excel(
     report_title: str,
     report_text: str,
@@ -333,7 +375,7 @@ def generate_generic_report_excel(
     ws_events = wb.create_sheet("Events & Details")
     ws_events.append([
         "Event #", "Location / Heading", "Description", "Status",
-        "Sender", "Timestamp", "Source Message IDs", "Quoted Message ID", "Photo Available"
+        "Sender", "Timestamp", "Source Message IDs", "Quoted Message ID", "Photo Available", "Photo"
     ])
     for idx, ev in enumerate(events, 1):
         ws_events.append([
@@ -346,13 +388,16 @@ def generate_generic_report_excel(
             ", ".join(ev.get("source_message_ids", [])),
             ev.get("quoted_message_id", "") or "None",
             "Yes" if (ev.get("photos") or ev.get("photos_data")) else "No",
+            "",  # thumbnail drawn below
         ])
     apply_table_styling(ws_events)
+    _embed_row_thumbnails(ws_events, events, col_letter="J", first_row=2)
 
     # 3. Needs Review / Unlinked
     ws_review = wb.create_sheet("Needs Review & Unlinked")
     ws_review.append(["Item ID", "Type / Reason", "Message Text", "Sender", "Timestamp"])
     for r in unlinked_or_needs_review:
+        r = _review_row(r)
         ws_review.append([
             r.get("message_id", "N/A"),
             r.get("reason", "Unlinked reply"),

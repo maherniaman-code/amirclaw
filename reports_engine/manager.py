@@ -114,6 +114,9 @@ _LINK_STOPWORDS = {
     "building", "floor", "ground", "vendor", "vendors", "work", "team", "staff", "company",
     "with", "from", "that", "this", "there", "have", "will", "they", "their", "been", "were",
     "today", "near", "side", "inside", "outside", "done", "left", "completed", "complete", "finished",
+    # reply chatter that says nothing about which ticket it is
+    "please", "kindly", "follow", "update", "check", "asap", "thanks", "noted", "okay", "sir",
+    "replaced", "fixed", "working", "rectified", "resolved", "restored", "cleared",
 }
 
 
@@ -178,6 +181,30 @@ def _vendor_from_recent_activity(
             continue
         if 0 <= (ev_dt - e_dt).total_seconds() <= max_minutes * 60 and (best is None or e_dt > best["datetime"]):
             best = e
+    return best
+
+
+def _is_exact_closure(text: str, exact_closures: List[str]) -> bool:
+    """Whole-message closures like "Working" or "Ok now" (punctuation/emoji ignored)."""
+    norm = " ".join(re.sub(r"[^\w\s]", " ", text.lower()).split())
+    return norm in {e.lower() for e in exact_closures}
+
+
+def find_open_ticket_by_shared_word(
+    tickets: Dict[str, Dict[str, Any]], ev_dt: Optional[datetime], text: str, max_hours: int = 12
+) -> Optional[Dict[str, Any]]:
+    """Most recent open ticket within max_hours sharing a content word ("Light replaced" -> "...light not working")."""
+    words = _content_words(text.lower())
+    if not isinstance(ev_dt, datetime) or not words:
+        return None
+    best = None
+    for t in tickets.values():
+        t_dt = t.get("datetime")
+        if "done" in t.get("status", "").lower() or not isinstance(t_dt, datetime):
+            continue
+        if 0 < (ev_dt - t_dt).total_seconds() <= max_hours * 3600 and words & _content_words(t["text"].lower()):
+            if best is None or t_dt > best["datetime"]:
+                best = t
     return best
 
 
@@ -424,6 +451,45 @@ class ReportsManager:
         date = target_date or now.strftime("%d-%m-%Y")
         return f"{shift.title()} Shift ({date})"
 
+    def _link_reply(
+        self, tickets: Dict[str, Dict[str, Any]], ev: Dict[str, Any], quoted_id: str
+    ) -> Tuple[Optional[Dict[str, Any]], str]:
+        """Ticket a reply belongs to: quoted Reply, else shared word within hours, else latest open within minutes."""
+        target = find_ticket_by_id(tickets, quoted_id)
+        if target or quoted_id:
+            return target, "quoted"
+        target = find_open_ticket_by_shared_word(
+            tickets, ev.get("datetime"), ev["text"], self.config.get("reply_link_hours", 12)
+        )
+        if target:
+            return target, "similar"
+        target = find_nearest_open_ticket_by_proximity(
+            tickets, ev.get("datetime"), self.config.get("reply_link_minutes", 30)
+        )
+        return target, "proximity"
+
+    def _filter_to_period(
+        self, items: List[Dict[str, Any]], target_date: Optional[str]
+    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        """
+        For reports without shifts (violations, permissions, cleaning): no date keeps every item;
+        a date / "week" / "month" keeps only items reported in that period (date = full operational day).
+        """
+        if not target_date:
+            return items, None
+        date, shift = self._default_period(target_date, None)
+        start, end = self._resolve_date_range(date, shift)
+        kept = [i for i in items if isinstance(i.get("datetime"), datetime) and start <= i["datetime"] < end]
+        return kept, self._date_range_label(date, shift)
+
+    @staticmethod
+    def _with_period_line(report_text: str, label: Optional[str]) -> str:
+        """Insert "📅 Period: …" under the report title."""
+        if not label:
+            return report_text
+        title, _, rest = report_text.partition("\n")
+        return f"{title}\n\n📅 Period: {label}\n{rest}"
+
     @staticmethod
     def _default_period(target_date: Optional[str], target_shift: Optional[str]) -> Tuple[str, Optional[str]]:
         """
@@ -450,7 +516,7 @@ class ReportsManager:
     ) -> Dict[str, Any]:
         target_date, target_shift = self._default_period(target_date, target_shift)
 
-        all_msgs = self.parser.load_messages()
+        all_msgs = self.parser.load_messages(load_images=True)  # thumbnails for the Excel
         fm_grp = self.config.get("groups", {}).get("fm", "Meydan FM Team💪")
         fm_msgs = [m for m in all_msgs if m["group_name"] == fm_grp]
         grouped_events = self.parser.group_media_events(fm_msgs)
@@ -460,6 +526,7 @@ class ReportsManager:
         source_audit: List[Dict[str, Any]] = []
 
         closure_kws = self.config.get("closure", ["done", "resolved", "replaced", "rectified"])
+        closure_exact = self.config.get("closure_exact", [])
         progress_kws = self.config.get("in_progress", ["checking", "notified to", "will replace"])
         followup_kws = self.config.get("followup_not_ticket", ["follow up", "is it restored", "urgent action required", "daily issues"])
         fault_kws = self.config.get("fault", [
@@ -481,18 +548,14 @@ class ReportsManager:
                 continue
 
             # Check if this is a short reply / closure / follow-up / ack
-            is_closure = is_closure_text(t_low, closure_kws)
+            is_closure = is_closure_text(t_low, closure_kws) or _is_exact_closure(text, closure_exact)
             is_progress = any(p in t_low for p in progress_kws)
             is_ack = self.parser.is_non_operational(text)
             is_followup = any(f in t_low for f in followup_kws) or (not is_closure and any(re.search(rf"\b{re.escape(k.lower())}\b", t_low) for k in closure_kws))
             is_empty_or_image = text.strip() in ["(Image)", ""] or (len(text.strip()) <= 4 and not re.search(r"\w{3,}", text))
 
             if is_closure or is_progress or is_ack or is_followup or is_empty_or_image:
-                target_ticket = find_ticket_by_id(tickets, quoted_id)
-                link_method = "quoted"
-                if not target_ticket and not quoted_id:
-                    target_ticket = find_nearest_open_ticket_by_proximity(tickets, ev.get("datetime"))
-                    link_method = "proximity"
+                target_ticket, link_method = self._link_reply(tickets, ev, quoted_id)
                 if target_ticket:
                     if is_closure:
                         target_ticket["status"] = "Done"
@@ -563,6 +626,7 @@ class ReportsManager:
                 "sender": ev["sender"],
                 "group_name": fm_grp,
                 "photos": ev.get("photos", []),
+                "photos_data": ev.get("photos_data", []),
                 "quoted_message_id": quoted_id,
                 "source_message_ids": ev.get("source_message_ids", [msg_id]),
             }
@@ -668,7 +732,7 @@ class ReportsManager:
     ) -> Dict[str, Any]:
         target_date, target_shift = self._default_period(target_date, target_shift)
 
-        all_msgs = self.parser.load_messages()
+        all_msgs = self.parser.load_messages(load_images=True)  # thumbnails for the Excel
         fs_grp = self.config.get("groups", {}).get("fire_safety", "Fire & Safety Team Meydan")
         fs_msgs = [m for m in all_msgs if m["group_name"] == fs_grp]
         grouped_events = self.parser.group_media_events(fs_msgs)
@@ -678,6 +742,7 @@ class ReportsManager:
         source_audit: List[Dict[str, Any]] = []
 
         closure_kws = self.config.get("closure", ["done", "resolved", "replaced", "rectified"])
+        closure_exact = self.config.get("closure_exact", [])
         progress_kws = self.config.get("in_progress", ["checking", "notified to", "will replace"])
         followup_kws = self.config.get("followup_not_ticket", ["follow up", "is it restored", "urgent action required", "daily issues"])
 
@@ -691,7 +756,7 @@ class ReportsManager:
             if corr and corr.get("target_report") == "ignore":
                 continue
 
-            is_closure = is_closure_text(t_low, closure_kws)
+            is_closure = is_closure_text(t_low, closure_kws) or _is_exact_closure(text, closure_exact)
             is_progress = any(p in t_low for p in progress_kws)
             is_ack = self.parser.is_non_operational(text)
             is_followup = any(f in t_low for f in followup_kws) or (not is_closure and any(re.search(rf"\b{re.escape(k.lower())}\b", t_low) for k in closure_kws))
@@ -699,11 +764,7 @@ class ReportsManager:
             is_empty_or_image = text.strip() in ["(Image)", ""] or (len(text.strip()) <= 4 and not re.search(r"\w{3,}", text))
 
             if is_closure or is_progress or is_ack or is_followup or is_fyi or is_empty_or_image:
-                target_ticket = find_ticket_by_id(tickets, quoted_id)
-                link_method = "quoted"
-                if not target_ticket and not quoted_id:
-                    target_ticket = find_nearest_open_ticket_by_proximity(tickets, ev.get("datetime"))
-                    link_method = "proximity"
+                target_ticket, link_method = self._link_reply(tickets, ev, quoted_id)
                 if target_ticket:
                     if is_closure:
                         target_ticket["status"] = "Done"
@@ -763,6 +824,7 @@ class ReportsManager:
                 "sender": ev["sender"],
                 "group_name": fs_grp,
                 "photos": ev.get("photos", []),
+                "photos_data": ev.get("photos_data", []),
                 "quoted_message_id": quoted_id,
                 "source_message_ids": ev.get("source_message_ids", [msg_id]),
             }
@@ -1020,7 +1082,7 @@ class ReportsManager:
     # ─────────────────────────────────────────────────────────────
     # REPORT 5: PARKING VIOLATIONS (Multistory Parking Building Meydan)
     # ─────────────────────────────────────────────────────────────
-    def generate_parking_violations(self) -> Dict[str, Any]:
+    def generate_parking_violations(self, target_date: Optional[str] = None) -> Dict[str, Any]:
         all_msgs = self.parser.load_messages(load_images=True)
         ms_grp = self.config.get("groups", {}).get("parking_multistory", "Multistory Parking Building Meydan")
         ms_msgs = [m for m in all_msgs if m["group_name"] == ms_grp]
@@ -1080,6 +1142,7 @@ class ReportsManager:
 
         viol_list = list(violations.values())
         unique_violations, flagged_dups = deduplicate_events(viol_list)
+        unique_violations, period_label = self._filter_to_period(unique_violations, target_date)
 
         total = len(unique_violations)
         rectified = sum(1 for v in unique_violations if "rectified" in v["status"].lower())
@@ -1091,7 +1154,9 @@ class ReportsManager:
             "pending": pending,
         }
 
-        report_text = generate_parking_violations_report_text(unique_violations, summary_stats)
+        report_text = self._with_period_line(
+            generate_parking_violations_report_text(unique_violations, summary_stats), period_label
+        )
 
         thumb_cfg = self.config.get("violations_excel", {})
         excel_result = generate_violations_excel(
@@ -1130,7 +1195,7 @@ class ReportsManager:
     # ─────────────────────────────────────────────────────────────
     # REPORT 6: VEHICLE PERMISSIONS (Parking Team at Meydan)
     # ─────────────────────────────────────────────────────────────
-    def generate_vehicle_permissions(self) -> Dict[str, Any]:
+    def generate_vehicle_permissions(self, target_date: Optional[str] = None) -> Dict[str, Any]:
         all_msgs = self.parser.load_messages()
         pt_grp = self.config.get("groups", {}).get("parking_team", "Parking Team at Meydan")
         pt_msgs = [m for m in all_msgs if m["group_name"] == pt_grp]
@@ -1183,6 +1248,7 @@ class ReportsManager:
 
         perm_list = list(permissions.values())
         unique_perms, flagged_dups = deduplicate_events(perm_list)
+        unique_perms, period_label = self._filter_to_period(unique_perms, target_date)
 
         total = len(unique_perms)
         parked = sum(1 for p in unique_perms if "parked" in p["status"].lower())
@@ -1194,7 +1260,9 @@ class ReportsManager:
             "pending": pending,
         }
 
-        report_text = generate_vehicle_permissions_report_text(unique_perms, summary_stats)
+        report_text = self._with_period_line(
+            generate_vehicle_permissions_report_text(unique_perms, summary_stats), period_label
+        )
         excel_path = generate_generic_report_excel(
             report_title="Vehicle Permission Requests – Meydan",
             report_text=report_text,
@@ -1247,7 +1315,7 @@ class ReportsManager:
     # ─────────────────────────────────────────────────────────────
     # REPORT 7: CLEANING SUMMARY (cleaning matters at meydan)
     # ─────────────────────────────────────────────────────────────
-    def generate_cleaning(self) -> Dict[str, Any]:
+    def generate_cleaning(self, target_date: Optional[str] = None) -> Dict[str, Any]:
         """Report 7 — Cleaning Summary – Meydan (group: cleaning matters at meydan)."""
         all_msgs = self.parser.load_messages(load_images=False)
         grp_name = self.config.get("groups", {}).get("cleaning", "cleaning matters at meydan")
@@ -1366,8 +1434,8 @@ class ReportsManager:
         ticket_list.sort(key=lambda t: (0 if t.get("priority") == "high" else 1))
         unique_tickets, flagged_dups = deduplicate_events(ticket_list)
 
-        now_dt = datetime.now(tz=DUBAI_TZ)
-        shift_label = self._get_shift_label(now_dt)
+        unique_tickets, period_label = self._filter_to_period(unique_tickets, target_date)
+        shift_label = period_label or self._get_shift_label(datetime.now(tz=DUBAI_TZ))
 
         total = len(unique_tickets)
         completed = sum(1 for t in unique_tickets if "done" in t["status"].lower())

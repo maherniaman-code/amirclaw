@@ -60,8 +60,15 @@ class TestGoldenReportsSuite(unittest.TestCase):
 
         # 12-10 07:54 AC ticket is closed by the unquoted "Resolved" reply at 07:58 (proximity link),
         # so it is not carried over; its recurrence on 13-10 is flagged as a repeat instead.
-        self.assertIn("• Completed: 0 of 10", text)
-        self.assertIn("• Open: 10", text)
+        # 12-10 Fire Exit Signage light is closed by "Light replaced" (10:59, shared word "light").
+        # 13-10 07:52 AC ticket is closed by Shrikant's "Done" at 08:25 (33 min, reply_link_minutes=60).
+        # "Speed Gate is out of service" (10:52) is a ticket now that "out of service" is a fault word.
+        self.assertIn("Q building first floor Speed Gate is out of service", text)
+        self.assertIn("✅ Done — Shrikant Yadav", text)
+        self.assertNotIn("Fire Exit Signage Light", text)
+        self.assertIn("P building ground floor inside service lift", text)  # "not working properly" stays a fault
+        self.assertIn("• Completed: 1 of 10", text)
+        self.assertIn("• Open: 9", text)
         self.assertIn("• Safety priority: 4 tickets", text)
 
     def test_report_3_fire_safety_day_shift_golden_output(self):

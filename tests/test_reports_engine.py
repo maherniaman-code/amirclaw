@@ -1,6 +1,8 @@
 """Comprehensive automated test suite for Meydan Reports Automation Engine."""
 
 import tempfile
+
+import openpyxl
 import unittest
 from unittest import mock
 from datetime import datetime, time, timedelta
@@ -17,7 +19,7 @@ from reports_engine.date_utils import (
 from reports_engine import tickets_db
 from reports_engine.config_loader import get_config
 from reports_engine import manager as manager_mod
-from reports_engine.manager import ReportsManager, _keyword_at_word_start, _is_completion, _find_activity_to_complete, classify_operations_message, _vendor_from_recent_activity
+from reports_engine.manager import ReportsManager, _keyword_at_word_start, _is_completion, _find_activity_to_complete, classify_operations_message, _vendor_from_recent_activity, _is_exact_closure, find_open_ticket_by_shared_word, is_closure_text
 from reports_engine.repair_tickets import repair_tickets
 from reports_engine.email_reader import parse_parking_email_body
 from reports_engine.sender_resolver import SenderResolver
@@ -520,6 +522,87 @@ class TestOperationsVendorInference(unittest.TestCase):
         self.assertIsNone(_vendor_from_recent_activity([inferred], t, 60))     # never chain inferences
         self.assertIsNone(_vendor_from_recent_activity([later], t, 60))        # only earlier messages
         self.assertIsNone(_vendor_from_recent_activity([self._ev("Z", 18, 8, "Al Zawaya", "named")], t, 0))
+
+
+class TestMaintenanceRepliesAndPhotos(unittest.TestCase):
+    def test_exact_closures_and_fault_wording(self):
+        exact = get_config()["closure_exact"]
+        for reply in ("Working", "Working.", "Ok now", "ok now 👍", "Fixed"):
+            self.assertTrue(_is_exact_closure(reply, exact), reply)
+        for text in ("Technician working on it", "lights not working properly need to check", "Ok"):
+            self.assertFalse(_is_exact_closure(text, exact), text)
+        # "working ..." phrases must stay out of the substring closure list (see meydan_rules.yaml)
+        self.assertFalse(is_closure_text("one of the lights not working properly", get_config()["closure"]))
+        self.assertFalse(any("working" in k for k in get_config()["closure"]))
+
+    def test_missing_fault_words_are_now_faults(self):
+        faults = get_config()["fault"]
+        for text in ("Q building first floor Speed Gate is out of service", "Lift stuck at 3rd floor",
+                     "Water leak in washroom", "Glass door broken at entrance"):
+            self.assertTrue(any(k in text.lower() for k in faults), text)
+
+    def test_reply_links_to_ticket_sharing_a_word(self):
+        d = lambda h, m: datetime(2026, 10, 12, h, m, tzinfo=DUBAI_TZ)
+        tickets = {
+            "T1": {"message_id": "T1", "status": "Pending", "datetime": d(8, 47), "text": "Pump room hanging light is not working"},
+            "T2": {"message_id": "T2", "status": "Pending", "datetime": d(9, 21), "text": "Fire exit signage light is not working"},
+            "T3": {"message_id": "T3", "status": "Pending", "datetime": d(9, 30), "text": "AC is not cold in control room"},
+            "T4": {"message_id": "T4", "status": "Done", "datetime": d(9, 40), "text": "Lobby light flickering"},
+        }
+        # Most recent OPEN ticket sharing "light"; the Done one is skipped
+        self.assertEqual(find_open_ticket_by_shared_word(tickets, d(10, 59), "Light replaced")["message_id"], "T2")
+        # Chatter words never link; too old -> no link
+        self.assertIsNone(find_open_ticket_by_shared_word(tickets, d(10, 59), "Follow up please"))
+        self.assertIsNone(find_open_ticket_by_shared_word(tickets, d(23, 59), "Light replaced"))
+
+    def test_excel_rows_get_inline_thumbnails(self):
+        import io as _io
+        from PIL import Image as PILImage
+        from reports_engine import excel_exporter
+        buf = _io.BytesIO()
+        PILImage.new("RGB", (221, 163), (200, 50, 50)).save(buf, format="JPEG")
+        events = [
+            {"text": "Speed gate out of service", "status": "Pending", "photos_data": [{"bytes": buf.getvalue()}]},
+            {"text": "Light not working", "status": "Pending", "photos_data": []},
+        ]
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(excel_exporter, "OUTPUT_DIR", Path(tmp)):
+            out = excel_exporter.generate_generic_report_excel(
+                report_title="t", report_text="t", events=events, unlinked_or_needs_review=[],
+                source_audit=[], filename_prefix="Test",
+            )
+            wb = openpyxl.load_workbook(out)
+            ws = wb["Events & Details"]
+            self.assertEqual(ws["J1"].value, "Photo")
+            self.assertEqual(len(ws._images), 1)  # only the event that has a photo
+            self.assertIn("Photos", wb.sheetnames)
+
+
+class TestUndatedReportsRespectChosenDate(unittest.TestCase):
+    """Violations / permissions / cleaning used to ignore the Telegram date and list everything."""
+
+    def setUp(self):
+        self.m = ReportsManager()
+        d = lambda day, h: datetime(2026, 10, day, h, 0, tzinfo=DUBAI_TZ)
+        self.items = [{"id": "13a", "datetime": d(13, 9)}, {"id": "14a", "datetime": d(14, 20)},
+                      {"id": "15early", "datetime": d(15, 3)}, {"id": "nodate", "datetime": None}]
+
+    def test_no_date_keeps_everything(self):
+        kept, label = self.m._filter_to_period(self.items, None)
+        self.assertEqual((len(kept), label), (4, None))
+
+    def test_date_keeps_only_that_operational_day(self):
+        kept, label = self.m._filter_to_period(self.items, "13-10-2026")
+        self.assertEqual([i["id"] for i in kept], ["13a"])
+        self.assertEqual(label, "Full Day (13-10-2026)")
+        # 03:00 on the 15th still belongs to the 14th's operational day (05:00 -> 05:00)
+        kept, _ = self.m._filter_to_period(self.items, "14-10-2026")
+        self.assertEqual([i["id"] for i in kept], ["14a", "15early"])
+
+    def test_period_line_under_title(self):
+        text = "# 🚫 Parking Violations Summary – Meydan\n\nNo active parking violations."
+        out = ReportsManager._with_period_line(text, "Full Day (15-10-2026)")
+        self.assertEqual(out.splitlines()[:3], ["# 🚫 Parking Violations Summary – Meydan", "", "📅 Period: Full Day (15-10-2026)"])
+        self.assertEqual(ReportsManager._with_period_line(text, None), text)
 
 
 class TestSlaHiddenFromReports(unittest.TestCase):
