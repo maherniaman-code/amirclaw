@@ -458,6 +458,13 @@ vehicle_permission:
     - "car make"
     - "vip parking slot"
     - "smart parking"
+    # Same requests in other words / with typos (15-10: "Kindky allow today below car at Q block",
+    # "Any of the below car can arrive any time now ... Pls allow smooth access")
+    - "kindly allow"
+    - "kindky allow"
+    - "please allow"
+    - "pls allow"
+    - "allow smooth access"
   # Replies from the parking team. "parked ..." marks the request Parked; the rest mark it Noted.
   # Unquoted replies go to the latest open request within reply_link_minutes ("All noted" -> all of them).
   replies:

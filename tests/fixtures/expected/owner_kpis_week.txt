@@ -6,7 +6,7 @@
    • Average time to close: 0.7 h (over 4 tickets)
    ⚠️ Open more than 24 h (SLA): 9
    • Busiest buildings: N: 6, M: 5, Q: 4
-   • Repeated faults: 1
+   • Repeated faults: 2
    🔴 Oldest open tickets (more than 48 h):
       - 3.2 days | 12-10-2026 06:12 | M Building back side right side barrier is not opening or cl
       - 3.2 days | 12-10-2026 07:05 | N Building 2nd Floor Procurment pantry Electrical Power issu
@@ -19,7 +19,6 @@
    • Average time to close: —
    ⚠️ Open more than 24 h (SLA): 4
    • Busiest buildings: N: 4
-   • Repeated faults: 2
    🔴 Oldest open tickets (more than 48 h):
       - 2.7 days | 12-10-2026 19:39 | N building 3rd floor front of reception two Emergency Exit l
       - 2.7 days | 12-10-2026 19:40 | N building 2nd floor near to reception 1 emergency exit ligh

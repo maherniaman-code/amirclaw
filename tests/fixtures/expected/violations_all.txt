@@ -1,13 +1,7 @@
 # 🚫 Parking Violations Summary – Meydan
 
 📍 Level 4, Slot 399
-1. @54148447241264
-
-Staff parked his non-electric car on EV fast charging slot 399  on level 4
-
-@185674016026565.
-
-Kindly notify concern department for him to come and remove his car.
+1. Staff parked his non-electric car on EV fast charging slot 399 on level 4. Kindly notify concern department for him to come and remove his car.
    ⏰ Reported: 13-10-2026 09:38 | 👤 Reported by: Person 28
    📷 Photo: N/A
    ⚠️ Status: Reported
@@ -19,9 +13,7 @@ Kindly notify concern department for him to come and remove his car.
    ⚠️ Status: Reported
 
 📍 Level 4, Slot N/A
-3. @54148447241264
-
-Staff parked her car overnight on level 4.
+3. Staff parked her car overnight on level 4.
    ⏰ Reported: 15-10-2026 07:07 | 👤 Reported by: Person 28
    📷 Photo: N/A
    ✅ Status: Closed – reported to concerned department — Person 21

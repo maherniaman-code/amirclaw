@@ -559,10 +559,15 @@ class WhatsAppParser:
         # Plate No: e.g. "Plate no : 4 / 69888" or "Plate no. EE 80743"
         plate_m = re.search(r"plate\s*(?:no\.?|number)?\s*[:\-]?\s*([A-Za-z0-9\s/]+?)(?=\s*car\s*make|\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
         plate_no = plate_m.group(1).strip() if plate_m else "N/A"
+        if plate_no == "N/A":
+            # Bare plate list ("Any of the below car can arrive ... C 82000 / C 83000 / A 98685")
+            bare = re.findall(r"(?m)^\s*([A-Z]{1,2}\s?\d{3,6})\s*$", plain)
+            if bare:
+                plate_no = ", ".join(b.strip() for b in bare)
 
-        # Car Make: e.g. "Car make :GMC" or "Car make: Mitsubishi Pajero"
-        make_m = re.search(r"car\s*make\s*[:\-]?\s*([A-Za-z0-9\s]+?)(?=\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
-        car_make = make_m.group(1).strip() if make_m else "N/A"
+        # Car Make: e.g. "Car make :GMC", "Car make: Mitsubishi Pajero", "Car make :Tesla (white )"
+        make_m = re.search(r"car\s*make\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9\s()\-./]*?)(?=\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
+        car_make = re.sub(r"\s+\)", ")", make_m.group(1).strip()) if make_m else "N/A"
 
         # Validity: e.g. "only for 3 days from today 13/10/2026 until 15/10/2026", "only for today", "only today"
         valid_m = re.search(r"(only\s+for\s+\d+\s+days[^\n\.]*|only\s+for\s+today[^\n\.]*|only\s+today[^\n\.]*|today\s+only[^\n\.]*|from\s+\d+/\d+/\d+\s+until\s+\d+/\d+/\d+)", plain, re.IGNORECASE)
@@ -570,8 +575,24 @@ class WhatsAppParser:
             validity = valid_m.group(1).strip().rstrip(".").strip()
         elif "permanent" in t_low:
             validity = "Permanent"
+        elif re.search(r"\btoday\b", t_low):
+            validity = "today"
         else:
             validity = "N/A"
+
+        # Where the car may park: podium, VIP slot, smart parking, a named slot or block
+        area_m = re.search(r"\b(podium|vip\s+parking\s+slot|vip\s+slot|smart\s+parking|ramp\s+area|service\s+road)\b"
+                           r"|parking\s+slot\s*\(?\s*([A-Z]\s*-?\s*\d+)\s*\)?|\bslot\s*\(?\s*([A-Z]\s*-\s*\d+)\s*\)?"
+                           r"|\bat\s+([PNMQ])\s+(?:block|building)\b", plain, re.IGNORECASE)
+        area = None
+        if area_m:
+            if area_m.group(1):
+                area = {"vip parking slot": "VIP slot", "vip slot": "VIP slot"}.get(
+                    re.sub(r"\s+", " ", area_m.group(1).lower()), area_m.group(1).title())
+            elif area_m.group(2) or area_m.group(3):
+                area = "Slot " + re.sub(r"\s+", "", area_m.group(2) or area_m.group(3)).upper()
+            else:
+                area = f"{area_m.group(4).upper()} Building"
 
         # Requester
         requester = event.get("sender", "Requester")
@@ -586,6 +607,7 @@ class WhatsAppParser:
             "plate_no": plate_no,
             "car_make": car_make,
             "validity": validity,
+            "area": area,
             "status": "Pending",
             "photos": event.get("photos", []),
             "quoted_message_id": event.get("quoted_message_id", ""),

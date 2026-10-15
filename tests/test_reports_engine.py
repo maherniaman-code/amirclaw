@@ -978,6 +978,69 @@ class TestCleaningReportAndParkingRamp(unittest.TestCase):
         self.assertIn("• Customer and Visitors: N/A", text)
 
 
+class TestRealMessages15Oct(unittest.TestCase):
+    """Cases found in the 15-10 export (whatsapp_messages (36).xlsx)."""
+
+    def test_repeat_only_for_the_same_object_on_the_same_floor(self):
+        from reports_engine.tickets_db import same_issue
+        cases = [
+            # (new ticket, earlier ticket, same issue?)
+            ("Q-Building, 6th floor, infront of Harvard meeting room this sound came from AC grill need to check ASAP",
+             "Q-Building, 3rd floor, Dispatch room card reader access control device cover is not fixed", False),
+            ("N building 2nd floor near to reception 1 emergency exit light is not working",
+             "N building 3rd floor front of reception two Emergency Exit light are not working", False),
+            ("M Building 3rd Floor Inside Male Washroom, Toilet Flush Pipe Hanger Nut Screw is Missing.",
+             "M Building 3rd Floor Infront of Female Washroom, Fire Exit Signage Light is not Working.", False),
+            ("FYI...@Mohan @Prakash M Building 3rd Floor near Lift Lobby, Lower parts of the Glass Door is touching",
+             "M Building Inside Service Lift, Steel Holder is Shaking and not Stable.", False),
+            ("N Building 2nd Floor Male Washroom Muslim shower water control Push Button is free @Prakash",
+             "N Building 2nd Floor Procurment pantry Electrical Power issue reported @Prakash", False),
+            ("N building 1st Floor Security Control Room AC is not Cold need to Increase AC",
+             "N Building 1st floor SCR AC not cooling", True),
+            ("Q building first floor Speed Gate is out of service", "Q Building 1st floor speed gate not opening", True),
+        ]
+        for new, old, expected in cases:
+            with self.subTest(new=new[:40]):
+                self.assertEqual(same_issue(new, old), expected)
+
+    def test_clean_title(self):
+        from reports_engine.report_generators import clean_title
+        self.assertEqual(clean_title("FYI...@Mohan @Prakash M Building 3rd Floor Glass Door"), "M Building 3rd Floor Glass Door")
+        self.assertEqual(clean_title("@Mohan\nStaff parked her car overnight on level 4."), "Staff parked her car overnight on level 4.")
+        self.assertEqual(clean_title("pantry power issue need to check @109884809226867"), "pantry power issue need to check")
+
+    def _perm(self, text, sender="Requester"):
+        p = WhatsAppParser.__new__(WhatsAppParser)
+        p.config = get_config()
+        return p.parse_vehicle_permission({"message_id": "X", "text": text, "sender": sender})
+
+    def test_permission_fields_from_real_requests(self):
+        tesla = self._perm("Dear Team,\n\nKindly allow this vehicle in the podium only for today for visitor.\n\n"
+                           "Plate no : R 73073 DXB\nCar make :Tesla (white )")
+        self.assertEqual((tesla["plate_no"], tesla["car_make"], tesla["area"]), ("R 73073 DXB", "Tesla (white)", "Podium"))
+        typo = self._perm("Dear Team,\n\nKindky allow today below car at Q block.\n\nPlate no : 3877 \nCar make : Mercedes")
+        self.assertEqual((typo["validity"], typo["area"]), ("today", "Q Building"))
+        bare = self._perm("Any of the below car can arrive any time now\n\nC 82000\nC 83000\nA 98685\n\nPls allow smooth access")
+        self.assertEqual(bare["plate_no"], "C 82000, C 83000, A 98685")
+        vip = self._perm("Dear Team,\n\nKindly allow this vehicle in VIP parking slot.\n\nPlate no :  I 49415\nCar make : BMW X5")
+        self.assertEqual(vip["area"], "VIP slot")
+        slot = self._perm("Dear Team,\n\nKindly allow this vehicle in parking slot ( M 96 )only for today.\n\nPlate no : FF 71016")
+        self.assertEqual(slot["area"], "Slot M96")
+
+    def test_reply_to_another_message_does_not_close_the_latest_request(self):
+        g = "Parking Team at Meydan"
+        msgs = [
+            _wa_msg("P1", 15, 11, 18, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in VIP parking slot only for today .\n\nPlate no : V 65372"),
+            _wa_msg("N1", 15, 11, 50, 0, g, "Guard", "Rumble area location update, nothing to report"),
+            _wa_msg("A1", 15, 12, 3, 57, g, "Stephen", "Acknowledged", quoted="N1"),
+        ]
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            m.generate_vehicle_permissions(target_date="15-10-2026")
+        self.assertEqual(m.last_items["permissions"][0]["status"], "Pending")
+
+
 class TestSlaHiddenFromReports(unittest.TestCase):
     def test_sla_breach_not_rendered_in_report_text(self):
         item = {

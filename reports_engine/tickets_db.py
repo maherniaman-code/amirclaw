@@ -1,4 +1,5 @@
 """Persistent ticket store for cross-shift SLA, trend detection, and resolved_by tracking."""
+import re
 import sqlite3
 import os
 from datetime import datetime, timedelta
@@ -13,6 +14,56 @@ SLA_HOURS = 24  # tickets open longer than this are flagged as SLA breach
 CHRONIC_HOURS = 48  # carry-over older than this moves to "Chronic Issues" section
 TREND_DAYS = 7  # window for repeat-building trend detection
 TREND_MIN_COUNT = 2  # minimum prior occurrences to flag as chronic trend
+
+
+_ORDINALS = {"ground": 0, "gf": 0, "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
+             "sixth": 6, "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10}
+# What can break. Two tickets are the same issue only when they name the same object; places
+# ("washroom", "lift lobby") and people ("@Prakash") never make two tickets a repeat.
+# Extend with `repeat_objects` in config/meydan_rules.yaml.
+_REPEAT_OBJECTS = {
+    "light", "bulb", "lamp", "ac", "aircon", "chiller", "fan", "grill", "duct", "door", "glass", "window",
+    "lift", "elevator", "escalator", "barrier", "gate", "card reader", "access control", "toilet", "flush",
+    "tap", "shower", "sink", "basin", "pipe", "leak", "leakage", "drain", "heater", "freezer", "fridge",
+    "refrigerator", "oven", "microwave", "coffee machine", "socket", "power", "electrical", "ups", "cctv",
+    "camera", "alarm", "smoke", "sprinkler", "extinguisher", "hose", "signage", "ceiling", "panel", "tile",
+    "carpet", "chair", "table", "desk", "curtain", "blind", "lock", "handle", "hinge", "holder", "screen",
+    "tv", "printer", "network", "wifi", "intercom", "pump", "generator", "roof", "wall",
+}
+_PLACE_PHRASES = ("lift lobby", "lift loby", "lift area", "door to", "fire exit staircase", "exit staircase")
+
+
+def floor_of(text: str) -> Optional[int]:
+    """Floor number written in a ticket ("3rd Floor", "first floor", "GF", "level 4"), else None."""
+    t = text.lower()
+    m = re.search(r"\b(\d{1,2})\s*(?:st|nd|rd|th)?\s*(?:floor|flr)\b|\blevel\s*(\d{1,2})\b|\blvl\s*(\d{1,2})\b", t)
+    if m:
+        return int(next(g for g in m.groups() if g))
+    m = re.search(r"\b(ground|gf|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\b(?:\s*floor)?", t)
+    if m and (m.group(1) == "gf" or re.search(rf"\b{m.group(1)}\s*floor", t)):
+        return _ORDINALS[m.group(1)]
+    return None
+
+
+def issue_words(text: str) -> set:
+    """Objects a ticket says are broken ("Fire Exit Signage Light is not Working" -> {signage, light})."""
+    t = re.sub(r"@\S+", " ", text.lower())
+    for phrase in _PLACE_PHRASES:
+        t = t.replace(phrase, " ")
+    try:
+        from .config_loader import get_config
+        objects = _REPEAT_OBJECTS | {o.lower() for o in get_config().get("repeat_objects", [])}
+    except Exception:  # pragma: no cover - config unreadable
+        objects = _REPEAT_OBJECTS
+    return {o for o in objects if re.search(rf"\b{re.escape(o)}(?:s|es)?\b", t)}
+
+
+def same_issue(text_a: str, text_b: str) -> bool:
+    """Same fault again: not on two different floors, and naming at least one common broken thing."""
+    fa, fb = floor_of(text_a), floor_of(text_b)
+    if fa is not None and fb is not None and fa != fb:
+        return False
+    return bool(issue_words(text_a) & issue_words(text_b))
 
 
 def _conn(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
@@ -181,7 +232,10 @@ def enrich_ticket(
     # Trend / chronic building detection
     if building:
         history = get_building_occurrences(building, days=TREND_DAYS, db_path=db_path)
-        prior = [h for h in history if h["message_id"] != msg_id]
+        # Only the same fault coming back counts, not every ticket in the building
+        text = ticket.get("text", "")
+        prior = [h for h in history if h["message_id"] != msg_id and h.get("report_type") == report_type
+                 and same_issue(text, h.get("text_snippet") or "")]
         if len(prior) >= TREND_MIN_COUNT:
             ticket["chronic_building_flag"] = f"🔴 {len(prior) + 1}x in {TREND_DAYS} days"
 
