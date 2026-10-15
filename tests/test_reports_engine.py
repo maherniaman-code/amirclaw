@@ -815,6 +815,39 @@ class TestSqliteMessageStore(unittest.TestCase):
         self.assertEqual(texts["excel"], texts["sqlite"])
 
 
+class TestOwnerDigestAndOverdue(unittest.TestCase):
+    def test_overdue_lists_only_open_tickets_older_than_48h(self):
+        from reports_engine.owner_digest import generate_overdue
+        res = generate_overdue(ReportsManager(), now=datetime(2026, 10, 14, 9, 0, tzinfo=DUBAI_TZ))
+        items = res["overdue"]
+        self.assertEqual(res["total"], len(items))
+        self.assertTrue(all(i["hours_open"] > 48 for i in items))
+        self.assertTrue(all(i["report"] in ("maintenance", "fire_safety") for i in items))
+        self.assertEqual([i["hours_open"] for i in items], sorted((i["hours_open"] for i in items), reverse=True))
+        self.assertEqual(len({i["id"] for i in items}), len(items))
+
+    def test_overdue_threshold_and_corrections(self):
+        from reports_engine.owner_digest import generate_overdue
+        from reports_engine.corrections_db import save_correction
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict("os.environ", {"REPORTS_DB_PATH": str(Path(tmp) / "corr.db")}):
+            m = ReportsManager()
+            now = datetime(2026, 10, 14, 9, 0, tzinfo=DUBAI_TZ)
+            first = generate_overdue(m, now=now)["overdue"]
+            self.assertGreater(len(first), 0)
+            # A ticket marked fixed from the reminder's ✅ button is no longer overdue
+            save_correction(first[0]["id"], first[0]["report"], target_status="Done", corrected_by="owner")
+            after = generate_overdue(m, now=now)["overdue"]
+            self.assertNotIn(first[0]["id"], [i["id"] for i in after])
+            self.assertEqual(generate_overdue(m, min_hours=10_000, now=now)["overdue"], [])
+
+    def test_morning_digest_sections(self):
+        from reports_engine.owner_digest import generate_morning_digest
+        text = generate_morning_digest(ReportsManager(), now=datetime(2026, 10, 14, 8, 0, tzinfo=DUBAI_TZ))["text"]
+        for part in ("ملخص الصباح", "الصيانة", "الحريق والسلامة", "مخالفات المواقف", "تصاريح اليوم", "مفتوحة الآن"):
+            self.assertIn(part, text)
+
+
 class TestSlaHiddenFromReports(unittest.TestCase):
     def test_sla_breach_not_rendered_in_report_text(self):
         item = {

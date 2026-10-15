@@ -5,6 +5,7 @@ import Database from 'better-sqlite3';
 import { config } from '../config.js';
 import { runReportEngine } from './bridge.js';
 import { alertOwner } from '../monitoring/alerts.js';
+import { buildOverdueMessage } from './telegram_handlers.js';
 
 let _schedulerDb: any = null;
 
@@ -198,6 +199,75 @@ export function startMeydanScheduler(bot: Bot) {
     }, 60000); // Check every minute
 
     startWeeklyDataQualityReport(bot);
+    startOwnerDailyMessages(bot);
+}
+
+// Owner-only: 08:00 morning digest and hourly reminders for tickets open > 48h.
+// Independent of ENABLE_AUTOMATED_REPORTS (which governs team-facing reports).
+function startOwnerDailyMessages(bot: Bot) {
+    const digestOn = process.env.ENABLE_MORNING_DIGEST !== 'false';
+    const overdueOn = process.env.ENABLE_OVERDUE_REMINDERS !== 'false';
+    const digestHour = Number(process.env.MORNING_DIGEST_HOUR ?? 8);
+    const overdueFrom = Number(process.env.OVERDUE_REMINDER_FROM_HOUR ?? 9);
+    const overdueTo = Number(process.env.OVERDUE_REMINDER_TO_HOUR ?? 20);
+
+    setInterval(async () => {
+        try {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: config.timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
+            }).formatToParts(new Date());
+            const get = (t: string) => parts.find((p) => p.type === t)?.value || '';
+            const date = `${get('day')}-${get('month')}-${get('year')}`;
+            const hour = Number(get('hour'));
+
+            if (digestOn && hour === digestHour && !hasReportBeenSent(`morning_digest_${date}`)) {
+                markReportAsSent(`morning_digest_${date}`);
+                const res = await runReportEngine('morning_digest');
+                if (res.success && res.text) {
+                    for (const userId of config.allowedUserIds) await sendTelegramReport(bot, userId, res.text);
+                    console.log(`🌅 Morning digest sent to ${config.allowedUserIds.length} owner(s).`);
+                } else {
+                    await alertOwner('report-morning-digest', `فشل ملخص الصباح: ${res.error || 'no text'}`);
+                }
+            }
+
+            if (overdueOn && hour >= overdueFrom && hour <= overdueTo && !hasReportBeenSent(`overdue_check_${date}_${hour}`)) {
+                markReportAsSent(`overdue_check_${date}_${hour}`);
+                await sendOverdueReminders(bot);
+            }
+        } catch (err: any) {
+            console.error('Error in owner daily messages:', err.message);
+            await alertOwner('owner-daily', `خطأ في ملخص الصباح أو تذكير التذاكر المتأخرة: ${err.message}`);
+        }
+    }, 5 * 60 * 1000);
+
+    console.log(`🌅 Morning digest ${digestOn ? `at ${String(digestHour).padStart(2, '0')}:00` : 'disabled'}; ` +
+        `overdue reminders ${overdueOn ? `hourly ${overdueFrom}:00-${overdueTo}:00` : 'disabled'} (${config.timeZone}, owner only).`);
+}
+
+// Each overdue ticket is reminded once (key overdue_<message id> in sent_reports_log)
+export async function sendOverdueReminders(bot: Bot): Promise<number> {
+    const res = await runReportEngine('overdue');
+    if (!res.success) {
+        await alertOwner('report-overdue', `فشل فحص التذاكر المتأخرة: ${res.error || 'unknown'}`);
+        return 0;
+    }
+    const pending = (res.overdue || []).filter((t) => !hasReportBeenSent(`overdue_${t.id}`));
+    if (!pending.length) return 0;
+    // Only the tickets that fit in one message are marked; the rest come in the next hourly run
+    const fresh = pending.slice(0, 25);
+
+    const { text, keyboard } = buildOverdueMessage(fresh);
+    for (const userId of config.allowedUserIds) {
+        try {
+            await bot.api.sendMessage(userId, text, { reply_markup: keyboard });
+        } catch (err: any) {
+            console.error(`Failed to send overdue reminder to ${userId}:`, err.message);
+        }
+    }
+    for (const t of fresh) markReportAsSent(`overdue_${t.id}`);
+    console.log(`⏰ Overdue reminder sent for ${fresh.length} ticket(s).`);
+    return fresh.length;
 }
 
 // Owner-only health report; separate from ENABLE_AUTOMATED_REPORTS, which governs operational reports.
