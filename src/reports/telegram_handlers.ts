@@ -2,6 +2,8 @@ import { Keyboard, InlineKeyboard, InputFile } from 'grammy';
 import path from 'path';
 import fs from 'fs';
 import { runReportEngine } from './bridge.js';
+import { config } from '../config.js';
+import { EXCEL_PATH, ensureExcelInitialized, flushWhatsAppMessages } from '../whatsapp/excel.js';
 
 // Callback data prefix for date-picker inline buttons
 export const RPT_CB_PREFIX = 'rpt';
@@ -61,6 +63,7 @@ export const REPORT_BUTTONS = {
     permissions: '📋 Vehicle Permissions Report',
     cleaning: '🧹 Cleaning Report (Meydan)',
     dataQuality: '🩺 Data Quality — Last 7 Days',
+    whatsappExcel: '📊 WhatsApp Messages Excel',
 };
 
 export function getMeydanReportsKeyboard(): Keyboard {
@@ -88,6 +91,7 @@ export function getMeydanReportsKeyboard(): Keyboard {
         .text(REPORT_BUTTONS.cleaning)
         .row()
         .text(REPORT_BUTTONS.dataQuality)
+        .text(REPORT_BUTTONS.whatsappExcel)
         .row()
         .text(REPORT_BUTTONS.correctClassification)
         .resized();
@@ -139,6 +143,23 @@ async function replyReportTextAndExcel(ctx: any, text: string, excelPath?: strin
             await ctx.reply('⚠️ Excel تم إنشاؤه لكن فشل إرساله (ربما حجمه كبير).').catch(() => {});
         }
     }
+}
+
+// Sends the raw WhatsApp messages workbook (all captured groups). Used by the
+// "📊 WhatsApp Messages Excel" button and the /whatsapp_excel command.
+export async function sendWhatsAppExcel(ctx: any): Promise<void> {
+    await ctx.replyWithChatAction('upload_document');
+
+    // Flush any pending messages and ensure file exists
+    await flushWhatsAppMessages();
+    await ensureExcelInitialized();
+
+    const stats = fs.statSync(EXCEL_PATH);
+    const sizeKB = (stats.size / 1024).toFixed(1);
+
+    await ctx.replyWithDocument(new InputFile(EXCEL_PATH, 'whatsapp_messages.xlsx'), {
+        caption: `📊 ملف إكسل رسائل الواتساب\nالحجم: ${sizeKB} KB\nآخر تحديث: ${stats.mtime.toLocaleString('ar-EG', { timeZone: config.timeZone })}`,
+    });
 }
 
 export async function handleReportAction(ctx: any, input: string): Promise<boolean> {
@@ -253,6 +274,11 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
     // 16. Cleaning Report
     if (trimmed === REPORT_BUTTONS.cleaning || trimmed === '/cleaning') {
         await ctx.reply('🧹 اختر تاريخ تقرير النظافة:', { reply_markup: datePicker('cleaning', 'النظافة') });
+        return true;
+    }
+
+    if (trimmed === REPORT_BUTTONS.whatsappExcel) {
+        await sendWhatsAppExcel(ctx);
         return true;
     }
 

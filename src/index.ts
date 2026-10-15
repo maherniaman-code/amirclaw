@@ -7,11 +7,11 @@ import { initDb, addMessage, getMessages, getMemoriesDb, clearMemoriesDb } from 
 import { availableTools, executeTool } from './tools/index.js';
 import { createChatCompletion, getActiveProviders } from './llm.js';
 import { startWhatsAppClient, getWhatsAppStatus, getWhatsAppQrImage } from './whatsapp/client.js';
-import { EXCEL_PATH, ensureExcelInitialized, flushWhatsAppMessages } from './whatsapp/excel.js';
+import { ensureExcelInitialized } from './whatsapp/excel.js';
 import { textToSpeech, getUserVoiceSettings, setUserAlwaysVoice, setUserVoiceKey, ARABIC_VOICES } from './tts.js';
 import { startReminderScheduler, listUserReminders } from './reminders.js';
 import { startMeydanScheduler } from './reports/scheduler.js';
-import { handleReportAction, handleReportCallback } from './reports/telegram_handlers.js';
+import { handleReportAction, handleReportCallback, sendWhatsAppExcel } from './reports/telegram_handlers.js';
 import { startCloudBackupScheduler } from './cloud/backup.js';
 
 // Validate configuration and initialize database
@@ -297,18 +297,7 @@ bot.command('whatsapp_status', async (ctx) => {
 
 // /whatsapp_excel - Download the WhatsApp messages Excel file
 bot.command('whatsapp_excel', async (ctx) => {
-    await ctx.replyWithChatAction('upload_document');
-
-    // Flush any pending messages and ensure file exists
-    await flushWhatsAppMessages();
-    await ensureExcelInitialized();
-
-    const stats = fs.statSync(EXCEL_PATH);
-    const sizeKB = (stats.size / 1024).toFixed(1);
-
-    await ctx.replyWithDocument(new InputFile(EXCEL_PATH, 'whatsapp_messages.xlsx'), {
-        caption: `📊 ملف إكسل رسائل الواتساب\nالحجم: ${sizeKB} KB\nآخر تحديث: ${stats.mtime.toLocaleString('ar-EG', { timeZone: config.timeZone })}`,
-    });
+    await sendWhatsAppExcel(ctx);
 });
 
 // /voice command - Manage Voice Responses (Arabic TTS)
