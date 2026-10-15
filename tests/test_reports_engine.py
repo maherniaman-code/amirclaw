@@ -1003,6 +1003,17 @@ class TestRealMessages15Oct(unittest.TestCase):
             with self.subTest(new=new[:40]):
                 self.assertEqual(same_issue(new, old), expected)
 
+    def test_video_thumbnail_reaches_the_ticket(self):
+        """The bot now stores a frame of each video; the maintenance ticket must carry it to the Excel."""
+        msg = _wa_msg("V1", 15, 19, 53, 37, "Meydan FM Team💪", "Peace", "Q bldg ground floor water leakage from air conditioning")
+        msg.update(media_type="🎬 Video", photos_data=[{"media_path": "sqlite:V1", "bytes": b"\xff\xd8jpeg"}])
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=[msg]), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            m.generate_maintenance(target_date="15-10-2026")
+        ticket = next(t for t in m.last_items["maintenance"] if t["message_id"] == "V1")
+        self.assertEqual(len(ticket["photos_data"]), 1)
+
     def test_clean_title(self):
         from reports_engine.report_generators import clean_title
         self.assertEqual(clean_title("FYI...@Mohan @Prakash M Building 3rd Floor Glass Door"), "M Building 3rd Floor Glass Door")

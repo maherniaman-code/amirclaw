@@ -16,6 +16,7 @@ import { config } from '../config.js';
 import { mirrorWhatsAppMessage } from '../cloud/messages.js';
 import { recordGroupActivity } from '../monitoring/alerts.js';
 import { isHrMessage } from '../privacy.js';
+import { makeVideoThumbnail } from './video_thumb.js';
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
 const SESSION_DIR = path.join(WORKSPACE_DIR, 'whatsapp_session');
@@ -226,6 +227,25 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
             mediaFileName = m.documentMessage.fileName || 'document';
         } else if (m.videoMessage) {
             mediaType = 'Video';
+            // A frame of the video (or WhatsApp's own preview) so reports and Excel show what was filmed
+            if (downloadMedia && waSocket) {
+                try {
+                    const sock = waSocket;
+                    const thumbPath = path.join(MEDIA_DIR, `thumb_vid_${Date.now()}_${messageId.slice(0, 8)}.jpg`);
+                    thumbnailPath = await makeVideoThumbnail(m.videoMessage, async () => {
+                        const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 30000));
+                        const dl = downloadMediaMessage(msg, 'buffer', {}, {
+                            logger: pino({ level: 'silent' }),
+                            reuploadRequest: sock.updateMediaMessage,
+                        });
+                        const buf: any = await Promise.race([dl, timeout]);
+                        return buf && Buffer.isBuffer(buf) ? buf : null;
+                    }, thumbPath);
+                    if (thumbnailPath) console.log(`🎬 Saved video thumbnail from [${groupName}]`);
+                } catch (videoErr: any) {
+                    console.warn(`Could not make video thumbnail: ${videoErr.message}`);
+                }
+            }
         } else if (m.audioMessage) {
             mediaType = 'Audio';
         } else if (m.stickerMessage) {
