@@ -1,7 +1,7 @@
 import { Keyboard, InlineKeyboard, InputFile } from 'grammy';
 import path from 'path';
 import fs from 'fs';
-import { runReportEngine, saveCorrection } from './bridge.js';
+import { runReportEngine, saveCorrection, type OverdueTicket } from './bridge.js';
 import { config } from '../config.js';
 import { EXCEL_PATH, ensureExcelInitialized, flushWhatsAppMessages } from '../whatsapp/excel.js';
 
@@ -65,6 +65,7 @@ export const REPORT_BUTTONS = {
     dataQuality: '🩺 Data Quality — Last 7 Days',
     whatsappExcel: '📊 WhatsApp Messages Excel',
     ownerKpis: '📈 Weekly KPIs (Owner)',
+    morningDigest: '🌅 Morning Digest',
 };
 
 export function getMeydanReportsKeyboard(): Keyboard {
@@ -94,6 +95,7 @@ export function getMeydanReportsKeyboard(): Keyboard {
         .text(REPORT_BUTTONS.dataQuality)
         .text(REPORT_BUTTONS.ownerKpis)
         .row()
+        .text(REPORT_BUTTONS.morningDigest)
         .text(REPORT_BUTTONS.whatsappExcel)
         .row()
         .text(REPORT_BUTTONS.correctClassification)
@@ -189,6 +191,27 @@ export function buildCorrectionKeyboard(engine: string, items: { no: number; id:
             .row();
     }
     return kb;
+}
+
+// Overdue reminder: one message listing tickets open > 48h, with ✅ fixed / ❌ not a ticket per item
+export function buildOverdueMessage(items: OverdueTicket[]): { text: string; keyboard: InlineKeyboard } {
+    const shown = items.slice(0, MAX_CORRECTION_ROWS);
+    const kb = new InlineKeyboard();
+    const lines = ['⏰ تذاكر مفتوحة أكثر من 48 ساعة:', ''];
+    shown.forEach((it, i) => {
+        const n = i + 1;
+        const r = COR_REPORTS[it.report];
+        const icon = it.report === 'fire_safety' ? '🧯' : '🔧';
+        const days = (it.hours_open / 24).toFixed(1);
+        lines.push(`#${n} ${icon} ${it.building ? `مبنى ${it.building} — ` : ''}${days} يوم — ${it.reported}`);
+        lines.push(`   ${it.text}`);
+        kb.text(`#${n} ✅ اتصلحت`, `${COR_CB_PREFIX}:${r.code}:d:${it.id}`)
+            .text(`#${n} ❌ ليست تذكرة`, `${COR_CB_PREFIX}:${r.code}:x:${it.id}`)
+            .row();
+    });
+    if (items.length > shown.length) lines.push('', `و${items.length - shown.length} تذكرة أخرى في تقرير الصيانة.`);
+    lines.push('', 'اضغط ✅ إذا اتصلحت فعلاً، أو ❌ إذا لم تكن عطلاً. لن أذكّرك بنفس التذكرة مرة ثانية.');
+    return { text: lines.join('\n'), keyboard: kb };
 }
 
 async function sendCorrectionButtons(ctx: any, engine: string, items?: { no: number; id: string }[]) {
@@ -341,6 +364,29 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
     // 16. Cleaning Report
     if (trimmed === REPORT_BUTTONS.cleaning || trimmed === '/cleaning') {
         await ctx.reply('🧹 اختر تاريخ تقرير النظافة:', { reply_markup: datePicker('cleaning', 'النظافة') });
+        return true;
+    }
+
+    if (trimmed === REPORT_BUTTONS.morningDigest || trimmed === '/digest') {
+        const res = await runReportEngine('morning_digest');
+        if (res.success && res.text) {
+            await replyReportTextAndExcel(ctx, res.text);
+        } else {
+            await ctx.reply(`❌ فشل ملخص الصباح: ${res.error || 'خطأ غير معروف'}`);
+        }
+        return true;
+    }
+
+    if (trimmed === '/overdue') {
+        const res = await runReportEngine('overdue');
+        if (!res.success) {
+            await ctx.reply(`❌ فشل جلب التذاكر المتأخرة: ${res.error || 'خطأ غير معروف'}`);
+        } else if (!res.overdue?.length) {
+            await ctx.reply('✅ لا توجد تذاكر مفتوحة أكثر من 48 ساعة.');
+        } else {
+            const { text, keyboard } = buildOverdueMessage(res.overdue);
+            await ctx.reply(text, { reply_markup: keyboard });
+        }
         return true;
     }
 

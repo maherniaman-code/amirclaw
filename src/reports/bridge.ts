@@ -23,10 +23,21 @@ export interface ReportResult {
     pending?: number;
     // Report number -> WhatsApp message id, for the Telegram correction buttons
     items?: { no: number; id: string; status: string }[];
+    // Open tickets older than the overdue threshold (owner reminders)
+    overdue?: OverdueTicket[];
+}
+
+export interface OverdueTicket {
+    id: string;
+    report: 'maintenance' | 'fire_safety';
+    building: string;
+    hours_open: number;
+    reported: string;
+    text: string;
 }
 
 export async function runReportEngine(
-    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'owner_kpis' | 'list_corrections',
+    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'owner_kpis' | 'morning_digest' | 'overdue' | 'list_corrections',
     options?: { slot?: string; date?: string; shift?: 'Day' | 'Night'; excelPath?: string }
 ): Promise<ReportResult> {
     const pythonBin = config.pythonPath || 'python3';
@@ -91,6 +102,7 @@ export async function runReportEngine(
             parked: parsed.parked,
             pending: parsed.pending,
             items: Array.isArray(parsed.items) ? parsed.items : [],
+            overdue: Array.isArray(parsed.overdue) ? parsed.overdue : [],
         };
     } catch (err: any) {
         console.error(`Error executing Python report engine (${reportType}):`, err.message);
