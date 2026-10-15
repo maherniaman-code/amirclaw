@@ -17,8 +17,8 @@ import { mirrorWhatsAppMessage } from '../cloud/messages.js';
 import { recordGroupActivity, alertOwner } from '../monitoring/alerts.js';
 import { isHrMessage } from '../privacy.js';
 import { makeVideoThumbnail } from './video_thumb.js';
-import { VideoBackfill, backfillSummary, MAX_ATTEMPTS } from './video_backfill.js';
-import { missingVideoThumbs, setThumbnail, newestMessageInGroup, getMeta, setMeta } from './store.js';
+import { VideoBackfill, backfillSummary, reportGroupsFromRules, MAX_ATTEMPTS } from './video_backfill.js';
+import { missingVideoThumbs, setThumbnail, newestMessageInGroup, getMeta, setMeta, countStoredMessages } from './store.js';
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
 const SESSION_DIR = path.join(WORKSPACE_DIR, 'whatsapp_session');
@@ -260,6 +260,19 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
             mediaType = 'Contact';
         }
 
+        // Messages recovered from history are not downloaded: keep the small preview WhatsApp
+        // sends inside photo and video messages, so old reports still show a picture
+        const preview = m.imageMessage?.jpegThumbnail || m.videoMessage?.jpegThumbnail;
+        if (!thumbnailPath && !downloadMedia && preview && preview.length) {
+            try {
+                const previewPath = path.join(MEDIA_DIR, `thumb_hist_${messageId.slice(0, 12)}.jpg`);
+                await sharp(Buffer.from(preview)).jpeg({ quality: 80 }).toFile(previewPath);
+                thumbnailPath = previewPath;
+            } catch {
+                // a broken preview must never block storing the message
+            }
+        }
+
         const effectiveText = textContent || (mediaType !== 'Text' ? `(${mediaType})` : '');
         const quotedMessageId = config.enableQuotedMessageId ? extractQuotedMessageId(m) : undefined;
 
@@ -298,18 +311,24 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
     }
 }
 
-/** Pictures for videos recorded before video frames were saved (see video_backfill.ts). */
+/** Old messages of the report groups and pictures of old videos (see video_backfill.ts). */
 async function runVideoBackfill(): Promise<void> {
-    if (getMeta('video_backfill_done') === '1' || !waSocket) return;
-    const attempt = Number(getMeta('video_backfill_attempts') || 0) + 1;
+    if (getMeta('history_backfill_done') === '1' || !waSocket) return;
+    const attempt = Number(getMeta('history_backfill_attempts') || 0) + 1;
     if (attempt > MAX_ATTEMPTS) return;
-    if (!missingVideoThumbs().length) {
-        setMeta('video_backfill_done', '1');
-        return;
-    }
     const sock = waSocket;
     const jids = new Map<string, string>();
     for (const g of Object.values(await sock.groupFetchAllParticipating())) jids.set((g as any).subject, (g as any).id);
+
+    let groups: string[] = [];
+    try {
+        groups = reportGroupsFromRules(fs.readFileSync(path.resolve(process.cwd(), 'config', 'meydan_rules.yaml'), 'utf8'));
+    } catch {
+        // without the rules file only video pictures are recovered
+    }
+    const days = Number(process.env.HISTORY_BACKFILL_DAYS || 90);
+    const untilTsMs = Date.now() - days * 24 * 3600 * 1000;
+    const sinceLabel = new Date(untilTsMs).toLocaleDateString('en-GB', { timeZone: config.timeZone });
 
     activeBackfill = new VideoBackfill({
         missing: missingVideoThumbs,
@@ -330,22 +349,40 @@ async function runVideoBackfill(): Promise<void> {
             return jpeg;
         },
         saveThumb: setThumbnail,
-        notify: (text) => alertOwner('video_backfill', text, { force: true }),
+        notify: (text) => alertOwner('history_backfill', text, { force: true }),
         wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-        log: (line) => console.log(`🎬 ${line}`),
-    });
+        log: (line) => console.log(`📥 ${line}`),
+    }, { groups, untilTsMs });
     try {
-        setMeta('video_backfill_attempts', String(attempt));
-        console.log(`🎬 Recovering pictures for old videos (attempt ${attempt} of ${MAX_ATTEMPTS})...`);
+        setMeta('history_backfill_attempts', String(attempt));
+        const before = countStoredMessages();
+        console.log(`📥 Recovering old messages of ${groups.length} report group(s) back to ${sinceLabel} and old video pictures (attempt ${attempt} of ${MAX_ATTEMPTS})...`);
         const result = await activeBackfill.run();
         await new Promise((resolve) => setTimeout(resolve, WAIT_FOR_LATE_HISTORY_MS)); // answers can arrive after the last request
-        const final = { ...result, recovered: activeBackfill.recovered, left: missingVideoThumbs().length };
-        if (!final.left) setMeta('video_backfill_done', '1');
-        console.log(`🎬 Old video pictures: recovered ${final.recovered}, still missing ${final.left}`);
-        await alertOwner('video_backfill', backfillSummary(final, attempt), { force: true });
+        await flushWhatsAppMessages().catch(() => {});
+        const added = countStoredMessages() - before;
+        const final = { ...result, recovered: activeBackfill.recovered, left: missingVideoThumbs().length, added };
+        // Done when every report group went back far enough (or WhatsApp has nothing older) and no video is missing
+        if (!final.left && final.reached.length + final.stopped.length >= groups.length) setMeta('history_backfill_done', '1');
+        console.log(`📥 Old messages added ${added}; video pictures recovered ${final.recovered}, still missing ${final.left}`);
+        // Older messages change tickets and history: rebuild the report stores with the current rules
+        if (added > 0) await reprocessReports();
+        await alertOwner('history_backfill', backfillSummary(final, attempt, sinceLabel), { force: true });
     } finally {
         activeBackfill = null;
     }
+}
+
+async function reprocessReports(): Promise<void> {
+    const { execFile } = await import('child_process');
+    await new Promise<void>((resolve) => {
+        execFile(config.pythonPath || 'python3', ['-m', 'reports_engine.reprocess', '--apply'],
+            { cwd: process.cwd(), timeout: 15 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
+                if (err) console.warn('Reprocess after history recovery failed:', err.message);
+                else console.log(`♻️ ${stdout.trim().split('\n')[0] || 'Reprocessed'}`);
+                resolve();
+            });
+    });
 }
 
 const WAIT_FOR_LATE_HISTORY_MS = 30_000;

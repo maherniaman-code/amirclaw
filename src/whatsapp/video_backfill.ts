@@ -1,8 +1,11 @@
-// Pictures for videos recorded before the bot saved video frames (owner, 15-10).
+// Recovers what the bot did not record from WhatsApp history (owner, 15-10):
+//   - pictures for videos recorded before video frames were saved;
+//   - older messages of the report groups (config/meydan_rules.yaml `groups`), back to a date,
+//     so reports can be built for days before the bot was recording.
 //
-// The old video files were never kept, so the bot asks WhatsApp for the group history again
-// ("on-demand history sync", answered by the linked phone). Each video that comes back gets a
-// picture: a frame when it can still be downloaded, else the small preview inside the message.
+// The bot asks WhatsApp for older messages ("on-demand history sync", answered by the linked
+// phone). Messages that come back are stored like live ones; each video that was missing a
+// picture gets a frame when it can still be downloaded, else the preview inside the message.
 // WhatsApp may answer only part of the requests (or none, if the phone is offline); the run is
 // retried on the next starts, up to MAX_ATTEMPTS, and the owner gets a summary either way.
 
@@ -21,9 +24,12 @@ export interface BackfillDeps {
     log?(line: string): void;
 }
 
+/** Also page these groups back to untilTsMs (history recovery), not only to their missing videos. */
+export interface HistoryTarget { groups: string[]; untilTsMs: number }
+
 export const PAGE_SIZE = 50;
-export const MAX_PAGES_PER_GROUP = 12;
-export const WAIT_PER_PAGE_MS = 25_000;
+export const MAX_PAGES_PER_GROUP = 120;
+export const WAIT_PER_PAGE_MS = 15_000;
 export const MAX_ATTEMPTS = 3;
 
 function msgTsMs(msg: any): number {
@@ -32,14 +38,23 @@ function msgTsMs(msg: any): number {
     return s * 1000;
 }
 
+export interface BackfillResult {
+    total: number;          // videos that were missing a picture
+    recovered: number;      // ... and got one
+    left: number;
+    received: number;       // history messages WhatsApp sent back
+    reached: string[];      // history groups recovered back to the target date
+    stopped: string[];      // history groups where WhatsApp had nothing older (or did not answer)
+}
+
 export class VideoBackfill {
     private pending = new Map<string, MissingVideo>();
     // Oldest message WhatsApp sent back per chat: the next page starts there
     private oldest = new Map<string, { key: HistoryKey; tsMs: number }>();
-    private received = new Map<string, number>();
+    private receivedPerChat = new Map<string, number>();
     recovered = 0;
 
-    constructor(private deps: BackfillDeps) {}
+    constructor(private deps: BackfillDeps, private target?: HistoryTarget) {}
 
     /** Called for every history batch the bot receives (also ones it did not ask for). */
     async onHistory(messages: any[]): Promise<void> {
@@ -48,7 +63,7 @@ export class VideoBackfill {
             const id = msg?.key?.id;
             if (!jid || !id) continue;
             const ts = msgTsMs(msg);
-            this.received.set(jid, (this.received.get(jid) || 0) + 1);
+            this.receivedPerChat.set(jid, (this.receivedPerChat.get(jid) || 0) + 1);
             const cur = this.oldest.get(jid);
             if (ts && (!cur || ts < cur.tsMs)) this.oldest.set(jid, { key: { remoteJid: jid, id, fromMe: !!msg.key.fromMe }, tsMs: ts });
 
@@ -65,23 +80,28 @@ export class VideoBackfill {
         }
     }
 
-    async run(): Promise<{ total: number; recovered: number; left: number }> {
+    async run(): Promise<BackfillResult> {
         for (const v of this.deps.missing()) this.pending.set(v.messageId, v);
         const total = this.pending.size;
-        if (!total) return { total: 0, recovered: 0, left: 0 };
+        const historyGroups = new Set(this.target?.groups || []);
+        const groups = [...new Set([...[...this.pending.values()].map((v) => v.groupName), ...historyGroups])];
+        const reached: string[] = [];
+        const stopped: string[] = [];
 
-        const groups = [...new Set([...this.pending.values()].map((v) => v.groupName))];
         for (const group of groups) {
             const jid = this.deps.groupJid(group);
             const start = this.deps.anchor(group);
             if (!jid || !start) {
-                this.deps.log?.(`video pictures: group "${group}" not available, skipped`);
+                this.deps.log?.(`history: group "${group}" not available, skipped`);
+                if (historyGroups.has(group)) stopped.push(group);
                 continue;
             }
+            const until = historyGroups.has(group) ? this.target!.untilTsMs : Infinity;
             let key: HistoryKey = { remoteJid: jid, id: start.id, fromMe: start.fromMe };
             let ts = start.tsMs;
-            for (let page = 0; page < MAX_PAGES_PER_GROUP && this.pendingIn(group) > 0; page++) {
-                const before = this.received.get(jid) || 0;
+            let done = ts <= until && this.pendingIn(group) === 0;
+            for (let page = 0; page < MAX_PAGES_PER_GROUP && !done; page++) {
+                const before = this.receivedPerChat.get(jid) || 0;
                 try {
                     await this.deps.fetchHistory(PAGE_SIZE, key, ts);
                 } catch (e: any) {
@@ -91,15 +111,18 @@ export class VideoBackfill {
                 await this.deps.wait(WAIT_PER_PAGE_MS);
                 const next = this.oldest.get(jid);
                 // Nothing new came back, or WhatsApp has no older messages: stop this group
-                if ((this.received.get(jid) || 0) === before || !next || next.tsMs >= ts) break;
+                if ((this.receivedPerChat.get(jid) || 0) === before || !next || next.tsMs >= ts) break;
                 key = next.key;
                 ts = next.tsMs;
-                const oldestPending = Math.min(...[...this.pending.values()]
-                    .filter((v) => v.groupName === group && v.tsMs).map((v) => v.tsMs as number));
-                if (Number.isFinite(oldestPending) && ts < oldestPending) break; // went past every missing video
+                const pendingTs = [...this.pending.values()]
+                    .filter((v) => v.groupName === group && v.tsMs).map((v) => v.tsMs as number);
+                const videosDone = this.pendingIn(group) === 0 || (pendingTs.length > 0 && ts < Math.min(...pendingTs));
+                done = videosDone && ts <= until;
             }
+            if (historyGroups.has(group)) (ts <= until ? reached : stopped).push(group);
         }
-        return { total, recovered: this.recovered, left: this.pending.size };
+        const received = [...this.receivedPerChat.values()].reduce((a, b) => a + b, 0);
+        return { total, recovered: this.recovered, left: this.pending.size, received, reached, stopped };
     }
 
     private pendingIn(group: string): number {
@@ -110,11 +133,38 @@ export class VideoBackfill {
 }
 
 /** Summary sent to the owner (English, like every bot message). */
-export function backfillSummary(r: { total: number; recovered: number; left: number }, attempt: number): string {
-    if (!r.total) return '🎬 Old videos: every video already has a picture.';
-    const head = `🎬 Old video pictures recovered: ${r.recovered} of ${r.total}.`;
-    if (!r.left) return head;
-    return attempt < MAX_ATTEMPTS
-        ? `${head} ${r.left} not returned by WhatsApp yet; the bot will try again on the next restart (keep the phone online).`
-        : `${head} ${r.left} could not be recovered from WhatsApp (attempt ${attempt} of ${MAX_ATTEMPTS}). New videos always get a picture.`;
+export function backfillSummary(
+    r: { total: number; recovered: number; left: number; added?: number; reached?: string[]; stopped?: string[] },
+    attempt: number, sinceLabel?: string,
+): string {
+    const lines: string[] = [];
+    if (r.added !== undefined) {
+        lines.push(`📥 Old messages recovered: ${r.added}${sinceLabel ? ` (report groups, back to ${sinceLabel})` : ''}.`);
+        if (r.stopped?.length) lines.push(`   WhatsApp had nothing older for: ${r.stopped.join(', ')}.`);
+    }
+    if (!r.total) {
+        lines.push('🎬 Old videos: every video already has a picture.');
+    } else {
+        lines.push(`🎬 Old video pictures recovered: ${r.recovered} of ${r.total}.`);
+        if (r.left) {
+            lines.push(attempt < MAX_ATTEMPTS
+                ? `   ${r.left} not returned by WhatsApp yet; the bot will try again on the next restart (keep the phone online).`
+                : `   ${r.left} could not be recovered from WhatsApp (attempt ${attempt} of ${MAX_ATTEMPTS}). New videos always get a picture.`);
+        }
+    }
+    return lines.join('\n');
+}
+
+/** Report group names from config/meydan_rules.yaml (the `groups:` block). */
+export function reportGroupsFromRules(yamlText: string): string[] {
+    const block = yamlText.split(/\r?\n/);
+    const start = block.findIndex((l) => /^groups:\s*$/.test(l));
+    if (start < 0) return [];
+    const out: string[] = [];
+    for (const line of block.slice(start + 1)) {
+        if (!/^\s+\S/.test(line)) break;                     // end of the indented block
+        const m = line.match(/^\s+[\w-]+:\s*["']?(.+?)["']?\s*(#.*)?$/);
+        if (m) out.push(m[1]);
+    }
+    return out;
 }
