@@ -1,13 +1,5 @@
 [
  {
-  "id": "ACB3BEFFAF8B347207F64AECCDB2C645",
-  "report": "maintenance",
-  "building": "M",
-  "hours_open": 77.8,
-  "reported": "12-10-2026 06:12",
-  "text": "M Building back side right side barrier is not opening or closing, inform the co"
- },
- {
   "id": "A5DBDEEC203E9995DC0525F5BEC7D59B",
   "report": "maintenance",
   "building": "N",

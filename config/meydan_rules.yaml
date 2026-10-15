@@ -83,6 +83,10 @@ fault:
   - "require maintenance"
   - "electrical power issue"
   - "cooling is very low"
+  # 15-10: "Service lift no 7 is opening and closing on its own ... prevent any entrapment"
+  - "on its own"
+  - "entrapment"
+  - "check the issue"
   # Same fault wording guards use in the Security Team group (operations.fault_markers)
   - "out of service"
   - "out of order"
@@ -120,6 +124,35 @@ closure:
   - "area cleared"
   - "spill removed"
   - "all clear"
+  # "Car multistorey building service lift now working normal" (15-10). Only with "now" / "back":
+  # a plain "working normal" would also match the negated fault "not working normal".
+  - "now working normal"
+  - "now working normally"
+  - "now working fine"
+  - "now working properly"
+  - "back to normal"
+  - "issue resolved"
+  # More ways technicians say it is fixed (owner, 15-10). "need to be / will be / to be ..." in
+  # front of any of these is not a fix (is_closure_text skips it).
+  - "fixed"
+  - "repaired"
+  - "completed"
+  - "job done"
+  - "work done"
+  - "work completed"
+  - "solved"
+  - "sorted"
+  - "restored"
+  - "installed"
+  - "changed"
+  - "now ok"
+  - "ok now"
+  - "all ok"
+  - "all good"
+  - "now functioning"
+  - "functioning now"
+  - "has been fixed"
+  - "has been done"
 
 # Whole-message closures: only when the reply is exactly one of these.
 # "working ..." phrases must NOT go in `closure` above: a fault saying "not working properly"
@@ -157,6 +190,8 @@ in_progress:
 
 followup_not_ticket:
   - "follow up"
+  - "follow-up"
+  - "followup"
   - "is it restored"
   - "urgent action required"
   - "daily issues"

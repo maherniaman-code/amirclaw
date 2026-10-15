@@ -27,13 +27,15 @@ from .excel_exporter import generate_parking_excel, generate_generic_report_exce
 
 
 def is_closure_text(text: str, closure_kws: List[str]) -> bool:
-    """True if a closure keyword appears and is not negated (e.g. 'not yet rectified')."""
+    """True if a closure keyword appears and is not negated (e.g. 'not yet rectified') or asked ("Is it restored?")."""
     t = text.lower()
+    if "?" in t:
+        return False
     for kw in closure_kws:
         kw_re = re.escape(kw.lower())
         if not re.search(rf"\b{kw_re}\b", t):
             continue
-        if re.search(rf"\b(?:not|never|yet to be|pending)\s+(?:\w+\s+){{0,2}}{kw_re}\b", t):
+        if re.search(rf"\b(?:not|never|yet to be|pending|to be|will be|should be|waiting for|not yet)\s+(?:\w+\s+){{0,2}}{kw_re}\b", t):
             continue
         return True
     return False
@@ -75,6 +77,59 @@ def find_nearest_open_ticket_by_proximity(
             best = t
     return best
 
+
+# A WhatsApp Reply to a ticket with only one of these means it is fixed (owner, 15-10).
+# Without a Reply they stay acknowledgements: "Ok" alone in the group closes nothing.
+_REPLY_OK_WORDS = {"ok", "okay", "okk", "ok sir", "ok done", "done", "done sir", "done ok", "completed",
+                   "fixed", "fixed sir", "ok fixed", "ok completed", "all ok", "all done"}
+
+
+def _is_reply_ok(ev: Dict[str, Any], t_low: str) -> bool:
+    """A Reply to a ticket saying just "Ok" / "Done" (or 👍 / ✅), with or without a photo."""
+    if not ev.get("quoted_message_id"):
+        return False
+    words = " ".join(re.sub(r"[^\w\s]", " ", t_low).split())
+    return words in _REPLY_OK_WORDS or (not words and any(e in t_low for e in ("👍", "✅", "👌")))
+
+
+def _resolve_quote_chain(tickets: Dict[str, Dict[str, Any]], chain: Dict[str, str], quoted_id: str) -> str:
+    """Follow Reply-to-Reply links up to the ticket they belong to; the quoted id itself when none."""
+    q, seen = quoted_id, set()
+    while q and q not in seen:
+        if find_ticket_by_id(tickets, q):
+            return q
+        seen.add(q)
+        q = chain.get(q, "")
+    return quoted_id
+
+
+def _orphan_fix_from_chain(chain: Dict[str, str], events_by_id: Dict[str, Dict[str, Any]],
+                           tickets: Dict[str, Dict[str, Any]], quoted_id: str,
+                           closing_ev: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    A fix closing a Reply chain whose first message is older than the recorded data
+    ("Follow up please" -> "Work in progress" + photo -> "Ok" + photo): an item marked Done,
+    so the work and its photos are not lost. None when the chain does not lead to such a message.
+    """
+    replies, q = [], quoted_id
+    while q in events_by_id and q not in replies:
+        replies.append(q)
+        q = chain.get(q, "")
+    if not q or not replies or q in events_by_id or find_ticket_by_id(tickets, q):
+        return None
+    first = events_by_id[replies[-1]]
+    photos = [p for r in reversed(replies) for p in events_by_id[r].get("photos_data", [])]
+    photos += closing_ev.get("photos_data", [])
+    followed_by = re.sub(r"\s*\(.*?\)\s*$", "", first.get("sender", "")).strip()
+    text = f"Earlier ticket (sent before recording started), followed up by {followed_by}"
+    return {
+        "message_id": q, "datetime": first.get("datetime"), "raw_datetime": first.get("raw_datetime"),
+        "building": None, "floor": None, "location_heading": "", "issue": text, "text": text,
+        "status": "Done", "resolved_by": closing_ev.get("sender"), "closed_at": closing_ev.get("datetime"),
+        "repeat_flag": None, "sender": first.get("sender"), "group_name": first.get("group_name"),
+        "photos": [], "photos_data": photos, "quoted_message_id": "",
+        "source_message_ids": [q] + list(reversed(replies)) + [closing_ev["message_id"]],
+    }
 
 def _keyword_at_word_start(text_lower: str, keywords: List[str]) -> Optional[str]:
     """
@@ -118,6 +173,7 @@ _LINK_STOPWORDS = {
     # reply chatter that says nothing about which ticket it is
     "please", "kindly", "follow", "update", "check", "asap", "thanks", "noted", "okay", "sir",
     "replaced", "fixed", "working", "rectified", "resolved", "restored", "cleared",
+    "issue", "issues", "problem", "room", "area", "normal", "normally", "now",
 }
 
 
@@ -484,6 +540,10 @@ class ReportsManager:
                 closing_words = set().union(*(_content_words(c) for c in t.get("closure_texts", [""])))
                 if words <= closing_words:  # a repeat ("Done", same wording), not news about another fault
                     return t, "same closer"
+        # A reply that names a building ("N building ... leakage issue resolved") only closes tickets there
+        reply_bld = self.parser.extract_building_and_floor(ev["text"])[0]
+        if reply_bld:
+            tickets = {k: t for k, t in tickets.items() if not t.get("building") or t.get("building") == reply_bld}
         target = find_open_ticket_by_shared_word(
             tickets, ev.get("datetime"), ev["text"], self.config.get("reply_link_hours", 12)
         )
@@ -594,11 +654,16 @@ class ReportsManager:
             "electrical power issue", "cooling is very low", "out of service", "free"
         ])
 
+        chain: Dict[str, str] = {}               # reply -> the message it quotes
+        events_by_id: Dict[str, Dict[str, Any]] = {}
         for ev in grouped_events:
             msg_id = ev["message_id"]
             text = ev["text"]
             t_low = text.lower()
             quoted_id = ev.get("quoted_message_id", "")
+            if quoted_id:
+                chain[msg_id] = quoted_id
+            events_by_id[msg_id] = ev
 
             # Check manual correction first
             corr = get_correction_for_message(msg_id, fm_grp, text)
@@ -606,14 +671,20 @@ class ReportsManager:
                 continue
 
             # Check if this is a short reply / closure / follow-up / ack
-            is_closure = is_closure_text(t_low, closure_kws) or _is_exact_closure(text, closure_exact)
+            is_closure = (is_closure_text(t_low, closure_kws) or _is_exact_closure(text, closure_exact)
+                          or _is_reply_ok(ev, t_low))
             is_progress = any(p in t_low for p in progress_kws)
             is_ack = self.parser.is_non_operational(text)
-            is_followup = any(f in t_low for f in followup_kws) or (not is_closure and any(re.search(rf"\b{re.escape(k.lower())}\b", t_low) for k in closure_kws))
+            # A negated fix ("not yet rectified") is a follow-up, unless the message also describes a
+            # fault: "card reader cover is not fixed need to fix this" is a new ticket
+            is_followup = any(f in t_low for f in followup_kws) or (
+                not is_closure and not any(k in t_low for k in fault_kws)
+                and any(re.search(rf"\b{re.escape(k.lower())}\b", t_low) for k in closure_kws))
             is_empty_or_image = text.strip() in ["(Image)", ""] or (len(text.strip()) <= 4 and not re.search(r"\w{3,}", text))
 
             if is_closure or is_progress or is_ack or is_followup or is_empty_or_image:
-                target_ticket, link_method = self._link_reply(tickets, ev, quoted_id)
+                # "Ok" under "Work in progress" under "Follow up" belongs to the ticket at the top of the chain
+                target_ticket, link_method = self._link_reply(tickets, ev, _resolve_quote_chain(tickets, chain, quoted_id))
                 if target_ticket:
                     if is_closure:
                         target_ticket["status"] = "Done"
@@ -632,7 +703,23 @@ class ReportsManager:
                         "quoted_message_id": quoted_id,
                         "audit_status": f"Linked ({link_method}) -> Ticket {target_ticket['message_id']}",
                     })
-                else:
+                    continue
+                # The chain starts at a ticket sent before the bot was recording: still show the fix
+                orphan = _orphan_fix_from_chain(chain, events_by_id, tickets, quoted_id, ev) if is_closure else None
+                if orphan:
+                    tickets[orphan["message_id"]] = orphan
+                    unlinked[:] = [u for u in unlinked if u.get("message_id") not in orphan["source_message_ids"]]
+                    source_audit.append({
+                        "message_id": msg_id, "group_name": fm_grp, "sender": ev["sender"],
+                        "raw_datetime": ev["raw_datetime"], "quoted_message_id": quoted_id,
+                        "audit_status": f"Closed earlier unrecorded ticket {orphan['message_id']}",
+                    })
+                    continue
+                # Technician reporting a fault already fixed ("N building 3 floor meeting room valve
+                # leakage issue resolved"): no open ticket to close, so it becomes a ticket marked Done
+                self_fixed = (is_closure and not quoted_id and any(k in t_low for k in fault_kws)
+                              and self.parser.extract_building_and_floor(text)[0] is not None)
+                if not self_fixed:
                     unlinked.append({
                         "message_id": msg_id,
                         "reason": "Unlinked reply without matching quoted ticket ID",
@@ -640,7 +727,9 @@ class ReportsManager:
                         "sender": ev["sender"],
                         "raw_datetime": ev["raw_datetime"],
                     })
-                continue
+                    continue
+            else:
+                self_fixed = False
 
             # A non-reply message is a ticket ONLY if it matches fault keywords (or manual correction)
             has_fault = any(k in t_low for k in fault_kws) or (corr and corr.get("target_status"))
@@ -690,6 +779,8 @@ class ReportsManager:
                 "quoted_message_id": quoted_id,
                 "source_message_ids": ev.get("source_message_ids", [msg_id]),
             }
+            if self_fixed:
+                ticket.update(status="Done", resolved_by=ev["sender"], closed_at=ev.get("datetime"))
             tickets[msg_id] = ticket
             source_audit.append({
                 "message_id": msg_id,
@@ -697,7 +788,7 @@ class ReportsManager:
                 "sender": ev["sender"],
                 "raw_datetime": ev["raw_datetime"],
                 "quoted_message_id": quoted_id,
-                "audit_status": "Valid Ticket",
+                "audit_status": "Valid Ticket (reported fixed)" if self_fixed else "Valid Ticket",
             })
 
         ticket_list = self._apply_manual_corrections(list(tickets.values()))
@@ -809,6 +900,7 @@ class ReportsManager:
         closure_exact = self.config.get("closure_exact", [])
         progress_kws = self.config.get("in_progress", ["checking", "notified to", "will replace"])
         followup_kws = self.config.get("followup_not_ticket", ["follow up", "is it restored", "urgent action required", "daily issues"])
+        fault_kws = self.config.get("fault", [])
 
         for ev in grouped_events:
             msg_id = ev["message_id"]
@@ -820,10 +912,15 @@ class ReportsManager:
             if corr and corr.get("target_report") == "ignore":
                 continue
 
-            is_closure = is_closure_text(t_low, closure_kws) or _is_exact_closure(text, closure_exact)
+            is_closure = (is_closure_text(t_low, closure_kws) or _is_exact_closure(text, closure_exact)
+                          or _is_reply_ok(ev, t_low))
             is_progress = any(p in t_low for p in progress_kws)
             is_ack = self.parser.is_non_operational(text)
-            is_followup = any(f in t_low for f in followup_kws) or (not is_closure and any(re.search(rf"\b{re.escape(k.lower())}\b", t_low) for k in closure_kws))
+            # A negated fix ("not yet rectified") is a follow-up, unless the message also describes a
+            # fault: "card reader cover is not fixed need to fix this" is a new ticket
+            is_followup = any(f in t_low for f in followup_kws) or (
+                not is_closure and not any(k in t_low for k in fault_kws)
+                and any(re.search(rf"\b{re.escape(k.lower())}\b", t_low) for k in closure_kws))
             is_fyi = bool(re.search(r"\bfyi\b", t_low))
             is_empty_or_image = text.strip() in ["(Image)", ""] or (len(text.strip()) <= 4 and not re.search(r"\w{3,}", text))
 
@@ -1043,6 +1140,14 @@ class ReportsManager:
                     continue
 
             if self.parser.is_non_operational(text):
+                continue
+
+            # "Follow-up please inform to imdaad" chases an earlier report; it is not new vendor work
+            if any(f in t_low for f in self.config.get("followup_not_ticket", [])):
+                needs_review.append({
+                    "message_id": msg_id, "reason": "Follow-up on an earlier report, not an activity",
+                    "text": text, "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
+                })
                 continue
 
             # Identify if it is an operational activity (faults belong to maintenance)
@@ -1521,7 +1626,8 @@ class ReportsManager:
             # Closure / progress replies ("Cleaned", "Pantry spill cleaned"), quoted or not, update
             # the task they answer (same linking as maintenance); checked before the short-text
             # spam filter so a one-word "Done" is not thrown away.
-            is_closure = is_closure_text(text_lower, closure_kws) or _is_exact_closure(text, closure_exact)
+            is_closure = (is_closure_text(text_lower, closure_kws) or _is_exact_closure(text, closure_exact)
+                          or _is_reply_ok(ev, text_lower))
             is_progress = any(k in text_lower for k in in_progress_kws)
 
             if is_closure or is_progress:

@@ -8,6 +8,10 @@ cd "$(dirname "$0")/.."
 APP=amirclaw
 PY=.venv/bin/python3
 
+# --reprocess: rebuild ticket history even when no rule changed
+reprocess=0
+[ "${1:-}" = "--reprocess" ] && reprocess=1
+
 before=$(git rev-parse HEAD)
 git pull --ff-only
 after=$(git rev-parse HEAD)
@@ -35,6 +39,11 @@ else
         restart=1
     fi
 
+    # New rules or keywords: old messages must follow them too (tickets.db + warehouse)
+    if echo "$changed" | grep -qE '^(reports_engine/|config/meydan_rules\.yaml$)'; then
+        reprocess=1
+    fi
+
     if [ "$restart" = 1 ]; then
         echo "🔄 Restarting $APP..."
         pm2 restart "$APP" --update-env >/dev/null
@@ -51,6 +60,13 @@ if ! $PY -c "import sys; from reports_engine import messages_db as m; sys.exit(0
     $PY -m reports_engine.messages_db
 fi
 $PY -m reports_engine.messages_db --fill-ts >/dev/null  # exact times for rows stored before the column existed
+
+if [ "$reprocess" = 1 ]; then
+    echo "♻️  Reprocessing all recorded messages with the current rules (previous stores backed up)..."
+    if ! $PY -m reports_engine.reprocess --apply | sed 's/^/   /'; then
+        echo "⚠️  Reprocess failed; reports still work. Run: $PY -m reports_engine.reprocess"
+    fi
+fi
 
 # Health checks
 status=$(pm2 jlist | $PY -c "import sys,json; a=[p for p in json.load(sys.stdin) if p['name']=='$APP']; print(a[0]['pm2_env']['status'] if a else 'missing')")
