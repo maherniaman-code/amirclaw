@@ -83,6 +83,30 @@ fault:
   - "require maintenance"
   - "electrical power issue"
   - "cooling is very low"
+  # Same fault wording guards use in the Security Team group (operations.fault_markers)
+  - "out of service"
+  - "out of order"
+  - "not functioning"
+  - "not responding"
+  - "malfunction"
+  - "faulty"
+  - "stuck"
+  - "jammed"
+  - "leak"
+  - "broken"
+  - "damaged"
+  - "cracked"
+  - "tripped"
+  - "no power"
+  - "power cut"
+  - "power failure"
+  - "not cooling"
+  - "low cooling"
+  - "flickering"
+  - "glowing"
+  - "need to replace"
+  - "needs repair"
+  - "need repair"
 
 closure:
   - "done"
@@ -96,6 +120,28 @@ closure:
   - "area cleared"
   - "spill removed"
   - "all clear"
+
+# Whole-message closures: only when the reply is exactly one of these.
+# "working ..." phrases must NOT go in `closure` above: a fault saying "not working properly"
+# would then be read as a negated closure (follow-up) and the ticket would be lost.
+closure_exact:
+  - "working"
+  - "working now"
+  - "now working"
+  - "working fine"
+  - "working properly"
+  - "working normally"
+  - "fixed"
+  - "fixed now"
+  - "solved"
+  - "ok now"
+  - "all good"
+
+# Unquoted replies link to the open ticket sharing a word within reply_link_hours
+# ("Light replaced" -> "...light not working..."), else to the latest open ticket
+# within reply_link_minutes.
+reply_link_hours: 12
+reply_link_minutes: 60
 
 in_progress:
   - "checking"

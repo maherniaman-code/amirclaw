@@ -53,13 +53,13 @@ def main():
             res = manager.generate_operations(target_date=args.date, target_shift=args.shift)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "violations":
-            res = manager.generate_parking_violations()
+            res = manager.generate_parking_violations(target_date=args.date)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "permissions":
-            res = manager.generate_vehicle_permissions()
+            res = manager.generate_vehicle_permissions(target_date=args.date)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "cleaning":
-            res = manager.generate_cleaning()
+            res = manager.generate_cleaning(target_date=args.date)
             print(json.dumps(res, ensure_ascii=False))
         elif args.report == "data_quality":
             res = generate_data_quality(manager)
