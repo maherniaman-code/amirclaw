@@ -1,4 +1,5 @@
-import { VideoBackfill, backfillSummary, PAGE_SIZE, MAX_ATTEMPTS, type BackfillDeps, type HistoryKey } from '../src/whatsapp/video_backfill.js';
+import { VideoBackfill, backfillSummary, reportGroupsFromRules, PAGE_SIZE, MAX_ATTEMPTS, type BackfillDeps, type HistoryKey } from '../src/whatsapp/video_backfill.js';
+import { readFileSync } from 'fs';
 
 function assert(cond: boolean, msg: string) {
     if (!cond) throw new Error(`Assertion failed: ${msg}`);
@@ -63,6 +64,33 @@ async function main() {
     const s = await silent.run();
     assert(s.recovered === 0 && s.left === 1, 'no answer from WhatsApp leaves the video missing without looping');
 
+    // History recovery: report groups go back to the target date even with no missing video
+    const requests2: HistoryKey[] = [];
+    let hb: VideoBackfill;
+    const untilTsMs = (T0 - 130 * 60) * 1000;  // 130 minutes back = 3 pages of 50 one-minute messages
+    hb = new VideoBackfill({
+        ...deps,
+        missing: () => [],
+        fetchHistory: async (count, key) => {
+            requests2.push(key);
+            const all = key.remoteJid === FM_JID ? fm : sec;
+            const from = all.findIndex((m) => m.key.id === key.id) + 1;
+            await hb.onHistory(all.slice(from, from + count));
+        },
+    }, { groups: [FM, SEC, 'Group the bot left'], untilTsMs });
+    const h = await hb.run();
+    assert(requests2.filter((k) => k.remoteJid === FM_JID).length === 3, 'pages a report group back to the target date');
+    assert(h.reached.includes(FM), 'group with enough history reaches the date');
+    assert(h.stopped.includes(SEC) && h.stopped.includes('Group the bot left'), 'short group and missing group are reported as stopped');
+    assert(h.received === 150 + 29, 'counts every message WhatsApp sent back');
+
+    const groups = reportGroupsFromRules(readFileSync('config/meydan_rules.yaml', 'utf8'));
+    assert(groups.includes('Meydan FM Team💪') && groups.includes('Parking Team at Meydan') && groups.length === 6,
+        'report groups read from config/meydan_rules.yaml');
+
+    const summary = backfillSummary({ total: 2, recovered: 2, left: 0, added: 340, reached: [FM], stopped: [SEC] }, 1, '17/07/2026');
+    assert(summary.includes('Old messages recovered: 340') && summary.includes('back to 17/07/2026') && summary.includes(SEC),
+        'summary tells how many old messages came back and where WhatsApp stopped');
     assert(backfillSummary({ total: 4, recovered: 3, left: 1 }, 1).includes('try again on the next restart'), 'summary says it will retry');
     assert(backfillSummary({ total: 4, recovered: 3, left: 1 }, MAX_ATTEMPTS).includes('could not be recovered'), 'last attempt says what is lost');
     assert(!/[؀-ۿ]/.test(backfillSummary({ total: 2, recovered: 2, left: 0 }, 1)), 'summary is English only');
