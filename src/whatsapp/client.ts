@@ -17,7 +17,7 @@ import { mirrorWhatsAppMessage } from '../cloud/messages.js';
 import { recordGroupActivity, alertOwner } from '../monitoring/alerts.js';
 import { isHrMessage } from '../privacy.js';
 import { makeVideoThumbnail } from './video_thumb.js';
-import { VideoBackfill, backfillSummary, reportGroupsFromRules, MAX_ATTEMPTS } from './video_backfill.js';
+import { VideoBackfill, backfillSummary, reportGroupsFromRules, acceptHistorySync, MAX_ATTEMPTS } from './video_backfill.js';
 import { missingVideoThumbs, setThumbnail, newestMessageInGroup, getMeta, setMeta, countStoredMessages } from './store.js';
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
@@ -417,6 +417,8 @@ export async function startWhatsAppClient(): Promise<void> {
         logger: pino({ level: 'silent' }), // Silent logs to prevent spam
         browser: ['amirClaw Reader', 'Desktop', '1.0.0'],
         syncFullHistory: false,
+        // Without this Baileys drops the answers to our history requests (old messages / video pictures)
+        shouldSyncHistoryMessage: (msg) => acceptHistorySync(msg as any),
         markOnlineOnConnect: false,
         keepAliveIntervalMs: 25_000,
         defaultQueryTimeoutMs: 60_000,
