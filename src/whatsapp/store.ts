@@ -107,3 +107,38 @@ export async function storeWhatsAppMessage(m: StoredMessage): Promise<void> {
 export function countStoredMessages(): number {
     return (getDb().prepare('SELECT COUNT(*) AS n FROM messages').get() as any).n;
 }
+
+// ── Old videos without a picture (recovered later from WhatsApp history) ──
+
+export interface MissingVideo { messageId: string; groupName: string; tsMs: number | null }
+
+export function missingVideoThumbs(): MissingVideo[] {
+    return (getDb().prepare(
+        `SELECT message_id AS messageId, group_name AS groupName, ts_utc_ms AS tsMs FROM messages
+         WHERE media_type LIKE '%Video%' AND thumb_jpeg IS NULL ORDER BY ts_utc_ms`,
+    ).all() as MissingVideo[]);
+}
+
+/** Saves a recovered picture; never overwrites one that is already there. */
+export function setThumbnail(messageId: string, jpeg: Buffer): boolean {
+    return getDb().prepare('UPDATE messages SET thumb_jpeg = ? WHERE message_id = ? AND thumb_jpeg IS NULL')
+        .run(jpeg, messageId).changes > 0;
+}
+
+/** Newest recorded message of a group: history requests go back from it. */
+export function newestMessageInGroup(groupName: string): { id: string; tsMs: number; fromMe: boolean } | null {
+    const r = getDb().prepare(
+        `SELECT message_id AS id, ts_utc_ms AS tsMs, sender FROM messages
+         WHERE group_name = ? AND ts_utc_ms IS NOT NULL ORDER BY ts_utc_ms DESC LIMIT 1`,
+    ).get(groupName) as any;
+    return r ? { id: r.id, tsMs: r.tsMs, fromMe: String(r.sender || '').startsWith('Me (Bot Account)') } : null;
+}
+
+export function getMeta(key: string): string | null {
+    const r = getDb().prepare('SELECT value FROM meta WHERE key = ?').get(key) as any;
+    return r ? r.value : null;
+}
+
+export function setMeta(key: string, value: string): void {
+    getDb().prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run(key, value);
+}

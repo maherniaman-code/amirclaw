@@ -14,9 +14,11 @@ import sharp from 'sharp';
 import { appendWhatsAppMessage, ensureExcelInitialized, flushWhatsAppMessages, EXCEL_PATH } from './excel.js';
 import { config } from '../config.js';
 import { mirrorWhatsAppMessage } from '../cloud/messages.js';
-import { recordGroupActivity } from '../monitoring/alerts.js';
+import { recordGroupActivity, alertOwner } from '../monitoring/alerts.js';
 import { isHrMessage } from '../privacy.js';
 import { makeVideoThumbnail } from './video_thumb.js';
+import { VideoBackfill, backfillSummary, MAX_ATTEMPTS } from './video_backfill.js';
+import { missingVideoThumbs, setThumbnail, newestMessageInGroup, getMeta, setMeta } from './store.js';
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
 const SESSION_DIR = path.join(WORKSPACE_DIR, 'whatsapp_session');
@@ -40,6 +42,8 @@ function setStatus(next: 'disconnected' | 'connecting' | 'connected'): void {
 let currentQrBuffer: Buffer | null = null;
 let currentQrText: string | null = null;
 let groupMetadataCache: Map<string, string> = new Map();
+let activeBackfill: VideoBackfill | null = null;
+let backfillScheduled = false;
 
 export function getWhatsAppStatus() {
     return {
@@ -294,6 +298,58 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
     }
 }
 
+/** Pictures for videos recorded before video frames were saved (see video_backfill.ts). */
+async function runVideoBackfill(): Promise<void> {
+    if (getMeta('video_backfill_done') === '1' || !waSocket) return;
+    const attempt = Number(getMeta('video_backfill_attempts') || 0) + 1;
+    if (attempt > MAX_ATTEMPTS) return;
+    if (!missingVideoThumbs().length) {
+        setMeta('video_backfill_done', '1');
+        return;
+    }
+    const sock = waSocket;
+    const jids = new Map<string, string>();
+    for (const g of Object.values(await sock.groupFetchAllParticipating())) jids.set((g as any).subject, (g as any).id);
+
+    activeBackfill = new VideoBackfill({
+        missing: missingVideoThumbs,
+        groupJid: (name) => jids.get(name),
+        anchor: newestMessageInGroup,
+        fetchHistory: (count, key, ts) => sock.fetchMessageHistory(count, key, ts),
+        makeThumb: async (msg) => {
+            const tmp = path.join(MEDIA_DIR, `backfill_${Date.now()}_${String(msg.key?.id).slice(0, 8)}.jpg`);
+            const out = await makeVideoThumbnail(msg.message.videoMessage, async () => {
+                const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 30000));
+                const dl = downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage });
+                const buf: any = await Promise.race([dl.catch(() => null), timeout]);
+                return buf && Buffer.isBuffer(buf) ? buf : null;
+            }, tmp);
+            if (!out) return null;
+            const jpeg = fs.readFileSync(out);
+            fs.rmSync(out, { force: true });
+            return jpeg;
+        },
+        saveThumb: setThumbnail,
+        notify: (text) => alertOwner('video_backfill', text, { force: true }),
+        wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        log: (line) => console.log(`🎬 ${line}`),
+    });
+    try {
+        setMeta('video_backfill_attempts', String(attempt));
+        console.log(`🎬 Recovering pictures for old videos (attempt ${attempt} of ${MAX_ATTEMPTS})...`);
+        const result = await activeBackfill.run();
+        await new Promise((resolve) => setTimeout(resolve, WAIT_FOR_LATE_HISTORY_MS)); // answers can arrive after the last request
+        const final = { ...result, recovered: activeBackfill.recovered, left: missingVideoThumbs().length };
+        if (!final.left) setMeta('video_backfill_done', '1');
+        console.log(`🎬 Old video pictures: recovered ${final.recovered}, still missing ${final.left}`);
+        await alertOwner('video_backfill', backfillSummary(final, attempt), { force: true });
+    } finally {
+        activeBackfill = null;
+    }
+}
+
+const WAIT_FOR_LATE_HISTORY_MS = 30_000;
+
 export async function startWhatsAppClient(): Promise<void> {
     // Ensure Excel file exists right away
     await ensureExcelInitialized();
@@ -367,6 +423,10 @@ export async function startWhatsAppClient(): Promise<void> {
             currentQrBuffer = null;
             currentQrText = null;
             console.log('✅ WhatsApp connected successfully! Now listening to group messages in READ-ONLY mode.');
+            if (!backfillScheduled) {
+                backfillScheduled = true;
+                setTimeout(() => { runVideoBackfill().catch((e) => console.warn('Video backfill failed:', e?.message || e)); }, 60_000);
+            }
         }
     });
 
@@ -380,6 +440,7 @@ export async function startWhatsAppClient(): Promise<void> {
                 await processGroupMessage(msg, false).catch(() => {});
             }
             await flushWhatsAppMessages().catch(() => {});
+            if (activeBackfill) await activeBackfill.onHistory(messages).catch(() => {});
         });
     });
 
