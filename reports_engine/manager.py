@@ -12,7 +12,7 @@ from .deduplicator import deduplicate_events
 from .email_reader import fetch_parking_email_from_imap
 from .corrections_db import get_correction_for_message
 from .corrections_db import get_correction_for_message as _correction_for
-from .tickets_db import enrich_ticket, CHRONIC_HOURS
+from .tickets_db import enrich_ticket, same_issue, CHRONIC_HOURS
 from . import warehouse
 from .report_generators import (
     generate_parking_report_text,
@@ -665,9 +665,9 @@ class ReportsManager:
 
             # Possible repeat detection against earlier reported tickets
             repeat_flag = None
-            for prev_id, prev_t in tickets.items():
+            for prev_t in tickets.values():
                 if prev_t.get("building") and prev_t["building"] == bld:
-                    if ("ac" in t_low and "ac" in prev_t["text"].lower()) or ("control room" in t_low and "control room" in prev_t["text"].lower()):
+                    if same_issue(text, prev_t["text"]):
                         prev_time = format_report_timestamp(prev_t["datetime"])
                         repeat_flag = f"Possible repeat of ticket from {prev_time}"
                         break
@@ -868,10 +868,9 @@ class ReportsManager:
 
             # Detect possible repeat of an earlier ticket in same building
             repeat_flag = None
-            fire_repeat_kws = ("fire", "smoke", "alarm", "sprinkler", "exit", "panel")
             for prev_t in tickets.values():
                 if prev_t.get("building") and prev_t["building"] == bld:
-                    if any(kw in t_low and kw in prev_t["text"].lower() for kw in fire_repeat_kws):
+                    if same_issue(text, prev_t["text"]):
                         prev_time = format_report_timestamp(prev_t["datetime"])
                         repeat_flag = f"Possible repeat of ticket from {prev_time}"
                         break
@@ -1352,6 +1351,13 @@ class ReportsManager:
             is_reply = is_short and (self.parser.is_non_operational(text) or any(r in t_low for r in perm_replies))
             if not (quoted_target or is_reply):
                 continue  # slot counts, Rumble area updates, chatter
+            if quoted_id and not quoted_target:
+                # A Reply to some other message ("Acknowledged" under a notice) is not about the latest request
+                unlinked.append({
+                    "message_id": msg_id, "reason": "Reply to a message that is not a permission request",
+                    "text": text, "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
+                })
+                continue
 
             if quoted_target:
                 targets, link_method = [quoted_target], "quoted"

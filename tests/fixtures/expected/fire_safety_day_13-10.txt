@@ -3,19 +3,19 @@
 📅 Shift: Day Shift (13-10-2026)
 
 📍 Building N
-1. N building 3rd floor front of reception two Emergency Exit light are not working ⏳ [Carried over] 🔴 10x in 7 days
+1. N building 3rd floor front of reception two Emergency Exit light are not working ⏳ [Carried over]
    ⏰ Reported: 12-10-2026 19:39
    🕐 Open: 2.7d
    ⚠️ Pending
-2. N building 2nd floor near to reception 1 emergency exit light is not working ⏳ [Carried over] ⚠️ [Possible repeat of ticket from 12-10-2026 19:39] 🔴 10x in 7 days
+2. N building 2nd floor near to reception 1 emergency exit light is not working ⏳ [Carried over]
    ⏰ Reported: 12-10-2026 19:40
    🕐 Open: 2.7d
    ⚠️ Pending
-3. N building 1st floor exit staircase door to ramp Area,1 emergency exit light is not working ⏳ [Carried over] ⚠️ [Possible repeat of ticket from 12-10-2026 19:39] 🔴 10x in 7 days
+3. N building 1st floor exit staircase door to ramp Area,1 emergency exit light is not working ⏳ [Carried over]
    ⏰ Reported: 12-10-2026 19:40
    🕐 Open: 2.7d
    ⚠️ Pending
-4. N Building Ground Floor Emergency Lights are Glowing without any Emergency situation in the Building on several places need to Rectify 1) Electrical Room (2) Parking Area Next To waiting lounge (3) Service lift Loby 🔴 10x in 7 days
+4. N Building Ground Floor Emergency Lights are Glowing without any Emergency situation in the Building on several places need to Rectify 1) Electrical Room (2) Parking Area Next To waiting lounge (3) Service lift Loby
    ⏰ Reported: 13-10-2026 11:25
    🕐 Open: 2.0d
    ⚠️ Pending

@@ -2,54 +2,67 @@
 
 📍 VIP / Smart Parking
 1. Plate: 4 / 25444 | Make: GMC
+   📍 Area: Smart Parking
    📅 Validity: only for 3 days from today 13/10/2026 until 15/10/2026
    👤 Requested by: Person 21 | ⏰ Time: 13-10-2026 06:29
    ℹ️ Status: Noted
 2. Plate: EE 43706 | Make: N/A
+   📍 Area: VIP slot
    📅 Validity: only for today
    👤 Requested by: Person 21 | ⏰ Time: 13-10-2026 07:54
    ℹ️ Status: Parked in VIP slot
 3. Plate: V 29671 | Make: Mitsubishi Pajero
+   📍 Area: VIP slot
    📅 Validity: only for today
    👤 Requested by: Person 21 | ⏰ Time: 13-10-2026 08:55
    ℹ️ Status: Pending
 4. Plate: FF 78382 | Make: N/A
+   📍 Area: Slot M96
    📅 Validity: only for today
    👤 Requested by: Person 21 | ⏰ Time: 13-10-2026 10:27
    ℹ️ Status: Parked in assigned slot
 5. Plate: X 19490 | Make: Audi A5
+   📍 Area: Slot Q-103
    📅 Validity: Permanent
    👤 Requested by: Person 21 | ⏰ Time: 13-10-2026 12:28
    ℹ️ Status: Noted
 6. Plate: AA 95409 | Make: Porsche
+   📍 Area: Slot Q-103
    📅 Validity: Permanent
    👤 Requested by: Person 21 | ⏰ Time: 13-10-2026 12:51
    ℹ️ Status: Noted
 7. Plate: M 82350 | Make: Infinity QX60
+   📍 Area: Podium
    📅 Validity: only for today
    👤 Requested by: Person 21 | ⏰ Time: 15-10-2026 06:23
    ℹ️ Status: Noted
 8. Plate: G 49574 | Make: N/A
+   📍 Area: Podium
    📅 Validity: only for today
    👤 Requested by: Person 21 | ⏰ Time: 15-10-2026 06:23
    ℹ️ Status: Noted
 9. Plate: 88557 | Make: N/A
+   📍 Area: Podium
    📅 Validity: only for today
    👤 Requested by: Person 21 | ⏰ Time: 15-10-2026 06:23
    ℹ️ Status: Noted
-10. Plate: R 76376 DXB | Make: N/A
+10. Plate: R 76376 DXB | Make: Tesla (white)
+   📍 Area: Podium
    📅 Validity: only for today for visitor
    👤 Requested by: Person 21 | ⏰ Time: 15-10-2026 06:23
    ℹ️ Status: Noted
 11. Plate: S 02117 | Make: jeep Wrangler
+   📍 Area: VIP slot
    📅 Validity: only for today
    👤 Requested by: Person 21 | ⏰ Time: 15-10-2026 06:52
    ℹ️ Status: Noted
 12. Plate: 6477 | Make: Mercedes
-   📅 Validity: N/A
+   📍 Area: Q Building
+   📅 Validity: today
    👤 Requested by: Person 21 | ⏰ Time: 15-10-2026 07:00
    ℹ️ Status: Noted
 13. Plate: I 05089 | Make: BMW X5
+   📍 Area: VIP slot
    📅 Validity: N/A
    👤 Requested by: Person 21 | ⏰ Time: 15-10-2026 07:27
    ℹ️ Status: Pending

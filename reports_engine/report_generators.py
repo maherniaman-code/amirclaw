@@ -138,7 +138,7 @@ def generate_maintenance_report_text(events: List[Dict[str, Any]], summary_stats
         idx = start_idx
         for item in items:
             raw_title = item.get("issue") or item.get("text") or "Maintenance issue"
-            issue_title = re.sub(r"\s+", " ", raw_title).strip()
+            issue_title = clean_title(raw_title)
             if item.get("is_carry_over") and not item.get("is_chronic"):
                 issue_title = f"{issue_title} ⏳ [Carried over]"
             if item.get("is_chronic"):
@@ -229,7 +229,7 @@ def generate_fire_safety_report_text(events: List[Dict[str, Any]], summary_stats
         idx = start_idx
         for item in items:
             raw_title = item.get("issue") or item.get("text") or "Fire & Safety issue"
-            issue_title = re.sub(r"\s+", " ", raw_title).strip()
+            issue_title = clean_title(raw_title)
             if item.get("is_carry_over") and not item.get("is_chronic"):
                 issue_title = f"{issue_title} ⏳ [Carried over]"
             if item.get("is_chronic"):
@@ -345,6 +345,14 @@ def generate_operations_report_text(events: List[Dict[str, Any]], summary_stats:
     return "\n".join(lines)
 
 
+def clean_title(text: str) -> str:
+    """Ticket text as a title: no leading "FYI..." / @mentions, no unresolved numeric @ids, one line."""
+    t = re.sub(r"@\d{6,}", "", text or "")
+    t = re.sub(r"^\s*(?:(?:fyi|dear\s+team)\b[\s.,:;!-]*|@\S+[\s,:;-]*)+", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s+([.,;:])", r"\1", re.sub(r"\s+", " ", t)).strip()
+    return t or re.sub(r"\s+", " ", text or "").strip()
+
+
 def generate_parking_violations_report_text(events: List[Dict[str, Any]], summary_stats: Dict[str, Any]) -> str:
     """Generates Report 5 — Parking Violations Summary."""
     lines = ["# 🚫 Parking Violations Summary – Meydan", ""]
@@ -355,7 +363,7 @@ def generate_parking_violations_report_text(events: List[Dict[str, Any]], summar
         slot = item.get("slot_no", "N/A")
         lines.append(f"📍 {lvl}, Slot {slot}")
 
-        issue_desc = item.get("text") or "Parking violation"
+        issue_desc = clean_title(item.get("text") or "") or "Parking violation"
         reported_dt = format_report_timestamp(item.get("datetime") or item.get("raw_datetime"))
         sender = display_name(item.get("sender")) or "Security"
         photo_ref = item.get("photo_ref") or "N/A"
@@ -402,6 +410,8 @@ def generate_vehicle_permissions_report_text(events: List[Dict[str, Any]], summa
         st = item.get("status", "Pending")
 
         lines.append(f"{item_idx}. Plate: {plate} | Make: {make}")
+        if item.get("area"):
+            lines.append(f"   📍 Area: {item['area']}")
         lines.append(f"   📅 Validity: {validity}")
         lines.append(f"   👤 Requested by: {requester} | ⏰ Time: {time_str}")
         lines.append(f"   ℹ️ Status: {st}")
