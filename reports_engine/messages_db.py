@@ -196,6 +196,10 @@ def fill_missing_ts(db_path: Path) -> int:
     return len(missing)
 
 
+# Picture box in the messages workbook: the 2.30" Excel thumbnail width, taller for upright videos
+PICTURE_MAX_W, PICTURE_MAX_H = 221, 260
+
+
 def export_excel(out_path: Path, db_path: Path) -> int:
     """
     Build the WhatsApp messages workbook (same columns as the live file, thumbnails included)
@@ -230,6 +234,9 @@ def export_excel(out_path: Path, db_path: Path) -> int:
         if thumb:
             try:
                 img = XlImage(_io.BytesIO(bytes(thumb)))
+                # Video frames are stored larger than the cell: scale down to fit it
+                scale = min(1.0, PICTURE_MAX_W / img.width, PICTURE_MAX_H / img.height)
+                img.width, img.height = int(img.width * scale), int(img.height * scale)
                 ws.add_image(img, f"G{i}")
                 ws.row_dimensions[i].height = max(img.height * 0.75 + 4, 20)
             except Exception:

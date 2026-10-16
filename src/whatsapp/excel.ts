@@ -252,6 +252,7 @@ export async function flushWhatsAppMessages(): Promise<void> {
                 try {
                     const TARGET_W = Math.round(2.30 * 96); // 221 px
                     const TARGET_H = Math.round(1.70 * 96); // 163 px
+                    const PICTURE_MAX_H = 260; // upright phone videos get a taller cell
                     const ROW_HEIGHT_PTS = Math.round(1.70 * 72); // 122 pt
 
                     let imgW = TARGET_W;
@@ -260,8 +261,10 @@ export async function flushWhatsAppMessages(): Promise<void> {
                     try {
                         const meta = await sharp(imgPath).metadata();
                         if (meta.width && meta.height) {
-                            imgW = meta.width;
-                            imgH = meta.height;
+                            // Video frames are stored larger than the cell: scale down to fit it
+                            const scale = Math.min(1, TARGET_W / meta.width, PICTURE_MAX_H / meta.height);
+                            imgW = Math.round(meta.width * scale);
+                            imgH = Math.round(meta.height * scale);
                         }
                     } catch {}
 
@@ -276,7 +279,7 @@ export async function flushWhatsAppMessages(): Promise<void> {
                         editAs: 'oneCell',
                     });
 
-                    newRow.height = ROW_HEIGHT_PTS;
+                    newRow.height = Math.max(ROW_HEIGHT_PTS, Math.round(imgH * 0.75) + 6);
 
                     if ((sheet.getColumn(7).width || 0) < 28) {
                         sheet.getColumn(7).width = 28;

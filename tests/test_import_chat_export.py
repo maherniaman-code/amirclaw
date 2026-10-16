@@ -109,6 +109,20 @@ class TestImport(unittest.TestCase):
         import_exports([self.zip], self.db, since=datetime(2026, 10, 8, tzinfo=DUBAI_TZ), apply=True)
         self.assertEqual(len(self.rows()), 2)
 
+    def test_large_video_frame_fits_the_excel_cell(self):
+        big = io.BytesIO()
+        Image.new("RGB", (270, 480), (90, 90, 90)).save(big, "JPEG")   # upright phone video frame
+        with sqlite3.connect(self.db) as c:
+            c.execute(f"INSERT INTO messages ({messages_db.COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                      ("VID1", "10/16/2026, 12:05:09 PM", "Meydan FM Team💪", "Akash (1)", "(Video)", "🎬 Video",
+                       "", big.getvalue(), None, int(datetime(2026, 10, 16, 12, 5, tzinfo=DUBAI_TZ).timestamp() * 1000)))
+        out = self.tmp / "export.xlsx"
+        messages_db.export_excel(out, self.db)
+        import openpyxl
+        (img,) = openpyxl.load_workbook(out).active._images
+        shown = (img.anchor.ext.width // 9525, img.anchor.ext.height // 9525)   # size drawn in the cell, in px
+        self.assertEqual(shown, (146, 260))   # taller cell, scaled down from 270x480
+
     def test_reports_read_imported_messages(self):
         import_exports([self.zip], self.db, apply=True)
         from reports_engine.whatsapp_parser import WhatsAppParser
