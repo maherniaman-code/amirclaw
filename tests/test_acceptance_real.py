@@ -99,8 +99,8 @@ class TestAcceptanceSuite(unittest.TestCase):
             "\n"
             "🅿️ *Ramp Area Location*\n"
             "\n"
-            "• Total Slots Designated : 127\n"
-            "• Customer and Visitors: <VAL>\n"
+            "- Total Slots Designated : 127\n"
+            "- Customer and Visitors: <VAL>\n"
             "• P.O.D: <VAL>\n"
             "• Staff: <VAL>\n"
             "• Total car Entered : <VAL>\n"
@@ -130,7 +130,7 @@ class TestAcceptanceSuite(unittest.TestCase):
         masked_rendered = re.sub(r"(• Cars entered:\s*)\d+", r"\g<1><VAL>", masked_rendered)
         masked_rendered = re.sub(r"(• Occupied slots :\s*)\d+", r"\g<1><VAL>", masked_rendered)
         masked_rendered = re.sub(r"(• Outside smart parking cars:\s*)\d+", r"\g<1><VAL>", masked_rendered)
-        masked_rendered = re.sub(r"(• Customer and Visitors:\s*)\d+", r"\g<1><VAL>", masked_rendered)
+        masked_rendered = re.sub(r"(- Customer and Visitors:\s*)\d+", r"\g<1><VAL>", masked_rendered)
         masked_rendered = re.sub(r"(• P\.O\.D:\s*)\d+", r"\g<1><VAL>", masked_rendered)
         masked_rendered = re.sub(r"(• Staff:\s*)\d+", r"\g<1><VAL>", masked_rendered)
         masked_rendered = re.sub(r"(• Total car Entered :\s*)\d+", r"\g<1><VAL>", masked_rendered)
@@ -243,11 +243,11 @@ class TestAcceptanceSuite(unittest.TestCase):
         self.assertEqual(res["staff_cars"], 118)
         self.assertEqual(res["total_cars_entered_ramp"], 210)
         self.assertEqual(res["total_cars_parked_ramp"], 158)
-        self.assertEqual(res["service_road_slots"], 127)  # Fixed at 127
+        self.assertEqual(res["service_road_slots"], 120)  # the number the team sent (owner, 16-10)
         self.assertEqual(res["service_road_entered"], 131)
         self.assertEqual(res["service_road_parked"], 117)
         self.assertEqual(res["partially_blocked_parking"], 4)
-        self.assertIn("Service Road capacity reported as 120 in WA message (fixed at 127 in report)", res["diagnostics"])
+        self.assertIn("Service Road slots reported as 120 (usual capacity 127)", res["diagnostics"])
 
     # ─────────────────────────────────────────────────────────────
     # ITEM 1 & D: Deduplication Precision (No over-merging)

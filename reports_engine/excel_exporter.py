@@ -118,7 +118,7 @@ def generate_parking_excel(
     # 5. Service Road
     ws_sr = wb.create_sheet("Service Road")
     ws_sr.append(["Metric", "Value", "Notes"])
-    ws_sr.append(["Total Slots", 127, "Fixed at 127"])
+    ws_sr.append(["Total Slots", ramp.get("service_road_slots", 127), "As sent by the team (127 when left out)"])
     ws_sr.append(["Cars Entered", ramp.get("service_road_entered", "N/A"), ""])
     ws_sr.append(["Total Occupied Slots", ramp.get("service_road_parked", "N/A"), ""])
     ws_sr.append(["Partially Blocked Parking", ramp.get("partially_blocked_parking", "N/A"), ""])

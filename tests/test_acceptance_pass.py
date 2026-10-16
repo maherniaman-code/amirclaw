@@ -122,7 +122,7 @@ Partially Blocked
         self.assertEqual(res["staff_cars"], 118)
         self.assertEqual(res["total_cars_entered_ramp"], 210)
         self.assertEqual(res["total_cars_parked_ramp"], 158)
-        self.assertEqual(res["service_road_slots"], 127)  # Fixed at 127
+        self.assertEqual(res["service_road_slots"], 120)  # the number the team sent (owner, 16-10)
         self.assertEqual(res["reported_service_road_slots"], 120)
         self.assertEqual(res["service_road_entered"], 131)
         self.assertEqual(res["service_road_parked"], 117)

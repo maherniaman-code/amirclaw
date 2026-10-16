@@ -316,7 +316,7 @@ class TestReportFormatting(unittest.TestCase):
         self.assertIn("🏢 *P BUILDING*", report)
         self.assertIn("📊 *TOTAL SUMMARY* = 459", report)
         self.assertIn("🅿️ *SMART PARKING SUMMARY REPORT*", report)
-        self.assertIn("🅿️ *Ramp Area Location*\n\n• Total Slots Designated : 127", report)
+        self.assertIn("🅿️ *Ramp Area Location*\n\n- Total Slots Designated : 127", report)
         self.assertIn("🛣️ *Service Road*\n\n• Total Slots : 127", report)
         self.assertIn("🏁 *Rumble Area*", report)
 
@@ -935,7 +935,7 @@ class TestCleaningReportAndParkingRamp(unittest.TestCase):
                 "Total Car parked at service road: 18\nPartially Blocked Parking: 2")
         msgs = [_wa_msg("R1", 15, 9, 55, 0, g, "Guard", post)]
         text = self._run("generate_parking", msgs, slot_request="10:00", report_date="15-10-2026")["text"]
-        for line in ("• Customer and Visitors: 12", "• P.O.D: 3", "• Staff: 40", "• Total car Entered : 55",
+        for line in ("- Customer and Visitors: 12", "• P.O.D: 3", "• Staff: 40", "• Total car Entered : 55",
                      "• Total Car Parking at Ramp Area: 50", "• Cars entered: 20", "• Total Occupied Slots : 18",
                      "• Partially Blocked Parking : 2"):
             self.assertIn(line, text)
@@ -950,9 +950,10 @@ class TestCleaningReportAndParkingRamp(unittest.TestCase):
         msgs = [_wa_msg("R1", 12, 11, 34, 0, "Parking Team at Meydan", "Guard", self.REAL_OCCUPANCY)]
         res = self._run("generate_parking", msgs, slot_request="12:00", report_date="12-10-2026")
         text = res["text"]
-        for line in ("• Customer and Visitors: 87", "• P.O.D: 5", "• Staff: 118", "• Total car Entered : 210",
-                     "• Total Car Parking at Ramp Area: 158", "• Cars entered: 131", "• Total Occupied Slots : 117",
-                     "• Partially Blocked Parking : 4"):
+        # Numbers as typed (05, 04) and the Service Road slots the team sent (owner, 16-10)
+        for line in ("- Customer and Visitors: 87", "• P.O.D: 05", "• Staff: 118", "• Total car Entered : 210",
+                     "• Total Car Parking at Ramp Area: 158", "• Total Slots : 120", "• Cars entered: 131",
+                     "• Total Occupied Slots : 117", "• Partially Blocked Parking : 04"):
             self.assertIn(line, text)
 
     def test_occupancy_total_entered_defaults_to_sum_of_the_three(self):
@@ -976,7 +977,7 @@ class TestCleaningReportAndParkingRamp(unittest.TestCase):
 
     def test_parking_ramp_missing_shows_na(self):
         text = self._run("generate_parking", [], slot_request="10:00", report_date="15-10-2026")["text"]
-        self.assertIn("• Customer and Visitors: N/A", text)
+        self.assertIn("- Customer and Visitors: N/A", text)
 
 
 class TestRealMessages15Oct(unittest.TestCase):

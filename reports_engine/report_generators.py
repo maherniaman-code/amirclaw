@@ -44,6 +44,10 @@ def generate_parking_report_text(
     rumble = rumble_data or {}
 
     def val(d: Dict[str, Any], k: str, default: str = "N/A") -> str:
+        # Numbers as the team typed them ("02", "07"), like the template
+        written = (d.get("as_written") or {}).get(k)
+        if written:
+            return written
         v = d.get(k)
         return str(v) if v is not None else default
 
@@ -92,8 +96,8 @@ def generate_parking_report_text(
         f"\n"
         f"🅿️ *Ramp Area Location*\n"
         f"\n"
-        f"• Total Slots Designated : {cap_ramp}\n"
-        f"• Customer and Visitors: {val(ramp, 'customer_visitor')}\n"
+        f"- Total Slots Designated : {cap_ramp}\n"
+        f"- Customer and Visitors: {val(ramp, 'customer_visitor')}\n"
         f"• P.O.D: {val(ramp, 'pod_cars')}\n"
         f"• Staff: {val(ramp, 'staff_cars')}\n"
         f"• Total car Entered : {val(ramp, 'total_cars_entered_ramp')}\n"
@@ -101,7 +105,7 @@ def generate_parking_report_text(
         f"\n"
         f"🛣️ *Service Road*\n"
         f"\n"
-        f"• Total Slots : {cap_service}\n"
+        f"• Total Slots : {val(ramp, 'service_road_slots', str(cap_service))}\n"
         f"• Cars entered: {val(ramp, 'service_road_entered')}\n"
         f"• Total Occupied Slots : {val(ramp, 'service_road_parked')}\n"
         f"• Partially Blocked Parking : {val(ramp, 'partially_blocked_parking')}\n"
