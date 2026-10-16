@@ -366,9 +366,9 @@ Partially Blocked
         self.assertEqual(pm[0]["image_file"], "image43.jpeg")
         self.assertEqual(pm[0]["excel_row"], 2)  # header=row1, first event=row2
 
-        # Thumbnail must be within 160px on longest side
+        # Picture drawn in the same box as the WhatsApp messages Excel (owner, 16-10)
         tw, th = [int(x) for x in pm[0]["thumb_px"].split("×")]
-        self.assertLessEqual(max(tw, th), 160)
+        self.assertTrue(tw <= 221 and th <= 260)
 
         # Thumbnail function: ensure it produces correct JPEG
         thumb_bytes, w, h = _make_thumbnail(fake_photo_bytes, 160, 70)
@@ -383,9 +383,9 @@ Partially Blocked
         self.assertIn("Photos", wb.sheetnames)  # because at least one photo exists
         self.assertIn("Source Audit", wb.sheetnames)
 
-        # Event without photo must have "N/A" in photo cell (col I = column 9)
+        # Event without photo must have "N/A" in photo cell (col G, like the messages Excel)
         ws_ev = wb["Events & Details"]
-        self.assertEqual(ws_ev.cell(row=3, column=9).value, "N/A")  # second event, no photo
+        self.assertEqual(ws_ev.cell(row=3, column=7).value, "N/A")  # second event, no photo
 
         print(f"CASE M Result: PASS-FIXTURE | file={excel_path.name} ({result['file_size_bytes']:,} bytes) | thumb={pm[0]['thumb_px']} px")
         excel_path.unlink(missing_ok=True)  # clean up temp file
