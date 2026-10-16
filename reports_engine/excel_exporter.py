@@ -155,6 +155,71 @@ def generate_parking_excel(
     return out_file
 
 
+# ── Report items in the same layout as the WhatsApp messages Excel (owner, 16-10) ─────────────
+# One row per item: sortable Dubai time, group, name without numbers, the message, where, the
+# picture in the row (same box as the messages file), status and who closed it.
+ITEM_HEADERS = ["#", "Time (Dubai)", "Group", "Sender", "Message", "Location", "Photo Preview",
+                "Status", "Closed by", "Message ID"]
+ITEM_WIDTHS = (6, 18, 26, 22, 70, 22, 32, 14, 22, 36)
+PHOTO_COL = 7          # G, like the messages file
+PICTURE_MAX_W, PICTURE_MAX_H = 221, 260
+
+
+def _write_items_sheet(ws, events: List[Dict[str, Any]], default_status: str = "Pending") -> List[Dict[str, Any]]:
+    """Fill ws with one row per item; returns where each picture went (row, message id, size)."""
+    from datetime import datetime as _dt
+    from openpyxl.drawing.image import Image as OpenpyxlImage
+    from .date_utils import DUBAI_TZ
+    from .master_data import display_name
+
+    ws.append(ITEM_HEADERS)
+    for cell in ws[1]:
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    for col, width in zip(range(1, len(ITEM_WIDTHS) + 1), ITEM_WIDTHS):
+        ws.column_dimensions[get_column_letter(col)].width = width
+    ws.freeze_panes = "A2"
+    wrap = Alignment(wrap_text=True, vertical="center")
+    placed: List[Dict[str, Any]] = []
+    for idx, ev in enumerate(events, 1):
+        row = idx + 1
+        when = ev.get("datetime")
+        when = when.astimezone(DUBAI_TZ).replace(tzinfo=None) if isinstance(when, _dt) and when.tzinfo else when
+        ws.append([
+            idx,
+            when if isinstance(when, _dt) else format_report_timestamp(ev.get("raw_datetime")),
+            ev.get("group_name") or "",
+            display_name(ev.get("sender")) or "N/A",
+            ev.get("issue") or ev.get("activity") or ev.get("text") or "N/A",
+            ev.get("location_heading") or ev.get("level") or "",
+            "",
+            ev.get("status", default_status),
+            display_name(ev.get("resolved_by")) if ev.get("resolved_by") else "",
+            ev.get("message_id", ""),
+        ])
+        ws.cell(row=row, column=2).number_format = "yyyy-mm-dd hh:mm"
+        ws.cell(row=row, column=5).alignment = wrap
+        photos = ev.get("photos_data") or []
+        raw = photos[0].get("bytes") if photos else None   # only this item's own picture
+        if not raw:
+            ws.cell(row=row, column=PHOTO_COL).value = "N/A"
+            continue
+        try:
+            img = OpenpyxlImage(io.BytesIO(raw))
+            scale = min(1.0, PICTURE_MAX_W / img.width, PICTURE_MAX_H / img.height)
+            img.width, img.height = int(img.width * scale), int(img.height * scale)
+            ws.add_image(img, f"{get_column_letter(PHOTO_COL)}{row}")
+            ws.row_dimensions[row].height = max(img.height * 0.75 + 4, 20)
+            placed.append({"excel_row": row, "message_id": ev.get("message_id", "N/A"),
+                           "image_file": Path(photos[0].get("media_path", "unknown")).name,
+                           "thumb_px": f"{img.width}×{img.height}"})
+        except Exception:
+            ws.cell(row=row, column=PHOTO_COL).value = "N/A"
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(ITEM_HEADERS))}{max(len(events) + 1, 1)}"
+    return placed
+
+
 def _make_thumbnail(raw_bytes: bytes, max_side: int, quality: int) -> "Tuple[bytes, int, int]":
     """Compress image to JPEG thumbnail. Returns (jpeg_bytes, width_px, height_px)."""
     from PIL import Image as PilImage
@@ -187,69 +252,17 @@ def generate_violations_excel(
 
     wb = openpyxl.Workbook()
 
-    # ── Sheet 1: Report Summary ────────────────────────────────────
-    ws_summary = wb.active
-    ws_summary.title = "Report Summary"
+    # ── Sheet 1: the items, laid out like the WhatsApp messages Excel ──
+    ws_events = wb.active
+    ws_events.title = "Events & Details"
+    photo_mapping = _write_items_sheet(ws_events, events, default_status="Reported")
+    THUMB_ROW_HEIGHT = max(90, int(thumbnail_max_side * 0.75) + 10)
+
+    # ── Sheet 2: Report Summary ────────────────────────────────────
+    ws_summary = wb.create_sheet("Report Summary")
     for line in report_text.split("\n"):
         ws_summary.append([line])
     ws_summary.column_dimensions["A"].width = 70
-
-    # ── Sheet 2: Events & Details (with Photo column) ──────────────
-    ws_events = wb.create_sheet("Events & Details")
-    headers = [
-        "Event #", "Level / Slot", "Description", "Status",
-        "Sender", "Timestamp", "Source Message IDs", "Quoted Message ID", "Photo",
-    ]
-    ws_events.append(headers)
-
-    THUMB_ROW_HEIGHT = max(90, int(thumbnail_max_side * 0.75) + 10)
-    PHOTO_COL = 9  # column I
-
-    photo_mapping: List[Dict[str, Any]] = []
-
-    for idx, ev in enumerate(events, 1):
-        data_row = idx + 1  # row 1 is header
-        ws_events.append([
-            idx,
-            ev.get("location_heading") or ev.get("level") or "N/A",
-            ev.get("issue") or ev.get("activity") or ev.get("text") or "N/A",
-            ev.get("status", "Reported"),
-            ev.get("sender", "N/A"),
-            format_report_timestamp(ev.get("datetime") or ev.get("raw_datetime")),
-            ", ".join(ev.get("source_message_ids", [])),
-            ev.get("quoted_message_id", "") or "None",
-            "",
-        ])
-
-        photos = ev.get("photos_data", [])
-        if photos:
-            p_info = photos[0]  # only the image mapped to this event's own row
-            raw = p_info.get("bytes")
-            media_path = p_info.get("media_path", "unknown")
-            if raw:
-                try:
-                    thumb_bytes, tw, th = _make_thumbnail(raw, thumbnail_max_side, thumbnail_quality)
-                    img = OpenpyxlImage(io.BytesIO(thumb_bytes))
-                    img.width = tw
-                    img.height = th
-                    col_letter = get_column_letter(PHOTO_COL)
-                    ws_events.add_image(img, f"{col_letter}{data_row}")
-                    ws_events.row_dimensions[data_row].height = THUMB_ROW_HEIGHT
-                    photo_mapping.append({
-                        "excel_row": data_row,
-                        "message_id": ev.get("message_id", "N/A"),
-                        "image_file": Path(media_path).name,
-                        "thumb_px": f"{tw}×{th}",
-                    })
-                except Exception:
-                    ws_events.cell(row=data_row, column=PHOTO_COL).value = "N/A"
-            else:
-                ws_events.cell(row=data_row, column=PHOTO_COL).value = "N/A"
-        else:
-            ws_events.cell(row=data_row, column=PHOTO_COL).value = "N/A"
-
-    ws_events.column_dimensions[get_column_letter(PHOTO_COL)].width = 24
-    apply_table_styling(ws_events)
 
     # ── Sheet 3: Photos ────────────────────────────────────────────
     events_with_photos = [e for e in events if e.get("photos_data")]
@@ -331,29 +344,6 @@ def _review_row(r: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _embed_row_thumbnails(ws, events: List[Dict[str, Any]], col_letter: str, first_row: int, max_px: int = 80) -> None:
-    """Small inline preview of each event's first photo (WhatsApp thumbnails are already compressed)."""
-    from openpyxl.drawing.image import Image as OpenpyxlImage
-    has_any = False
-    for offset, ev in enumerate(events):
-        photos = ev.get("photos_data") or []
-        raw = photos[0].get("bytes") if photos else None
-        if not raw:
-            continue
-        try:
-            img = OpenpyxlImage(io.BytesIO(raw))
-            scale = min(1.0, max_px / max(img.width, img.height))
-            img.width, img.height = int(img.width * scale), int(img.height * scale)
-            row = first_row + offset
-            ws.add_image(img, f"{col_letter}{row}")
-            ws.row_dimensions[row].height = max(ws.row_dimensions[row].height or 15, img.height * 0.75 + 6)
-            has_any = True
-        except Exception:
-            continue
-    if has_any:
-        ws.column_dimensions[col_letter].width = max_px / 7 + 2
-
-
 def generate_generic_report_excel(
     report_title: str,
     report_text: str,
@@ -363,34 +353,16 @@ def generate_generic_report_excel(
     filename_prefix: str,
 ) -> Path:
     wb = openpyxl.Workbook()
-    # 1. Report Summary
-    ws_summary = wb.active
-    ws_summary.title = "Report Summary"
+    # 1. The items, laid out like the WhatsApp messages Excel
+    ws_events = wb.active
+    ws_events.title = "Events & Details"
+    _write_items_sheet(ws_events, events)
+
+    # 2. Report Summary
+    ws_summary = wb.create_sheet("Report Summary")
     for line in report_text.split("\n"):
         ws_summary.append([line])
     ws_summary.column_dimensions["A"].width = 70
-
-    # 2. Events & Details
-    ws_events = wb.create_sheet("Events & Details")
-    ws_events.append([
-        "Event #", "Location / Heading", "Description", "Status",
-        "Sender", "Timestamp", "Source Message IDs", "Quoted Message ID", "Photo Available", "Photo"
-    ])
-    for idx, ev in enumerate(events, 1):
-        ws_events.append([
-            idx,
-            ev.get("location_heading") or ev.get("level") or "N/A",
-            ev.get("issue") or ev.get("activity") or ev.get("text") or "N/A",
-            ev.get("status", "Pending"),
-            ev.get("sender", "N/A"),
-            format_report_timestamp(ev.get("datetime") or ev.get("raw_datetime")),
-            ", ".join(ev.get("source_message_ids", [])),
-            ev.get("quoted_message_id", "") or "None",
-            "Yes" if (ev.get("photos") or ev.get("photos_data")) else "No",
-            "",  # thumbnail drawn below
-        ])
-    apply_table_styling(ws_events)
-    _embed_row_thumbnails(ws_events, events, col_letter="J", first_row=2)
 
     # 3. Needs Review / Unlinked
     ws_review = wb.create_sheet("Needs Review & Unlinked")

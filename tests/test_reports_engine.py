@@ -559,8 +559,10 @@ class TestMaintenanceRepliesAndPhotos(unittest.TestCase):
             )
             wb = openpyxl.load_workbook(out)
             ws = wb["Events & Details"]
-            self.assertEqual(ws["J1"].value, "Photo")
+            self.assertEqual(wb.sheetnames[0], "Events & Details")      # opens on the items, like the messages file
+            self.assertEqual(ws["G1"].value, "Photo Preview")
             self.assertEqual(len(ws._images), 1)  # only the event that has a photo
+            self.assertEqual(ws["G3"].value, "N/A")
             self.assertIn("Photos", wb.sheetnames)
 
 
@@ -1074,6 +1076,21 @@ class TestRealMessages15OctEvening(unittest.TestCase):
         self.assertEqual(items["Q6"]["status"], "Pending")
         # reported and fixed in one message: a ticket that is already Done
         self.assertEqual((items["N3"]["status"], items["N3"]["resolved_by"]), ("Done", "Shahid"))
+
+    def test_ac_adjustment_requests_close_themselves(self):
+        """Owner, 16-10: "increase / reduce the AC" closes automatically, the technician never replies."""
+        g = "Meydan FM Team💪"
+        msgs = [
+            _wa_msg("A1", 15, 10, 0, 0, g, "Sunil", "P building 2nd floor very hot, please increase the AC"),
+            _wa_msg("A2", 15, 11, 0, 0, g, "Sunil", "N building reception too cold kindly reduce AC"),
+            _wa_msg("A3", 15, 12, 0, 0, g, "Sunil", "Q building 4th floor AC not working, water leak, increase the ac"),
+            _wa_msg("A4", 15, 13, 0, 0, g, "Sunil", "M building 1st floor very hot"),
+        ]
+        items = {t["message_id"]: t for t in self._run("generate_maintenance", msgs).last_items["maintenance"]}
+        self.assertEqual((items["A1"]["status"], items["A1"]["resolved_by"]), ("Done", "Auto (AC adjustment)"))
+        self.assertEqual(items["A2"]["status"], "Done")
+        self.assertEqual(items["A3"]["status"], "Pending")   # a real fault in the same message stays open
+        self.assertEqual(items["A4"]["status"], "Pending")   # no adjustment asked: stays open
 
     def test_lift_moving_on_its_own_is_a_ticket_closed_by_now_working_normal(self):
         g = "Meydan FM Team💪"

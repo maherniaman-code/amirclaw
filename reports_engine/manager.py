@@ -302,6 +302,13 @@ class ReportsManager:
     # ─────────────────────────────────────────────────────────────
     # REPORT 1: PARKING REPORT
     # ─────────────────────────────────────────────────────────────
+    def _is_ac_adjustment(self, t_low: str) -> bool:
+        """An AC temperature request ("increase the AC") without a real fault in the same message."""
+        pattern = self.config.get("ac_adjust_auto_close")
+        if not pattern or not re.search(pattern, t_low):
+            return False
+        return not any(k in t_low for k in self.config.get("ac_adjust_not_if", []))
+
     def generate_parking(self, slot_request: str = "latest", report_date: Optional[str] = None) -> Dict[str, Any]:
         messages = self.parser.load_messages()
         dubai_now = now_dubai()
@@ -854,6 +861,8 @@ class ReportsManager:
             }
             if self_fixed:
                 ticket.update(status="Done", resolved_by=ev["sender"], closed_at=ev.get("datetime"))
+            elif status == "Pending" and self._is_ac_adjustment(t_low):
+                ticket["ac_adjustment"] = True   # closed below unless a technician reply closes it first
             tickets[msg_id] = ticket
             source_audit.append({
                 "message_id": msg_id,
@@ -864,6 +873,11 @@ class ReportsManager:
                 "audit_status": "Valid Ticket (reported fixed)" if self_fixed else "Valid Ticket",
             })
 
+        # "Increase / reduce the AC": the technician adjusts it and usually never replies (owner, 16-10),
+        # so a request still open after all replies closes itself. A technician's reply keeps their name.
+        for t in tickets.values():
+            if t.get("ac_adjustment") and t["status"] == "Pending":
+                t.update(status="Done", resolved_by="Auto (AC adjustment)", closed_at=t.get("datetime"))
         ticket_list = self._apply_manual_corrections(list(tickets.values()))
         unique_tickets, flagged_dups = deduplicate_events(ticket_list)
 

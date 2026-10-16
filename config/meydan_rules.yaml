@@ -130,6 +130,10 @@ fault:
   - "increase the ac"
   - "raise the ac"
   - "reduce the ac"
+  - "reduce ac"
+  - "decrease the ac"
+  - "decrease ac"
+  - "lower the ac"
   - "turn on the ac"
   - "is blocked"
   - "are blocked"
@@ -301,6 +305,21 @@ in_progress:
   - "will fix"
   - "will rectify"
   - "will arrange"
+
+# AC temperature adjustments ("increase the AC", "reduce AC") are closed automatically: the
+# technician changes the setting and does not reply (owner, 16-10). Not when the message also
+# reports a real fault from ac_adjust_not_if.
+ac_adjust_auto_close: '\b(?:increase|reduce|decrease|raise|lower|adjust)\s+(?:the\s+)?(?:ac|a/c|a\.c|temperature|temp)\b'
+ac_adjust_not_if:
+  - "not working"
+  - "not cooling"
+  - "leak"
+  - "water"
+  - "noise"
+  - "smell"
+  - "broken"
+  - "tripped"
+  - "damaged"
 
 # Fault phrases that only ask for action ("do the needful", "fix it"): they make a ticket only
 # when the message also says where (building) or what (light, door, AC ...); otherwise they
