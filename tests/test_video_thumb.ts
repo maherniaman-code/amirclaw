@@ -36,7 +36,7 @@ async function main() {
             const buf = fs.readFileSync(video);
             const t4 = await makeVideoThumbnail({ jpegThumbnail: preview, fileLength: buf.length }, async () => buf, path.join(dir, 't4.jpg'));
             const meta = await sharp(t4!).metadata();
-            assert(meta.width === 221 && (meta.height || 0) <= 163, 'real frame from the video, sized to the Excel box');
+            assert(meta.width === 480 && meta.height === 270, 'real frame from the video, kept sharp (480 px)');
             const leftovers = fs.readdirSync(os.tmpdir()).filter((f) => f.startsWith('wa-video-'));
             assert(leftovers.length === 0, 'downloaded video is deleted after the frame is taken');
         } else {
