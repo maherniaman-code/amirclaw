@@ -1278,6 +1278,40 @@ class TestChatExports07to15Oct(unittest.TestCase):
         self.assertEqual([t["message_id"] for t in m.last_items["maintenance"]], ["NEW"])
         self.assertEqual(get_config()["timing"]["report_history_days"], 30)
 
+    def test_accuracy_review_16_oct(self):
+        """Cases from the labelled accuracy review (random FM / Security / Parking samples)."""
+        from reports_engine.manager import is_closure_text
+        closure = get_config()["closure"]
+        self.assertFalse(is_closure_text("glass door is having an issue pls arrange to get it rectified urgently", closure))
+        self.assertFalse(is_closure_text("when can we sorted out", closure))
+        self.assertTrue(is_closure_text("now working condition", closure))
+        faults = get_config()["fault"]
+        for text in ("we need lights to be switch on at drive way", "please turn off a.c at m building level 5",
+                     "now 1st floor server room. temperature is not cool", "glass door is having an issue",
+                     "ramp area entrance available parking space is not counting", "please change this light"):
+            with self.subTest(fault=text):
+                self.assertTrue(any(k in text for k in faults))
+        p = WhatsAppParser.__new__(WhatsAppParser)
+        p.config = get_config()
+        multi = p.parse_vehicle_permission({"text": "Dear Team,\n\nKindly allow this vehicle in parking slot.\n\n"
+                                                    "Plate no : 18 AD 24939  (Q  41 )\nPlate no :  9 AD  13000  (Q  42)"})
+        self.assertEqual(multi["plate_no"], "18 AD 24939, 9 AD  13000")
+        bullets = p.parse_vehicle_permission({"text": "Dear Team,\n\nKindly allow the following vehicles for visitors.\n\n"
+                                                      "*Plate Numbers:*\n- Z 45434\n- DD 29901"})
+        self.assertEqual(bullets["plate_no"], "Z 45434, DD 29901")
+
+    def test_incident_reports_are_not_activities_unless_a_vendor_works(self):
+        g = "Meydan - Security Team"
+        texts = {
+            "I1": "Date:08-01-2025 Time:19:58hrs Entity: Emirates NBD Meydan Location: P Building All floors Description: water on floor",
+            "I2": "**Incident Report** The fire alarm was reported in the service lift on the 6th floor of M Building",
+            "A1": "N Building All Floors Imdaad Pest Control Team doing The General Spray Treatment. Date:08-04-2025 Entity: Emirates NBD Meydan",
+            "X1": "Imdad Team Person is there..",
+        }
+        msgs = [_wa_msg(k, 13, 9, i * 7, 0, g, "Guard", v) for i, (k, v) in enumerate(texts.items())]
+        m, _ = self._run("generate_operations", msgs, target_date="13-10-2026", target_shift="Full")
+        self.assertEqual([e["message_id"] for e in m.last_items["operations"]], ["A1"])
+
     def test_deleted_message_placeholder_is_noise(self):
         p = WhatsAppParser.__new__(WhatsAppParser)
         p.config = get_config()

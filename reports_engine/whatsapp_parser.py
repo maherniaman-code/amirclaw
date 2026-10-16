@@ -562,14 +562,23 @@ class WhatsAppParser:
         plain = re.sub(r"[*_~]", "", text)
 
         # Plate No: e.g. "Plate no : 4 / 69888" or "Plate no. EE 80743"
-        plate_m = re.search(r"plate\s*(?:no\.?|number)?\s*[:\-]?\s*([A-Za-z0-9\s/]+?)(?=\s*car\s*make|\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
-        plate_no = plate_m.group(1).strip() if plate_m else "N/A"
-        if plate_no == "N/A":
-            # Bare plate list ("Any of the below car can arrive ... C 82000 / C 83000 / A 98685")
-            bare = re.findall(r"(?m)^\s*([A-Z]{1,2}\s?\d{3,6})\s*$", plain)
-            if bare:
-                plate_no = ", ".join(b.strip() for b in bare)
-
+        # Plate No: "Plate no : 4 / 69888", "Plate no. EE 80743"; one per line when a request has several cars
+        # ("Plate no : 18 AD 24939  (Q 41 )"); text after the plate on the same line is dropped
+        plates = []
+        for line in plain.splitlines():
+            m_line = re.match(r"\s*plate\s*(?:no\.?|numbers?)?\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9 /\-]*?)\s*(?:\(.*?\))?\s*(?:car\s*make.*)?(?:<.*?>)?\s*$",
+                              line, re.IGNORECASE)
+            if m_line and re.search(r"\d", m_line.group(1)):
+                plates.append(m_line.group(1).strip())
+        if not plates:
+            # Same line as other fields ("Plate no : X 25854 Car make : GMC")
+            plate_m = re.search(r"plate\s*(?:no\.?|number)?\s*[:\-]?\s*([A-Za-z0-9\s/]+?)(?=\s*car\s*make|\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
+            if plate_m:
+                plates.append(plate_m.group(1).strip())
+        if not plates:
+            # Bare plate list ("C 82000" lines, or "- Z 45434" bullets)
+            plates = [b.strip() for b in re.findall(r"(?m)^\s*(?:[-•*]\s*)?([A-Z]{1,3}\s?\d{3,6})\s*$", plain)]
+        plate_no = ", ".join(plates) if plates else "N/A"
         # A short line with no plate ("Pls allow today" under someone else's request) is not a request
         if plate_no == "N/A" and len(plain.split()) < 8:
             return None
