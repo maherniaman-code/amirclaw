@@ -35,7 +35,7 @@ def is_closure_text(text: str, closure_kws: List[str]) -> bool:
         kw_re = re.escape(kw.lower())
         if not re.search(rf"\b{kw_re}\b", t):
             continue
-        if re.search(rf"\b(?:not|never|yet to be|pending|to be|will be|should be|waiting for|not yet)\s+(?:\w+\s+){{0,2}}{kw_re}\b", t):
+        if re.search(rf"\b(?:not|never|yet to be|pending|to be|will be|should be|waiting for|not yet|get|to get|can we|can you)\s+(?:\w+\s+){{0,2}}{kw_re}\b", t):
             continue
         return True
     return False
@@ -1203,8 +1203,10 @@ class ReportsManager:
             # Identify if it is an operational activity (faults belong to maintenance)
             category, vendor_hit = classify_operations_message(text, ops_cfg)
 
-            # Promises, instructions and incident reports are not vendor work
-            if category == "activity" and any(k in t_low for k in ops_cfg.get("not_activity", [])):
+            # Promises, instructions and incident reports are not vendor work. The "Entity: ..." form is
+            # also used to log vendor work ("Imdaad Pest Control Team doing the General Spray Treatment")
+            not_activity = [k for k in ops_cfg.get("not_activity", []) if not (vendor_hit and k.startswith("entity"))]
+            if category == "activity" and any(k in t_low for k in not_activity):
                 needs_review.append({
                     "message_id": msg_id, "reason": "Promise, instruction or incident report, not an activity",
                     "text": text, "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
