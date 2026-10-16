@@ -18,7 +18,7 @@ capacities:
     Q: 146
     total: 459
   ramp: 127
-  service_road: 127 # Fixed at 127. Any other value reported in WA is flagged in diagnostics.
+  service_road: 127 # Used when the team leaves it out; the report shows the number they send (owner, 16-10).
   smart_parking: 887
 
 # Time settings (Asia/Dubai)

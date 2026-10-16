@@ -9,7 +9,7 @@ from .config_loader import get_config, BASE_DIR
 from .date_utils import DUBAI_TZ, now_dubai, parse_datetime, is_within_freshness, format_report_timestamp
 from .whatsapp_parser import WhatsAppParser
 from .deduplicator import deduplicate_events
-from .email_reader import fetch_parking_email_from_imap
+from .email_reader import fetch_parking_email_from_imap, parse_parking_email_body
 from .corrections_db import get_correction_for_message
 from .corrections_db import get_correction_for_message as _correction_for
 from .tickets_db import enrich_ticket, same_issue, issue_words, CHRONIC_HOURS
@@ -365,6 +365,33 @@ class ReportsManager:
                 "status": "Verified" if email_data.get("validation_passed") else "Discrepancy",
             })
 
+        # Without the email, the same building figures posted in WhatsApp ("🅿️ *MEYDAN PARKING* ... P BUILDING
+        # ... Cars Parked: 29"), any group: the one for this slot's time, else the latest within freshness
+        if not email_data:
+            in_window = None
+            for m in reversed(messages):
+                if not (m["datetime"] and m["datetime"].date() == d_obj and "BUILDING" in m["text"].upper()):
+                    continue
+                parsed = parse_parking_email_body(m["text"])
+                if not parsed or not any(isinstance(b.get("cars_parked"), int) for b in parsed["buildings"].values()):
+                    continue
+                if parsed["time"] == target_slot or (in_window is None and is_within_freshness(m["datetime"], slot_dt, freshness_mins)):
+                    in_window = (m, parsed)
+                    if parsed["time"] == target_slot:
+                        break
+            if in_window:
+                m, email_data = in_window
+                diagnostics[:] = [d for d in diagnostics if not d.startswith("Building figures email missing")]
+                diagnostics.extend(f"Building figures (WhatsApp): {d}" for d in email_data.get("discrepancies", []))
+                source_audit[-1] = {
+                    "source_id": m["message_id"],
+                    "group_name": m["group_name"],
+                    "sender": m["sender"],
+                    "timestamp": m["raw_datetime"],
+                    "section": "Building Figures (P, N, M, Q)",
+                    "status": "Verified" if email_data.get("validation_passed") else "Discrepancy",
+                }
+
         # Filter WhatsApp messages
         ms_grp = self.config.get("groups", {}).get("parking_multistory", "Multistory Parking Building Meydan")
         pt_grp = self.config.get("groups", {}).get("parking_team", "Parking Team at Meydan")
@@ -401,11 +428,6 @@ class ReportsManager:
                 if parsed_ramp:
                     if is_within_freshness(m_dt, slot_dt, freshness_mins):
                         ramp_data = parsed_ramp
-                        # Check service road reported slots vs 127
-                        if parsed_ramp.get("reported_service_road_slots") not in [None, 127]:
-                            diagnostics.append(
-                                f"Service Road capacity reported as {parsed_ramp['reported_service_road_slots']} in WA message (fixed at 127 in report)"
-                            )
                         source_audit.append({
                             "source_id": m["message_id"],
                             "group_name": grp,

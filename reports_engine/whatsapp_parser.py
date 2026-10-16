@@ -330,32 +330,37 @@ class WhatsAppParser:
         # Clean digits and spacing
         t = text.translate(ARABIC_TO_WESTERN_DIGITS)
 
-        def extract_val(label_pattern: str) -> Optional[int]:
+        as_written: Dict[str, str] = {}   # numbers as the team typed them ("02"), shown in the report
+
+        def extract_val(label_pattern: str, key: Optional[str] = None) -> Optional[int]:
             # Matches label followed by optional dots, spaces, colons, or dashes, and the integer
             pat = rf"{label_pattern}[\s\.\:\-]*(\d+)"
             m = re.search(pat, t, re.IGNORECASE)
             if m:
+                if key:
+                    as_written[key] = m.group(1)
                 return int(m.group(1))
             return None
 
-        cust_visitor = extract_val(r"Customer\s+and\s+visitor(?:\s+cars)?")
-        pod_cars = extract_val(r"P\.?o\.?d(?:\s+Cars)?")
-        staff_cars = extract_val(r"Staff(?:\s+Cars)?")
-        total_entered_ramp = extract_val(r"Total(?:\s+cars)?\s+Entered\s+at\s+ramp(?:\s+area)?")
+        cust_visitor = extract_val(r"Customer\s+and\s+visitor(?:\s+cars)?", "customer_visitor")
+        pod_cars = extract_val(r"P\.?o\.?d(?:\s+Cars)?", "pod_cars")
+        staff_cars = extract_val(r"Staff(?:\s+Cars)?", "staff_cars")
+        total_entered_ramp = extract_val(r"Total(?:\s+cars)?\s+Entered\s+at\s+ramp(?:\s+area)?", "total_cars_entered_ramp")
         if total_entered_ramp is None and None not in (cust_visitor, pod_cars, staff_cars):
             total_entered_ramp = cust_visitor + pod_cars + staff_cars  # "total of the above"
         podium_slots = extract_val(r"Podium\s+Parking\s+Total\s+Slots?") or 127
-        total_parked_ramp = extract_val(r"Total(?:\s+cars)?\s+parked\s+at\s+ramp(?:\s+Area)?")
+        total_parked_ramp = extract_val(r"Total(?:\s+cars)?\s+parked\s+at\s+ramp(?:\s+Area)?", "total_cars_parked_ramp")
 
         # Service Road
-        reported_sr_slots = extract_val(r"Total\s+Slot\s+Service\s+Road")
-        sr_entered = extract_val(r"(?:Total\s+Car\s+)?Entered\s+Service\s+Road")
-        sr_parked = extract_val(r"(?:Total\s+Car\s+)?parked\s+(?:at\s+)?service\s+road")
-        blocked_parking = extract_val(r"Partially\s+Blocked(?:\s+Parking)?")
+        reported_sr_slots = extract_val(r"Total\s+Slot\s+Service\s+Road", "service_road_slots")
+        sr_entered = extract_val(r"(?:Total\s+Car\s+)?Entered\s+Service\s+Road", "service_road_entered")
+        sr_parked = extract_val(r"(?:Total\s+Car\s+)?parked\s+(?:at\s+)?service\s+road", "service_road_parked")
+        blocked_parking = extract_val(r"Partially\s+Blocked(?:\s+Parking)?", "partially_blocked_parking")
 
         diagnostics: List[str] = []
-        if reported_sr_slots is not None and reported_sr_slots != 127:
-            diagnostics.append(f"Service Road capacity reported as {reported_sr_slots} in WA message (fixed at 127 in report)")
+        sr_capacity = get_config().get("capacities", {}).get("service_road", 127)
+        if reported_sr_slots is not None and reported_sr_slots != sr_capacity:
+            diagnostics.append(f"Service Road slots reported as {reported_sr_slots} (usual capacity {sr_capacity})")
 
         return {
             "type": "ramp_service_road",
@@ -365,11 +370,13 @@ class WhatsAppParser:
             "staff_cars": staff_cars if staff_cars is not None else "N/A",
             "total_cars_entered_ramp": total_entered_ramp if total_entered_ramp is not None else "N/A",
             "total_cars_parked_ramp": total_parked_ramp if total_parked_ramp is not None else "N/A",
-            "service_road_slots": 127,  # Fixed at 127
+            # The number the team sent (owner, 16-10); the usual capacity when they leave it out
+            "service_road_slots": reported_sr_slots if reported_sr_slots is not None else sr_capacity,
             "reported_service_road_slots": reported_sr_slots,
             "service_road_entered": sr_entered if sr_entered is not None else "N/A",
             "service_road_parked": sr_parked if sr_parked is not None else "N/A",
             "partially_blocked_parking": blocked_parking if blocked_parking is not None else "N/A",
+            "as_written": as_written,
             "diagnostics": diagnostics,
         }
 
@@ -384,6 +391,7 @@ class WhatsAppParser:
             return None
 
         diagnostics: List[str] = []
+        smart_written: Dict[str, str] = {}   # numbers as typed ("07"), shown in the report
         hour_written = int(ent_m.group(1)) if ent_m else (int(park_m.group(1)) if park_m else 0)
 
         # Parse entered
@@ -410,6 +418,7 @@ class WhatsAppParser:
             val_out = out_m.group(1).strip()
             if re.match(r"^\d+$", val_out):
                 cars_outside = int(val_out)
+                smart_written["outside_cars"] = val_out
             else:
                 diagnostics.append(f"Typo in source number: Cars parked outside = '{val_out}' (flagged for review, showing N/A)")
 
@@ -436,6 +445,7 @@ class WhatsAppParser:
             "occupied_slots": cars_parked,
             "empty_slots": empty_slots,
             "outside_cars": cars_outside,
+            "as_written": smart_written,
             "diagnostics": diagnostics,
         }
 
