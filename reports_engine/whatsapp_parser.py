@@ -362,8 +362,22 @@ class WhatsAppParser:
         if reported_sr_slots is not None and reported_sr_slots != sr_capacity:
             diagnostics.append(f"Service Road slots reported as {reported_sr_slots} (usual capacity {sr_capacity})")
 
+        # The time the team wrote ("Time:  9:30.  AM"): the post is often sent or forwarded later
+        tm = re.search(r"Time\s*[:\-]?\s*(\d{1,2})[:.](\d{2})\W*\s*([AP]\.?M)?", t, re.IGNORECASE)
+        time_written = None
+        if tm:
+            hh, mm = int(tm.group(1)), int(tm.group(2))
+            ampm = (tm.group(3) or "").replace(".", "").upper()
+            if ampm == "PM" and hh < 12:
+                hh += 12
+            elif ampm == "AM" and hh == 12:
+                hh = 0
+            if hh < 24 and mm < 60:
+                time_written = f"{hh:02d}:{mm:02d}"
+
         return {
             "type": "ramp_service_road",
+            "time_written": time_written,
             "podium_slots": podium_slots,
             "customer_visitor": cust_visitor if cust_visitor is not None else "N/A",
             "pod_cars": pod_cars if pod_cars is not None else "N/A",

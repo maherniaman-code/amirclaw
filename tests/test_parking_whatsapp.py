@@ -105,6 +105,16 @@ class TestParkingFromWhatsApp(unittest.TestCase):
         self.assertFalse(any("email missing" in d for d in r["diagnostics"]))
         self.assertEqual(len(r["diagnostics"]), len(set(r["diagnostics"])))   # no repeated warnings
 
+    def test_ramp_post_sent_late_counts_by_its_written_time(self):
+        # Written "Time: 9:30 AM" but sent at 10:17 (owner, 16-10): it belongs to the 10:00 report
+        r = self.report([("R2", "Oyp", RAMP, (10, 17))])
+        self.assertIn("- Customer and Visitors: 35", r["text"])
+        self.assertIn("• Total Occupied Slots : 115", r["text"])
+
+    def test_ramp_post_written_for_a_later_slot_is_not_used(self):
+        r = self.report([("R3", "Oyp", RAMP.replace("9:30.  AM", "11:30 AM"), (11, 31))])
+        self.assertIn("- Customer and Visitors: N/A", r["text"])
+
     def test_other_slot_figures_are_not_used(self):
         r = self.report([("B2", "Parking Team at Meydan", BLD.replace("Time: 10:00", "Time: 14:00"), (14, 1))])
         self.assertIn("• Cars Parked: N/A 🚗", r["text"])
