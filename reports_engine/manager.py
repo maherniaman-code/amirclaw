@@ -426,7 +426,12 @@ class ReportsManager:
             if not ramp_data and m_dt and m_dt.date() == d_obj:
                 parsed_ramp = self.parser.parse_ramp_service_road(txt)
                 if parsed_ramp:
-                    if is_within_freshness(m_dt, slot_dt, freshness_mins):
+                    # Judge it by the time written in the post when there is one (sent or forwarded late)
+                    ramp_dt = m_dt
+                    if parsed_ramp.get("time_written"):
+                        wh, wm = map(int, parsed_ramp["time_written"].split(":"))
+                        ramp_dt = datetime.combine(d_obj, time(wh, wm), tzinfo=DUBAI_TZ)
+                    if is_within_freshness(ramp_dt, slot_dt, freshness_mins):
                         ramp_data = parsed_ramp
                         source_audit.append({
                             "source_id": m["message_id"],
@@ -436,7 +441,7 @@ class ReportsManager:
                             "section": "Ramp Area & Service Road",
                             "status": "Valid",
                         })
-                    elif (slot_dt - m_dt).total_seconds() > (freshness_mins * 60):
+                    elif (slot_dt - ramp_dt).total_seconds() > (freshness_mins * 60):
                         diagnostics.append(f"Ramp report found but older than {freshness_mins} minutes freshness window")
 
             # Rumble area on target date
