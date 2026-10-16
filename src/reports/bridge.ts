@@ -145,13 +145,14 @@ export async function saveCorrection(
 }
 
 /**
- * Builds the WhatsApp messages workbook from the SQLite store (with thumbnails).
+ * Builds the WhatsApp messages workbook from the SQLite store (with thumbnails), last `days` days (0 = all).
  * Returns the file path, or null when the store is not ready (caller falls back to the live file).
  */
-export async function exportMessagesExcel(outPath: string): Promise<string | null> {
+export async function exportMessagesExcel(outPath: string, days = 30): Promise<string | null> {
     const pythonBin = config.pythonPath || 'python3';
     try {
-        const { stdout } = await execFileAsync(pythonBin, ['-m', 'reports_engine.messages_db', '--export-excel', outPath], {
+        const args = ['-m', 'reports_engine.messages_db', '--export-excel', outPath, '--days', String(days)];
+        const { stdout } = await execFileAsync(pythonBin, args, {
             cwd: ROOT_DIR, timeout: 120000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env },
         });
         const line = stdout.trim().split('\n').reverse().find((l) => l.trim().startsWith('{'));

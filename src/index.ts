@@ -299,9 +299,9 @@ bot.command('whatsapp_status', async (ctx) => {
     await ctx.reply(text, { parse_mode: 'Markdown' });
 });
 
-// /whatsapp_excel - Download the WhatsApp messages Excel file
+// /whatsapp_excel - Download the WhatsApp messages Excel file (last 30 days; "all" for everything)
 bot.command('whatsapp_excel', async (ctx) => {
-    await sendWhatsAppExcel(ctx);
+    await sendWhatsAppExcel(ctx, String(ctx.match || '').trim().toLowerCase() === 'all');
 });
 
 // /voice command - Manage Voice Responses (Arabic TTS)
