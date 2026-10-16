@@ -123,6 +123,36 @@ class TestImport(unittest.TestCase):
         shown = (img.anchor.ext.width // 9525, img.anchor.ext.height // 9525)   # size drawn in the cell, in px
         self.assertEqual(shown, (146, 260))   # taller cell, scaled down from 270x480
 
+    def test_export_is_readable(self):
+        import_exports([self.zip], self.db, apply=True)
+        with sqlite3.connect(self.db) as c:
+            now_ms = int(datetime.now(DUBAI_TZ).timestamp() * 1000)
+            c.executemany(f"INSERT INTO messages ({messages_db.COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?)", [
+                ("NEW1", "x", "Meydan FM Team💪", "Sathish (98281887682638)", "P building lift stuck", "💬 Text", "", None, None, now_ms),
+                ("NEW2", "x", "Meydan FM Team💪", "Akash (1)", "@98281887682638 @971551234567 done", "💬 Text", "NEW1", None, None, now_ms + 1),
+                ("NEW3", "x", "Meydan FM Team💪", "Unknown (971551234567)", "(Video)", "🎬 Video", "", None, None, now_ms + 2),
+            ])
+        tickets = self.tmp / "tickets.db"
+        with sqlite3.connect(tickets) as c:
+            c.execute("CREATE TABLE tickets (message_id TEXT, report_type TEXT, status TEXT)")
+            c.execute("INSERT INTO tickets VALUES ('NEW1', 'maintenance', 'Done')")
+        out = self.tmp / "export.xlsx"
+        self.assertEqual(messages_db.export_excel(out, self.db, days=2, tickets_path=tickets), 3)   # older days left out
+        import openpyxl
+        ws = openpyxl.load_workbook(out).active
+        rows = {r[0]: r for r in ws.iter_rows(min_row=2, values_only=True)}
+        self.assertEqual(rows["NEW2"][3:5], ("Akash", "@Sathish @Unknown done"))   # no numbers anywhere
+        self.assertEqual(rows["NEW2"][9], "Sathish: P building lift stuck")       # reply to
+        self.assertEqual(rows["NEW1"][10:12], ("Maintenance", "Done"))
+        self.assertEqual((rows["NEW3"][3], rows["NEW3"][6]), ("Unknown", "No picture saved"))
+        self.assertIsInstance(rows["NEW1"][8], datetime)                           # sortable time
+        self.assertNotIn("971", " ".join(str(v) for r in rows.values() for v in r if v))
+        full = messages_db.export_excel(out, self.db, tickets_path=tickets)
+        self.assertEqual(full, 7)   # bot row, 3 imported, 3 new
+        ws = openpyxl.load_workbook(out).active
+        notes = {r[0]: r[6] for r in ws.iter_rows(min_row=2, values_only=True)}
+        self.assertTrue(any(v == "No picture in the chat export" for k, v in notes.items() if k.startswith("EXP")))
+
     def test_reports_read_imported_messages(self):
         import_exports([self.zip], self.db, apply=True)
         from reports_engine.whatsapp_parser import WhatsAppParser

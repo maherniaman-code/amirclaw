@@ -153,13 +153,18 @@ async function replyReportTextAndExcel(ctx: any, text: string, excelPath?: strin
 }
 
 // Sends the raw WhatsApp messages workbook (all captured groups). Used by the
-// "📊 WhatsApp Messages Excel" button and the /whatsapp_excel command.
-export async function sendWhatsAppExcel(ctx: any): Promise<void> {
+// "📊 WhatsApp Messages Excel" button and the /whatsapp_excel command: the last 30 days,
+// or every recorded message with /whatsapp_excel all (large and slow with the chat history).
+export const WHATSAPP_EXCEL_DAYS = 30;
+
+export async function sendWhatsAppExcel(ctx: any, everything = false): Promise<void> {
     await ctx.replyWithChatAction('upload_document');
+    if (everything) await ctx.reply('📊 Building the Excel with every recorded message, this can take a minute...');
 
     // Built on demand from the SQLite store (always complete); the live workbook is the fallback
     await flushWhatsAppMessages();
-    const exported = await exportMessagesExcel(path.join(process.cwd(), 'workspace', 'downloads', 'whatsapp_messages_export.xlsx'));
+    const days = everything ? 0 : WHATSAPP_EXCEL_DAYS;
+    const exported = await exportMessagesExcel(path.join(process.cwd(), 'workspace', 'downloads', 'whatsapp_messages_export.xlsx'), days);
     let filePath = exported;
     if (!filePath) {
         await ensureExcelInitialized();
@@ -170,7 +175,9 @@ export async function sendWhatsAppExcel(ctx: any): Promise<void> {
     const sizeKB = (stats.size / 1024).toFixed(1);
 
     await ctx.replyWithDocument(new InputFile(filePath, 'whatsapp_messages.xlsx'), {
-        caption: `📊 WhatsApp messages Excel\nSize: ${sizeKB} KB\nLast updated: ${stats.mtime.toLocaleString('en-GB', { timeZone: config.timeZone })}`,
+        caption: `📊 WhatsApp messages Excel (${exported ? (days ? `last ${days} days` : 'all messages') : 'live file'})\n`
+            + `Size: ${sizeKB} KB\nLast updated: ${stats.mtime.toLocaleString('en-GB', { timeZone: config.timeZone })}`
+            + (exported && days ? '\nEvery message: /whatsapp_excel all' : ''),
     });
 }
 

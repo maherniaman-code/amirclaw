@@ -158,7 +158,8 @@ class TestFixtureReports(unittest.TestCase):
         with mock.patch.dict("os.environ", {"REPORTS_SOURCE": "sqlite"}):
             source = {m["message_id"]: m for m in WhatsAppParser(self.manager.excel_path).load_messages()}
         self.assertEqual(n, len(source))
-        fields = ("raw_datetime", "datetime", "group_name", "sender", "text", "media_type", "quoted_message_id")
+        # Names and @mentions are cleaned for reading (no numbers), the rest is kept as recorded
+        fields = ("raw_datetime", "datetime", "group_name", "media_type", "quoted_message_id")
         self.assertEqual([k for k in source if any(exported[k][f] != source[k][f] for f in fields)], [])
 
     def test_dashboard_html(self):

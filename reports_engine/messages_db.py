@@ -198,39 +198,91 @@ def fill_missing_ts(db_path: Path) -> int:
 
 # Picture box in the messages workbook: the 2.30" Excel thumbnail width, taller for upright videos
 PICTURE_MAX_W, PICTURE_MAX_H = 221, 260
+# The download button sends this many recent days; --days 0 exports everything
+EXPORT_DEFAULT_DAYS = 30
+HEADERS = ["Message ID", "Date & Time", "Group Name", "Sender", "Message", "Type", "Photo Preview",
+           "Quoted Message ID", "Time (Dubai)", "Reply to", "Ticket", "Ticket status"]
 
 
-def export_excel(out_path: Path, db_path: Path) -> int:
+def _ticket_status(tickets_path: Optional[Path]) -> Dict[str, Tuple[str, str]]:
+    """message id -> (report, status) for the messages that became maintenance / fire safety tickets."""
+    if not tickets_path or not Path(tickets_path).exists():
+        return {}
+    try:
+        with sqlite3.connect(str(tickets_path)) as c:
+            return {r[0]: (r[1] or "", r[2] or "") for r in c.execute("SELECT message_id, report_type, status FROM tickets")}
+    except sqlite3.Error:
+        return {}
+
+
+def export_excel(out_path: Path, db_path: Path, days: Optional[int] = None,
+                 tickets_path: Optional[Path] = None) -> int:
     """
-    Build the WhatsApp messages workbook (same columns as the live file, thumbnails included)
-    from the SQLite store, in message-time order. Used by the Telegram download button.
+    Build the WhatsApp messages workbook from the SQLite store, in message-time order, for reading:
+    names without numbers, @mentions as names, a sortable Dubai time, the text of the message replied
+    to, and the ticket each message became. Columns A-H keep the live workbook's layout.
+    days limits it to the most recent days (None = everything). Used by the Telegram download button.
     """
     import io as _io
     from openpyxl.drawing.image import Image as XlImage
     from openpyxl.styles import Alignment, Font, PatternFill
 
+    from .date_utils import DUBAI_TZ
+    from .master_data import display_name
+    from .sender_resolver import MENTION_REGEX, SenderResolver
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "WhatsApp Messages"
-    headers = ["Message ID", "Date & Time", "Group Name", "Sender", "Message", "Type", "Photo Preview", "Quoted Message ID"]
-    ws.append(headers)
+    ws.append(HEADERS)
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill("solid", fgColor="1E293B")
         cell.alignment = Alignment(horizontal="center", vertical="center")
-    for col, width in zip("ABCDEFGH", (36, 22, 28, 26, 70, 12, 28, 36)):
+    for col, width in zip("ABCDEFGHIJKL", (36, 22, 28, 26, 70, 12, 28, 36, 18, 45, 14, 14)):
         ws.column_dimensions[col].width = width
     ws.freeze_panes = "A2"
 
+    since_ms = int((datetime.now(timezone.utc).timestamp() - days * 86400) * 1000) if days else None
     with sqlite3.connect(str(db_path)) as c:
         ensure_schema(c)
+        resolver = SenderResolver()
+        for (sender,) in c.execute("SELECT DISTINCT sender FROM messages"):
+            resolver.register_sender(sender or "")
+        where = "WHERE ts_utc_ms >= ?" if since_ms else ""
         rows = c.execute(
-            "SELECT message_id, timestamp_text, group_name, sender, text, media_type, quoted_message_id, thumb_jpeg "
-            "FROM messages ORDER BY COALESCE(ts_utc_ms, 0), rowid"
+            "SELECT message_id, timestamp_text, group_name, sender, text, media_type, quoted_message_id, thumb_jpeg, ts_utc_ms "
+            f"FROM messages {where} ORDER BY COALESCE(ts_utc_ms, 0), rowid", (since_ms,) if since_ms else ()
         ).fetchall()
-    for i, (mid, ts, grp, sender, text, mtype, quoted, thumb) in enumerate(rows, start=2):
-        ws.append([mid, ts, grp, sender, text, mtype, "", quoted or ""])
-        ws.cell(row=i, column=5).alignment = Alignment(wrap_text=True, vertical="center")
+        quoted_ids = {r[6] for r in rows if r[6]}
+        quoted_text: Dict[str, str] = {}
+        for i in range(0, len(quoted_ids), 900):
+            chunk = list(quoted_ids)[i:i + 900]
+            for mid, sender, text in c.execute(
+                    f"SELECT message_id, sender, text FROM messages WHERE message_id IN ({','.join('?' * len(chunk))})", chunk):
+                quoted_text[mid] = f"{display_name(sender)}: {' '.join((text or '').split())[:120]}"
+    tickets = _ticket_status(tickets_path)
+
+    def readable(text: str) -> str:
+        # Mentions the store cannot name stay anonymous: the id can be a phone number
+        return MENTION_REGEX.sub("@someone", resolver.resolve_mentions(text or ""))
+
+    wrap = Alignment(wrap_text=True, vertical="center")
+    for i, (mid, ts, grp, sender, text, mtype, quoted, thumb, ts_ms) in enumerate(rows, start=2):
+        local = datetime.fromtimestamp(ts_ms / 1000, tz=DUBAI_TZ).replace(tzinfo=None) if ts_ms else None
+        is_media = any(k in (mtype or "") for k in ("Image", "Video"))
+        note = "" if thumb or not is_media else (
+            "No picture in the chat export" if str(mid).startswith("EXP") else "No picture saved")
+        if quoted:
+            reply_to = quoted_text.get(quoted, "(older message, not recorded)")
+        else:
+            reply_to = ""
+        report, status = tickets.get(mid, ("", ""))
+        ws.append([mid, ts, grp, display_name(sender), readable(text), mtype, note, quoted or "",
+                   local, readable(reply_to), report.replace("_", " ").title(), status])
+        ws.cell(row=i, column=5).alignment = wrap
+        ws.cell(row=i, column=10).alignment = wrap
+        ws.cell(row=i, column=9).number_format = "yyyy-mm-dd hh:mm"
         if thumb:
             try:
                 img = XlImage(_io.BytesIO(bytes(thumb)))
@@ -241,7 +293,7 @@ def export_excel(out_path: Path, db_path: Path) -> int:
                 ws.row_dimensions[i].height = max(img.height * 0.75 + 4, 20)
             except Exception:
                 pass
-    ws.auto_filter.ref = f"A1:H{max(len(rows) + 1, 1)}"
+    ws.auto_filter.ref = f"A1:L{max(len(rows) + 1, 1)}"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(str(out_path))
     return len(rows)
@@ -302,6 +354,8 @@ def main() -> int:
     ap.add_argument("--check", action="store_true", help="Only compare SQLite with Excel")
     ap.add_argument("--fill-ts", action="store_true", help="Only fill missing exact timestamps from the text")
     ap.add_argument("--export-excel", metavar="OUT", help="Write the messages workbook built from SQLite to OUT")
+    ap.add_argument("--days", type=int, default=EXPORT_DEFAULT_DAYS,
+                    help="with --export-excel: only the last N days (0 = every message)")
     args = ap.parse_args()
     excel, db = Path(args.excel), Path(args.db) if args.db else None
     if args.export_excel:
@@ -309,7 +363,8 @@ def main() -> int:
         if not is_ready(target):
             print("SQLite store not ready", file=sys.stderr)
             return 2
-        n = export_excel(Path(args.export_excel), target)
+        from .tickets_db import DEFAULT_DB_PATH as TICKETS_DB
+        n = export_excel(Path(args.export_excel), target, days=args.days or None, tickets_path=Path(TICKETS_DB))
         print(json.dumps({"exported": n, "path": str(Path(args.export_excel).resolve())}))
         return 0
     if args.fill_ts:
