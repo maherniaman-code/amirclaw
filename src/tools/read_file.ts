@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { allowedWorkspacePath } from '../security.js';
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
 
@@ -18,11 +19,10 @@ export const readFileTool = {
     },
     execute: async (args: { filePath: string }) => {
         try {
-            const resolvedPath = path.resolve(WORKSPACE_DIR, args.filePath);
-            
-            // Security check: ensure path is within WORKSPACE_DIR
-            if (!resolvedPath.startsWith(WORKSPACE_DIR)) {
-                return { success: false, error: 'Access denied: File outside workspace.' };
+            // Inside the workspace only, and never the WhatsApp login, databases or credentials
+            const resolvedPath = allowedWorkspacePath(WORKSPACE_DIR, String(args.filePath || ''));
+            if (!resolvedPath) {
+                return { success: false, error: 'Access denied: this file cannot be read by the assistant.' };
             }
 
             if (!fs.existsSync(resolvedPath)) {

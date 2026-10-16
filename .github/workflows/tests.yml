@@ -30,6 +30,6 @@ jobs:
       - run: npx tsc --noEmit
       - name: TypeScript tests
         run: |
-          for t in test_scheduler_verification test_alerts test_corrections test_overdue test_privacy test_english_only test_video_thumb test_video_backfill; do
+          for t in test_scheduler_verification test_alerts test_corrections test_overdue test_privacy test_english_only test_video_thumb test_video_backfill test_security; do
             npx tsx "tests/$t.ts"
           done
