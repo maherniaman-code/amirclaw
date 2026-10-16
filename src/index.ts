@@ -1,4 +1,4 @@
-import { Bot, InputFile } from 'grammy';
+import { Bot, InlineKeyboard, InputFile } from 'grammy';
 import Groq, { toFile } from 'groq-sdk';
 import fs from 'fs';
 import path from 'path';
@@ -14,6 +14,8 @@ import { startMeydanScheduler } from './reports/scheduler.js';
 import { handleReportAction, handleReportCallback, handleCorrectionCallback, sendWhatsAppExcel } from './reports/telegram_handlers.js';
 import { startCloudBackupScheduler } from './cloud/backup.js';
 import { initAlerts, startWhatsAppWatchdog } from './monitoring/alerts.js';
+import { runApprovedPython } from './tools/execute_python.js';
+import { PY_CB_PREFIX, safeUploadName, takePythonApproval } from './security.js';
 
 // Validate configuration and initialize database
 validateConfig();
@@ -595,21 +597,9 @@ async function processAgentPrompt(ctx: any, userId: number, userPrompt: string, 
                     voiceSentViaTool = true;
                 }
 
-                // If execute_python produced any files (Excel, PDF, Word, images, etc.), send them to user
-                if (toolResult?.generatedFiles && Array.isArray(toolResult.generatedFiles)) {
-                    for (const f of toolResult.generatedFiles) {
-                        const filePath = path.join(WORKSPACE_DIR, f);
-                        if (fs.existsSync(filePath)) {
-                            const ext = path.extname(f).toLowerCase();
-                            if (['.png', '.jpg', '.jpeg'].includes(ext)) {
-                                await ctx.replyWithChatAction('upload_photo');
-                                await ctx.replyWithPhoto(new InputFile(filePath), { caption: `📊 ${f}` });
-                            } else {
-                                await ctx.replyWithChatAction('upload_document');
-                                await ctx.replyWithDocument(new InputFile(filePath), { caption: `📁 تم إنشاء الملف: ${f}` });
-                            }
-                        }
-                    }
+                // Python waits for the owner: show the code with Run / Cancel buttons
+                if (toolResult?.pendingApproval) {
+                    await showPythonForApproval(ctx, String(toolArgs.code || ''), toolResult.pendingApproval);
                 }
 
                 messages.push({
@@ -683,11 +673,57 @@ function isBlockedByReportGuard(text: string): boolean {
     return false;
 }
 
+// Files the approved Python code created (Excel, PDF, Word, images, ...) are sent to the user
+async function sendGeneratedFiles(ctx: any, files: string[]) {
+    for (const f of files) {
+        const filePath = path.join(WORKSPACE_DIR, f);
+        if (fs.existsSync(filePath)) {
+            const ext = path.extname(f).toLowerCase();
+            if (['.png', '.jpg', '.jpeg'].includes(ext)) {
+                await ctx.replyWithChatAction('upload_photo');
+                await ctx.replyWithPhoto(new InputFile(filePath), { caption: `📊 ${f}` });
+            } else {
+                await ctx.replyWithChatAction('upload_document');
+                await ctx.replyWithDocument(new InputFile(filePath), { caption: `📁 تم إنشاء الملف: ${f}` });
+            }
+        }
+    }
+}
+
+async function showPythonForApproval(ctx: any, code: string, id: string) {
+    const shown = code.length > 3500 ? code.slice(0, 3500) + '\n# ... (shortened)' : code;
+    await ctx.reply(`🐍 The assistant wants to run this Python code. Check it, then tap Run:\n\n${shown}`, {
+        reply_markup: new InlineKeyboard().text('▶️ Run', `${PY_CB_PREFIX}:run:${id}`).text('✖️ Cancel', `${PY_CB_PREFIX}:no:${id}`),
+    });
+}
+
+// Run / Cancel buttons under assistant-written Python code (callback data py:<run|no>:<id>)
+async function handlePythonCallback(ctx: any, data: string): Promise<boolean> {
+    const [prefix, action, id] = data.split(':');
+    if (prefix !== PY_CB_PREFIX) return false;
+    const code = takePythonApproval(id || '', ctx.from?.id);
+    await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+    if (action !== 'run') {
+        await ctx.answerCallbackQuery({ text: 'Cancelled' });
+        return true;
+    }
+    if (!code) {
+        await ctx.answerCallbackQuery({ text: 'Expired or already used' });
+        return true;
+    }
+    await ctx.answerCallbackQuery({ text: 'Running...' });
+    const result: any = await runApprovedPython(code);
+    await sendSplitReply(ctx, result.message);
+    if (Array.isArray(result.generatedFiles)) await sendGeneratedFiles(ctx, result.generatedFiles);
+    return true;
+}
+
 // 0. Handle inline date-picker callbacks from report buttons
 bot.on('callback_query:data', async (ctx) => {
     try {
         const data = ctx.callbackQuery.data || '';
-        const handled = (await handleCorrectionCallback(ctx, data)) || (await handleReportCallback(ctx, data));
+        const handled = (await handlePythonCallback(ctx, data))
+            || (await handleCorrectionCallback(ctx, data)) || (await handleReportCallback(ctx, data));
         if (!handled) {
             try { await ctx.answerCallbackQuery(); } catch (_) {}
         }
@@ -747,7 +783,7 @@ bot.on('message:document', async (ctx) => {
             throw new Error('Could not retrieve file path from Telegram.');
         }
 
-        const fileName = doc.file_name || `file_${Date.now()}`;
+        const fileName = safeUploadName(doc.file_name, `file_${Date.now()}`);
         const localPath = path.join(DOWNLOADS_DIR, fileName);
 
         const fileUrl = `https://api.telegram.org/file/bot${config.telegramBotToken}/${file.file_path}`;

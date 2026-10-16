@@ -2,6 +2,7 @@
  * Web Scraping / Content Extractor Tool.
  * Fetches and cleans readable text from any URL without needing external headless browsers.
  */
+import { assertPublicUrl } from '../security.js';
 
 export interface ScrapeResult {
     url: string;
@@ -13,15 +14,25 @@ export interface ScrapeResult {
 
 export async function scrapeWebpage(url: string, maxCharacters: number = 7000): Promise<ScrapeResult | null> {
     try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent':
-                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'ar,en-US,en;q=0.9',
-            },
-            signal: AbortSignal.timeout(15000), // 15s timeout
-        });
+        // Follow redirects by hand so every hop is checked: public internet only
+        let target = await assertPublicUrl(url);
+        let response: Response | null = null;
+        for (let hop = 0; hop < 5; hop++) {
+            response = await fetch(target, {
+                redirect: 'manual',
+                headers: {
+                    'User-Agent':
+                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'ar,en-US,en;q=0.9',
+                },
+                signal: AbortSignal.timeout(15000), // 15s timeout
+                });
+            const next = response.status >= 300 && response.status < 400 ? response.headers.get('location') : null;
+            if (!next) break;
+            target = await assertPublicUrl(new URL(next, target).toString());
+        }
+        if (!response) throw new Error('No response');
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status} ${response.statusText}`);
