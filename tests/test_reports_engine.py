@@ -561,8 +561,13 @@ class TestMaintenanceRepliesAndPhotos(unittest.TestCase):
             ws = wb["Events & Details"]
             self.assertEqual(wb.sheetnames[0], "Events & Details")      # opens on the items, like the messages file
             self.assertEqual(ws["G1"].value, "Photo Preview")
-            self.assertEqual(len(ws._images), 1)  # only the event that has a photo
+            self.assertEqual(ws._images, [])      # pictures sit inside their cells, not over the sheet
             self.assertEqual(ws["G3"].value, "N/A")
+            import zipfile
+            with zipfile.ZipFile(out) as z:
+                sheet = z.read("xl/worksheets/sheet1.xml").decode()
+            self.assertEqual(sheet.count(' t="e" vm="'), 1)   # only the event that has a photo
+            self.assertIn('<c r="G2"', sheet.split(' t="e" vm="')[0][-40:])
             self.assertIn("Photos", wb.sheetnames)
 
 
@@ -1334,6 +1339,29 @@ class TestChatExports07to15Oct(unittest.TestCase):
         p = WhatsAppParser.__new__(WhatsAppParser)
         p.config = get_config()
         self.assertTrue(p.is_non_operational("This message was deleted"))
+
+
+class TestMessages16Oct(unittest.TestCase):
+    """Missed on 16-10 (whatsapp_messages (41).xlsx)."""
+
+    def _run(self, fn, msgs, **kw):
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            return getattr(m, fn)(target_date="16-10-2026", **kw)["text"]
+
+    def test_open_carpet_without_barricade_is_a_ticket(self):
+        g = "Meydan FM Team💪"
+        text = self._run("generate_maintenance", [_wa_msg(
+            "F1", 16, 7, 23, 56, g, "Sunil", "FYI.. @Mohan @Prakash M Building 3rd Floor Near to Pantry Area, Floor Carpets "
+            "is in Open Condition in 4 Places and There is No Barricade & No Sign Board", media="📷 Image")], target_shift="Day")
+        self.assertIn("Floor Carpets is in Open Condition", text)
+
+    def test_fluid_leak_on_the_roof_top_is_a_cleaning_task(self):
+        c = "Cleaning Matters at Meydan"
+        text = self._run("generate_cleaning", [_wa_msg(
+            "C1", 16, 6, 53, 22, c, "JUNIOR", "@Mohan Break fluid leakage on Roof Top, slot 871 @Sanjay Kindly note,", media="📷 Image")])
+        self.assertIn("Break fluid leakage on Roof Top, slot 871", text)
 
 
 class TestSlaHiddenFromReports(unittest.TestCase):
