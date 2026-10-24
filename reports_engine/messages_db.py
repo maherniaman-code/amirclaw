@@ -196,7 +196,7 @@ def fill_missing_ts(db_path: Path) -> int:
     return len(missing)
 
 
-# Picture box in the messages workbook: the 2.30" Excel thumbnail width, taller for upright videos
+# Picture box in the messages workbook (row height): the 2.30" Excel thumbnail width, taller for upright videos
 PICTURE_MAX_W, PICTURE_MAX_H = 221, 260
 # The download button sends this many recent days; --days 0 exports everything
 EXPORT_DEFAULT_DAYS = 30
@@ -230,6 +230,7 @@ def export_excel(out_path: Path, db_path: Path, days: Optional[int] = None,
     from .date_utils import DUBAI_TZ
     from .master_data import display_name
     from .sender_resolver import MENTION_REGEX, SenderResolver
+    from .xlsx_cell_pictures import PLACEHOLDER, place_pictures_in_cells
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -268,6 +269,7 @@ def export_excel(out_path: Path, db_path: Path, days: Optional[int] = None,
         return MENTION_REGEX.sub("@someone", resolver.resolve_mentions(text or ""))
 
     wrap = Alignment(wrap_text=True, vertical="center")
+    pictures: Dict[str, bytes] = {}
     for i, (mid, ts, grp, sender, text, mtype, quoted, thumb, ts_ms) in enumerate(rows, start=2):
         local = datetime.fromtimestamp(ts_ms / 1000, tz=DUBAI_TZ).replace(tzinfo=None) if ts_ms else None
         is_media = any(k in (mtype or "") for k in ("Image", "Video"))
@@ -286,16 +288,18 @@ def export_excel(out_path: Path, db_path: Path, days: Optional[int] = None,
         if thumb:
             try:
                 img = XlImage(_io.BytesIO(bytes(thumb)))
-                # Video frames are stored larger than the cell: scale down to fit it
+                # The picture sits inside the cell and moves with its row when filtered or sorted;
+                # the row is made tall enough for it (video frames are larger than the box)
                 scale = min(1.0, PICTURE_MAX_W / img.width, PICTURE_MAX_H / img.height)
-                img.width, img.height = int(img.width * scale), int(img.height * scale)
-                ws.add_image(img, f"G{i}")
-                ws.row_dimensions[i].height = max(img.height * 0.75 + 4, 20)
+                ws.row_dimensions[i].height = max(img.height * scale * 0.75 + 4, 20)
+                ws.cell(row=i, column=7).value = PLACEHOLDER
+                pictures[f"G{i}"] = bytes(thumb)
             except Exception:
                 pass
     ws.auto_filter.ref = f"A1:L{max(len(rows) + 1, 1)}"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(str(out_path))
+    place_pictures_in_cells(out_path, {1: pictures})
     return len(rows)
 
 

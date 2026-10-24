@@ -119,9 +119,16 @@ class TestImport(unittest.TestCase):
         out = self.tmp / "export.xlsx"
         messages_db.export_excel(out, self.db)
         import openpyxl
-        (img,) = openpyxl.load_workbook(out).active._images
-        shown = (img.anchor.ext.width // 9525, img.anchor.ext.height // 9525)   # size drawn in the cell, in px
-        self.assertEqual(shown, (146, 260))   # taller cell, scaled down from 270x480
+        import re
+        import zipfile
+        ws = openpyxl.load_workbook(out).active
+        self.assertEqual(ws._images, [])                                  # nothing floating over the sheet
+        self.assertEqual(ws.row_dimensions[3].height, 260 * 0.75 + 4)     # VID1 is row 3 (after BOT1)
+        with zipfile.ZipFile(out) as z:
+            sheet = z.read("xl/worksheets/sheet1.xml").decode()
+            self.assertRegex(sheet, r'<c r="G3"[^>]* t="e" vm="1"><v>#VALUE!</v></c>')   # picture inside G3
+            self.assertIn("xl/metadata.xml", z.namelist())
+            self.assertEqual(len([n for n in z.namelist() if re.match(r"xl/media/cellpicture\d+\.jpeg", n)]), 1)
 
     def test_export_is_readable(self):
         import_exports([self.zip], self.db, apply=True)

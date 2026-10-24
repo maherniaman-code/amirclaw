@@ -10,6 +10,7 @@ from openpyxl.utils import get_column_letter
 
 from .config_loader import BASE_DIR
 from .date_utils import format_report_timestamp
+from .xlsx_cell_pictures import PLACEHOLDER, place_pictures_in_cells
 
 OUTPUT_DIR = BASE_DIR / "workspace" / "downloads" / "reports"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -165,8 +166,13 @@ PHOTO_COL = 7          # G, like the messages file
 PICTURE_MAX_W, PICTURE_MAX_H = 221, 260
 
 
-def _write_items_sheet(ws, events: List[Dict[str, Any]], default_status: str = "Pending") -> List[Dict[str, Any]]:
-    """Fill ws with one row per item; returns where each picture went (row, message id, size)."""
+def _write_items_sheet(ws, events: List[Dict[str, Any]], default_status: str = "Pending",
+                       pictures: Optional[Dict[str, bytes]] = None) -> List[Dict[str, Any]]:
+    """
+    Fill ws with one row per item; returns where each picture went (row, message id, size).
+    Pictures are collected in `pictures` ({"G2": jpeg}) and placed inside their cells after the
+    workbook is saved (place_pictures_in_cells), so they move with their row when filtered.
+    """
     from datetime import datetime as _dt
     from openpyxl.drawing.image import Image as OpenpyxlImage
     from .date_utils import DUBAI_TZ
@@ -209,7 +215,12 @@ def _write_items_sheet(ws, events: List[Dict[str, Any]], default_status: str = "
             img = OpenpyxlImage(io.BytesIO(raw))
             scale = min(1.0, PICTURE_MAX_W / img.width, PICTURE_MAX_H / img.height)
             img.width, img.height = int(img.width * scale), int(img.height * scale)
-            ws.add_image(img, f"{get_column_letter(PHOTO_COL)}{row}")
+            ref = f"{get_column_letter(PHOTO_COL)}{row}"
+            if pictures is not None:
+                ws[ref] = PLACEHOLDER
+                pictures[ref] = raw
+            else:
+                ws.add_image(img, ref)
             ws.row_dimensions[row].height = max(img.height * 0.75 + 4, 20)
             placed.append({"excel_row": row, "message_id": ev.get("message_id", "N/A"),
                            "image_file": Path(photos[0].get("media_path", "unknown")).name,
@@ -255,7 +266,8 @@ def generate_violations_excel(
     # ── Sheet 1: the items, laid out like the WhatsApp messages Excel ──
     ws_events = wb.active
     ws_events.title = "Events & Details"
-    photo_mapping = _write_items_sheet(ws_events, events, default_status="Reported")
+    cell_pictures: Dict[str, bytes] = {}
+    photo_mapping = _write_items_sheet(ws_events, events, default_status="Reported", pictures=cell_pictures)
     THUMB_ROW_HEIGHT = max(90, int(thumbnail_max_side * 0.75) + 10)
 
     # ── Sheet 2: Report Summary ────────────────────────────────────
@@ -317,6 +329,7 @@ def generate_violations_excel(
 
     out_file = OUTPUT_DIR / f"{filename_prefix}_{int(time.time())}.xlsx"
     wb.save(str(out_file))
+    place_pictures_in_cells(out_file, {1: cell_pictures})   # the items sheet is the first sheet
     file_size = out_file.stat().st_size
 
     return {
@@ -356,7 +369,8 @@ def generate_generic_report_excel(
     # 1. The items, laid out like the WhatsApp messages Excel
     ws_events = wb.active
     ws_events.title = "Events & Details"
-    _write_items_sheet(ws_events, events)
+    cell_pictures: Dict[str, bytes] = {}
+    _write_items_sheet(ws_events, events, pictures=cell_pictures)
 
     # 2. Report Summary
     ws_summary = wb.create_sheet("Report Summary")
@@ -431,4 +445,5 @@ def generate_generic_report_excel(
 
     out_file = OUTPUT_DIR / f"{filename_prefix}_{int(time.time())}.xlsx"
     wb.save(str(out_file))
+    place_pictures_in_cells(out_file, {1: cell_pictures})   # the items sheet is the first sheet
     return out_file
