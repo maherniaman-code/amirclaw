@@ -174,7 +174,8 @@ def classify_operations_message(text: str, ops_cfg: Dict[str, Any]) -> Tuple[str
     A fault marker wins unless the message names a vendor/party AND an activity
     ("Kone technician repairing the lift that is out of service" is still vendor work).
     """
-    t_low = text.lower()
+    # "2vendors from the torrent", "6vendor's from Fit mover's": the count is glued to the word
+    t_low = re.sub(r"(\d)([a-z])", r"\1 \2", text.lower())
     aliases = {k.lower(): v.lower() for k, v in ops_cfg.get("vendor_aliases", {}).items()}
     vendor = _keyword_at_word_start(t_low, ops_cfg.get("vendors", []) + list(aliases))
     vendor = aliases.get(vendor, vendor)
@@ -1045,6 +1046,15 @@ class ReportsManager:
                 continue
 
             bld, floor, heading = self.parser.extract_building_and_floor(text)
+            # "Reminder @Mushahid Hussain" quoting a ticket from before the bot was recording (19-10):
+            # a reminder that names no fault and no place is not a new ticket
+            if not (corr and corr.get("target_status")) and not bld and not any(k in t_low for k in fault_kws) \
+                    and (quoted_id or len(t_low.split()) <= 4):
+                unlinked.append({
+                    "message_id": msg_id, "reason": "Reminder or reply without a fault or place",
+                    "text": text, "sender": ev["sender"], "raw_datetime": ev["raw_datetime"],
+                })
+                continue
             if not heading:
                 # Named place ("GSU Room", "Lobby"…) or the report's generic heading, never message text
                 heading = self._extract_named_location(text) or ""

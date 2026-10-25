@@ -1364,6 +1364,71 @@ class TestMessages16Oct(unittest.TestCase):
         self.assertIn("Break fluid leakage on Roof Top, slot 871", text)
 
 
+class TestMessages16to25Oct(unittest.TestCase):
+    """Missed or wrong on 16-25 Oct (whatsapp_messages (43).xlsx)."""
+
+    def _items(self, fn, key, msgs, day, **kw):
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            getattr(m, fn)(target_date=f"{day}-10-2026", **kw)
+        return {t["message_id"]: t for t in m.last_items.get(key, [])}
+
+    def test_new_maintenance_faults(self):
+        g = "Meydan FM Team💪"
+        msgs = [
+            _wa_msg("A1", 18, 9, 1, 0, g, "Akash", "Please be informed that N building ground floor BMS room FM 200 Panel alarming constantly."),
+            _wa_msg("A2", 18, 9, 23, 0, g, "Imran", "Back to normal", quoted="A1"),
+            _wa_msg("B1", 18, 10, 14, 0, g, "Junior", "@Mohan I noticed a burning smell inside Lift No. 5 this morning. @Prakash Kindly send your team now"),
+            _wa_msg("C1", 18, 10, 22, 0, g, "Sunil", "Outside area infront of smart parking lifts these lights are still ON, these should be OFF in day time.. @Prakash"),
+            _wa_msg("D1", 18, 10, 34, 0, g, "Prakash", "Dear MEP and civil Team, Kindly check the issues and update"),
+            _wa_msg("E1", 18, 11, 50, 0, g, "Peace", "N/building ground floor reception power trip now"),
+            _wa_msg("E2", 18, 11, 59, 0, g, "Shaik", "Done ✅", quoted="E1"),
+            _wa_msg("F1", 18, 12, 34, 0, g, "Junior", "@Mohan The two tube lights in the pump room have not been working for 2 - 3 months despite repeated reports."),
+            _wa_msg("G1", 18, 13, 59, 0, g, "Raja", "Now working . It's power trip only"),
+        ]
+        items = self._items("generate_maintenance", "maintenance", msgs, 18, target_shift="Full")
+        for mid in ("A1", "B1", "C1", "E1", "F1"):
+            self.assertIn(mid, items)
+        self.assertNotIn("D1", items)          # asks, names no place or object
+        self.assertNotIn("G1", items)          # the technician explaining a fix
+        self.assertEqual(items["A1"]["status"], "Done")
+        self.assertEqual(items["E1"]["status"], "Done")
+
+    def test_fire_reminder_quoting_an_old_ticket_is_not_a_ticket(self):
+        g = "Fire & Safety Team Meydan"
+        msgs = [_wa_msg("R1", 19, 8, 9, 0, g, "Raja", "Reminder @Mushahid Hussain", quoted="OLD_NOT_RECORDED"),
+                _wa_msg("R2", 19, 10, 17, 0, g, "Sunil", "Q-Building, GF, LV room, fire emergancy exit signage light is not working need to fix")]
+        items = self._items("generate_fire_safety", "fire_safety", msgs, 19, target_shift="Full")
+        self.assertEqual(set(items), {"R2"})
+
+    def test_cleaning_tasks_on_ramps_and_floors(self):
+        c = "Cleaning Matters at Meydan"
+        m = ReportsManager()
+        msgs = [_wa_msg("K1", 19, 7, 25, 0, c, "Junior", "@Mohan Ramps are very dirty and need cleaning @Sanjay Kindly arrange your team to team for cleaning"),
+                _wa_msg("K2", 19, 7, 25, 30, c, "Junior", "@Mohan @Sanjay Picking - cleaning is needed across the floors")]
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            text = m.generate_cleaning(target_date="19-10-2026")["text"]
+        self.assertIn("Ramps are very dirty", text)
+        self.assertIn("cleaning is needed across the floors", text)
+
+    def test_operations_vendors_and_faults(self):
+        import yaml
+        from reports_engine.manager import classify_operations_message
+        cfg = yaml.safe_load(open(Path(__file__).resolve().parent.parent / "config" / "meydan_rules.yaml"))["operations"]
+        cases = {
+            "2vendors from the torrent they are doing generator PPM at the M building parking area.": ("activity", "torrent"),
+            "2vendor's from Skytech they are doing craddle PPM at the M building 1st floor outside.": ("activity", "skytech"),
+            "M Building 1st Floor Next to Starbucks, Samsung Event is Started.": ("activity", None),
+            "Please be informed that the door handle of the N-Building rooftop door is found loose and requires fixing.": ("fault", None),
+            "Frigo vendors are removing the Frigo vending machine from Q Building, First Floor.": ("activity", "frigo"),
+        }
+        for text, want in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(classify_operations_message(text, cfg), want)
+
+
 class TestSlaHiddenFromReports(unittest.TestCase):
     def test_sla_breach_not_rendered_in_report_text(self):
         item = {
