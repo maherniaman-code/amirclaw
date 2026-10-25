@@ -147,6 +147,16 @@ fault:
   - "without barricade"
   - "no sign board"
   - "no signboard"
+  # whatsapp_messages (43).xlsx, 16-25 Oct
+  - "power trip"
+  - "alarming"
+  - "burning smell"
+  - "burning"
+  - "should be off"
+  - "not been working"
+  - "disconnected"
+  - "requires proper"
+  - "require proper"
   - "sinking"
   - "detached"
   - "not secure"
@@ -347,9 +357,14 @@ fault_request_only:
   - "need to check"
   - "need to fix"
   - "need to rectify"
+  # "Dear MEP and civil Team, Kindly check the issues and update" (20-10): asks, names nothing
+  - "check the issue"
 
 followup_not_ticket:
   - "follow up"
+  # "Now working . It's power trip only" (24-10): the technician explains a fix
+  - "power trip only"
+  - "it's power trip"
   # Reminders about a ticket already open (accuracy review 16-10)
   - "still no one"
   - "no one come"
@@ -430,6 +445,23 @@ operations:
     - "airwell"
     - "blue haus"
     - "avs"            # automatic doors ("AVS staff maintaining and fixing the entrance slide door")
+    # Security group 16-25 Oct (whatsapp_messages (43).xlsx)
+    - "al shalal"
+    - "wood bridge"
+    - "frigo"
+    - "trane"
+    - "al mazroui"
+    - "pepsi"
+    - "public storage"
+    - "skytech"
+    - "sigma byte"
+    - "torrent"
+    - "eagle"
+    - "chain reaction"
+    - "isnaad"
+    - "footprint"
+    - "zahra"
+    - "data line tech"
   # Other spellings guards use -> canonical vendor name above
   vendor_aliases:
     "house keeping": "housekeeping"
@@ -444,6 +476,11 @@ operations:
     "fitmovers": "fit movers"
     "fit & movers": "fit movers"
     "fit and movers": "fit movers"
+    "adecco": "adeco"
+    "datalinetech": "data line tech"
+    "data line": "data line tech"
+    "woodbridge": "wood bridge"
+    "alshalal": "al shalal"
 
   # An activity that names no company takes the vendor of the latest activity that does,
   # within this many minutes (follow-up posts of the same job). 0 disables it.
@@ -502,6 +539,16 @@ operations:
 
   # What is being done
   activities:
+    # Events and visits the guards report (16-25 Oct): "Samsung Event is Started",
+    # "Arena Dry run race event going on", "Photo shoot by chain reaction company"
+    - "event is started"
+    - "event started"
+    - "event going on"
+    - "event is going on"
+    - "event is ongoing"
+    - "dry run"
+    - "photo shoot"
+    - "ppm"
     # "Imdaad technicians came and turned off the AC" (accuracy review 16-10)
     - "turned off"
     - "turned on"
@@ -624,6 +671,18 @@ operations:
   # Guards' fault reports (lights, AC, gates, card readers, leaks) belong to maintenance.
   # A message with one of these is left out unless it names a vendor/party AND an activity.
   fault_markers:
+    # Faults the guards report, not vendor work (16-25 Oct)
+    - "loose"
+    - "requires fixing"
+    - "require fixing"
+    - "needs fixing"
+    - "needs to be fixed"
+    - "need to be fixed"
+    - "not glowing"
+    - "power trip"
+    - "alarming"
+    - "cannot be opened"
+    - "very low"
     - "not working"
     - "not work"
     - "not functioning"
@@ -765,6 +824,9 @@ cleaning_keywords:
   - "leak"
   - "leaking"
   - "fluid"
+  - "dispose"
+  - "disposal"
+  - "dead bird"
   - "wet floor"
   - "puddle"
   - "sanitize"
@@ -817,6 +879,16 @@ cleaning_locations:
   - "rooftop"
   - "roof"
   - "slot"
+  # 19-24 Oct: "Ramps are very dirty", "cleaning is needed across the floors",
+  # "back side area service road it's dirty", "M Building external area"
+  - "ramp"
+  - "floors"
+  - "level"
+  - "service road"
+  - "back side"
+  - "external area"
+  - "in front of"
+  - "outside"
   - "parking"
   - "staircase"
   - "reception"
