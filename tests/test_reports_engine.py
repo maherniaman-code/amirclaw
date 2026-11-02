@@ -1429,6 +1429,76 @@ class TestMessages16to25Oct(unittest.TestCase):
                 self.assertEqual(classify_operations_message(text, cfg), want)
 
 
+class TestMessages26Oct2Nov(unittest.TestCase):
+    """Missed or wrong on 26-10 .. 02-11 (live message store)."""
+
+    def _items(self, fn, key, msgs, day, **kw):
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            getattr(m, fn)(target_date=f"{day}-10-2026", **kw)
+        return {t["message_id"]: t for t in m.last_items.get(key, [])}
+
+    def test_new_maintenance_faults(self):
+        g = "Meydan FM Team💪"
+        msgs = [
+            _wa_msg("A1", 28, 7, 0, 0, g, "Peace", "Light controller is in break condition in M Building 1st floor digital office"),
+            _wa_msg("A2", 28, 7, 50, 0, g, "Shabuddin", "Done 👍", quoted="A1"),
+            _wa_msg("B1", 28, 8, 0, 0, g, "Mohan", "Dear Team,\n\nKindly urgently attend the AC issues at M bldg 5F IT Service Desk Room."),
+            _wa_msg("C1", 28, 9, 0, 0, g, "Junior", "@Mohan\n\nFM 200 panel near BMS Room, continues beeping sound"),
+            _wa_msg("D1", 28, 10, 0, 0, g, "Najeeb", "P building\n\n1st floor reception main entrance door is making loud noise while closing. Kindly check it as soon as possible"),
+            _wa_msg("E1", 28, 11, 0, 0, g, "Namara", "Smart parking, ground floor, BMS room is so warm, need to check it."),
+            _wa_msg("F1", 28, 12, 0, 0, g, "Najeeb", "P building\n\n5th floor stairs. Roof side.\n\nEmergency light is on"),
+            _wa_msg("G1", 28, 13, 0, 0, g, "Najeeb", "P building\n\n1st floor main entrance door again making issues. While closing time. Please check it"),
+            _wa_msg("H1", 28, 14, 0, 0, g, "Namara", "N/building 1st floor pantry floor feeling like hole under carpet"),
+            _wa_msg("I1", 28, 15, 0, 0, g, "Gurung", "M Building 1st Floor Digital Office Coridoor Lights are not Working. Need to Check and Rectify"),
+            _wa_msg("I2", 28, 15, 20, 0, g, "Baijnath", "It's working", quoted="I1"),
+            _wa_msg("J1", 28, 16, 0, 0, g, "Akash", "Q building 4th floor staff cafeteria 1 ceiling light is blinking"),
+            _wa_msg("J2", 28, 16, 10, 0, g, "Shahid", "Know working", quoted="J1"),
+        ]
+        items = self._items("generate_maintenance", "maintenance", msgs, 28, target_shift="Full")
+        for mid in ("A1", "B1", "C1", "D1", "E1", "F1", "G1", "H1", "I1", "J1"):
+            self.assertIn(mid, items)
+        for mid in ("A1", "I1", "J1"):
+            self.assertEqual(items[mid]["status"], "Done")
+        self.assertEqual(items["D1"]["status"], "Pending")
+
+    def test_exact_closures_with_punctuation_still_need_the_whole_reply(self):
+        from reports_engine.manager import _is_exact_closure
+        self.assertTrue(_is_exact_closure("It's working", ["it's working"]))
+        self.assertFalse(_is_exact_closure("It's working but the other light is not working", ["it's working"]))
+
+    def test_vehicle_permission_in_other_words(self):
+        p = WhatsAppParser()
+        req = p.parse_vehicle_permission({"message_id": "X", "sender": "Mohan",
+                                          "text": "car details :- \n\nZ 14233 \n\nAllow in podium until further notice"})
+        self.assertIsNotNone(req)
+
+    def test_operations_vendors_and_non_activities(self):
+        import yaml
+        from reports_engine.manager import classify_operations_message
+        cfg = yaml.safe_load(open(Path(__file__).resolve().parent.parent / "config" / "meydan_rules.yaml"))["operations"]
+        activities = [
+            "M building first floor.\nAV CONCEPT, NEIGHBOURHOOD, CHRYSELS  company's vandors are doing preparations for tomorrow event.",
+            "M building first floor.\nPrint avanue vandors take out their furniture ( tables and chairs). After event",
+            "Podium, Neighbourhood changing the UAE national flags.",
+            "Q building  2nd floor rose  garden  team putting  more plants 🪴 in the building",
+            "Smart parking , rooftop,vendors from Sinani  cleaning the solar panel.",
+        ]
+        for text in activities:
+            with self.subTest(text=text):
+                self.assertEqual(classify_operations_message(text, cfg)[0], "activity")
+        not_activities = [
+            "*Subject:* Update Regarding Lost and Found Form\n\nDear Team,\n\nPlease be informed that the previous Lost and "
+            "Found form is now invalid. You are kindly requested to use the new Lost and Found form and collect it",
+            "N/building 1st floor pantry floor feeling like hole under carpet",
+            "N/building 1st floor pantry this items should be remove from here it block the way",
+        ]
+        g = "Meydan - Security Team"
+        msgs = [_wa_msg(f"N{i}", 30, 8 + i, 0, 0, g, "Guard", text) for i, text in enumerate(not_activities)]
+        self.assertEqual(self._items("generate_operations", "operations", msgs, 30, target_shift="Full"), {})
+
+
 class TestSlaHiddenFromReports(unittest.TestCase):
     def test_sla_breach_not_rendered_in_report_text(self):
         item = {

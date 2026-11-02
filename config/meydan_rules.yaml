@@ -234,6 +234,24 @@ fault:
   - "need to replace"
   - "needs repair"
   - "need repair"
+  # FM group 26-10 .. 02-11: "FM 200 panel ... continues beeping sound", "Light controller is in
+  # break condition", "Kindly urgently attend the AC issues", "door is making loud noise while closing",
+  # "door again making issues", "door handle has broke", "pantry floor feeling like hole under carpet",
+  # "In staircase all the emergency lights are on", "BMS room is so warm, need to check it"
+  - "beeping"
+  - "break condition"
+  - "break position"
+  - "ac issue"
+  - "loud noise"
+  - "making noise"
+  - "making issue"
+  - "has broke"
+  - "hole under"
+  - "hole in the"
+  - "emergency light is on"
+  - "emergency lights are on"
+  - "emergency lights is on"
+  - "so warm"
 
 closure:
   - "done"
@@ -299,6 +317,12 @@ closure_exact:
   - "solved"
   - "ok now"
   - "all good"
+  # Quoted replies 30-10 / 02-11: "It's working", and the typo "Know working" (now working)
+  - "it's working"
+  - "its working"
+  - "it is working"
+  - "it's working now"
+  - "know working"
 
 # Unquoted replies link to the open ticket sharing a word within reply_link_hours
 # ("Light replaced" -> "...light not working..."), else to the latest open ticket
@@ -371,6 +395,12 @@ followup_not_ticket:
   - "still out of service"
   - "still same"
   - "still not fixed"
+  # Chasing an open AC ticket (2024-2026 history): "We reported the AC issue this morning, but no one came",
+  # "please check the Ac issue ... still not rectified", "ac issue update and reply to our supervisor"
+  - "we reported the"
+  - "still not rectified"
+  - "update and reply"
+  - "i reported these"          # "I reported these AC issues yesterday and as of now ... yet to be done"
   - "we have reported"
   - "already reported"
   - "follow-up"
@@ -462,6 +492,18 @@ operations:
     - "footprint"
     - "zahra"
     - "data line tech"
+    # Security group 26-10 .. 02-11 (Thrive Expo, flag day, WiFi, PPM, IT works)
+    - "av concept"
+    - "neighbourhood"
+    - "chrysels"
+    - "print avenue"
+    - "sinani"
+    - "cadd emirates"
+    - "luxury carts"
+    - "belmont"
+    - "gemnet"
+    - "dataone"
+    - "sigdi"
   # Other spellings guards use -> canonical vendor name above
   vendor_aliases:
     "house keeping": "housekeeping"
@@ -481,6 +523,10 @@ operations:
     "data line": "data line tech"
     "woodbridge": "wood bridge"
     "alshalal": "al shalal"
+    "neighborhood": "neighbourhood"
+    "print avanue": "print avenue"
+    "luxurycarts": "luxury carts"
+    "data one": "dataone"
 
   # An activity that names no company takes the vendor of the latest activity that does,
   # within this many minutes (follow-up posts of the same job). 0 disables it.
@@ -518,6 +564,12 @@ operations:
     - "kindly inform"
     - "ask avs"
     - "ask them"
+    # Announcements and complaints, not vendor work (26-10, 30-10): "the previous Lost and Found form
+    # is now invalid ... collect the new", "this items should be remove from here it block the way"
+    - "lost and found"
+    - "should be remov"
+    - "block the way"
+    - "blocking the way"
   # An activity with no company or party named must say where it happens ("Car removed." is not one)
 
   # Someone doing work without a company name. Counts like a vendor for the fault rule
@@ -536,6 +588,8 @@ operations:
     - "maintenance team"
     - "cleaning team"
     - "pest control"
+    # Typo for vendors (28-10 / 29-10: "AV CONCEPT ... company's vandors are doing preparations")
+    - "vandor"
 
   # What is being done
   activities:
@@ -593,6 +647,15 @@ operations:
     - "collect"
     - "dispos"
     - "taking away"
+    # 28-10 .. 01-11: "Print avanue vandors take out their furniture", "Neighbourhood changing the UAE
+    # national flags", "rose garden team putting more plants", "doing preparations for tomorrow event",
+    # "barriers checking is going on by ... team"
+    - "take out"
+    - "changing"
+    - "putting"
+    - "doing preparation"         # not bare "prepar": "Fire Drill Preparations and Training" is an announcement
+    - "checking is going on"
+    - "checking going on"
     # fit-out and civil work
     - "paint"
     - "drilling"
@@ -732,6 +795,10 @@ operations:
     - "emergency exit light"
     - "bad smell"
     - "not clean"
+    # Guards' complaints (30-10): "pantry floor feeling like hole under carpet" is a fault, not carpet work
+    - "hole under"
+    - "need to change"
+    - "needs to change"
 
 parking_violation:
   # A message in the Multistory group is a violation if it contains one of these (substring match)
@@ -780,6 +847,8 @@ vehicle_permission:
     - "please allow"
     - "pls allow"
     - "allow smooth access"
+    - "allow in podium"
+    - "car details"
   # Replies from the parking team. "parked ..." marks the request Parked; the rest mark it Noted.
   # Unquoted replies go to the latest open request within reply_link_minutes ("All noted" -> all of them).
   replies:

@@ -267,8 +267,10 @@ def _vendor_from_recent_activity(
 
 def _is_exact_closure(text: str, exact_closures: List[str]) -> bool:
     """Whole-message closures like "Working" or "Ok now" (punctuation/emoji ignored)."""
-    norm = " ".join(re.sub(r"[^\w\s]", " ", text.lower()).split())
-    return norm in {e.lower() for e in exact_closures}
+    def norm(s: str) -> str:
+        return " ".join(re.sub(r"[^\w\s]", " ", s.lower()).split())
+    # Entries are normalized the same way, so "it's working" in the config matches the reply "It's working"
+    return norm(text) in {norm(e) for e in exact_closures}
 
 
 def find_open_ticket_by_shared_word(
