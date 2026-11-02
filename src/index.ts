@@ -345,6 +345,7 @@ bot.command('whatsapp_status', async (ctx) => {
     const second = getSecondWhatsAppStatus();
     if (second) {
         text += `\n\nSecond number (${secondWhatsAppGroups().join(', ')}): ${statusEmoji[second.status] || second.status}`;
+        if (second.status === 'connected') text += `\nRecording: ${second.watchedGroups.join(', ') || 'none of the groups found yet'}`;
         if (second.status !== 'connected') text += '\nSend /whatsapp2 to link it.';
     }
 

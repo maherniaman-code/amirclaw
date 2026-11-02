@@ -43,13 +43,14 @@ interface WaAccount {
     groupCache: Map<string, string>;
     allowedGroups: string[] | null;     // normalized names; null = every group
     ignoredGroups: Set<string>;
+    watchedGroups: string[];            // group names found for allowedGroups (second number)
 }
 
 function newAccount(name: string, sessionDir: string, allowedGroups: string[] | null): WaAccount {
     if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
     return {
         name, sessionDir, sock: null, status: 'disconnected', statusSince: Date.now(), loggedOut: false,
-        qr: null, groupCache: new Map(), allowedGroups, ignoredGroups: new Set(),
+        qr: null, groupCache: new Map(), allowedGroups, ignoredGroups: new Set(), watchedGroups: [],
     };
 }
 
@@ -106,7 +107,21 @@ export function secondWhatsAppGroups(): string[] {
 }
 
 export function getSecondWhatsAppStatus() {
-    return secondAccount ? statusOf(secondAccount) : null;
+    return secondAccount ? { ...statusOf(secondAccount), watchedGroups: secondAccount.watchedGroups } : null;
+}
+
+/** Which configured groups the number is really in (names can differ slightly from the setting). */
+async function checkWatchedGroups(acc: WaAccount): Promise<void> {
+    if (!acc.sock || !acc.allowedGroups) return;
+    const subjects = Object.values(await acc.sock.groupFetchAllParticipating()).map((g: any) => String(g.subject || ''));
+    acc.watchedGroups = subjects.filter((subject) => groupAllowed(subject, acc.allowedGroups));
+    const configured = secondWhatsAppGroups();
+    const missing = configured.filter((name) => !subjects.some((subject) => groupAllowed(subject, [normalizeGroupName(name)])));
+    console.log(`👀 [${acc.name}] recording groups: ${acc.watchedGroups.join(', ') || 'none'}${missing.length ? ` | not found: ${missing.join(', ')}` : ''}`);
+    if (missing.length) {
+        await alertOwner('whatsapp2-groups', `The second WhatsApp number is not in: ${missing.join(', ')}. `
+            + `Add it to the group, or fix the name in WHATSAPP2_GROUPS. Its groups: ${subjects.join(', ') || 'none'}`);
+    }
 }
 
 export function getSecondWhatsAppQrImage(): Buffer | null {
@@ -538,6 +553,7 @@ async function startAccount(acc: WaAccount): Promise<void> {
             acc.loggedOut = false;
             acc.qr = null;
             console.log(`✅ WhatsApp [${acc.name}] connected successfully! Now listening to group messages in READ-ONLY mode.`);
+            if (acc.allowedGroups) setTimeout(() => { checkWatchedGroups(acc).catch((e) => console.warn('Group check failed:', e?.message || e)); }, 5000);
             // Old-message recovery is off by default (WhatsApp did not answer on the server, 15-10);
             // HISTORY_BACKFILL=on in .env turns it back on
             if (isMain && !backfillScheduled && process.env.HISTORY_BACKFILL === 'on') {
