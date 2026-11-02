@@ -1612,3 +1612,141 @@ class TestDataQualityReport(unittest.TestCase):
         if m["messages"] and m["reply_captured"] / m["messages"] < 0.8:
             self.assertNotIn("More replies were linked by inference", self.res["text"])
             self.assertIn("not reliable yet", self.res["text"])
+
+
+class TestUndoCorrection(unittest.TestCase):
+    def test_undo_deletes_only_that_messages_correction(self):
+        from reports_engine import corrections_db as cdb
+        import os
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"REPORTS_DB_PATH": str(Path(tmp) / "c.db")}):
+            cdb.init_corrections_table()
+            row = cdb.save_correction("MSG_A", "ignore", notes="telegram: not a ticket")
+            self.assertFalse(cdb.undo_correction(row, "MSG_B"))      # wrong message: kept
+            self.assertIsNotNone(cdb.get_correction_for_message("MSG_A"))
+            self.assertTrue(cdb.undo_correction(row, "MSG_A"))
+            self.assertIsNone(cdb.get_correction_for_message("MSG_A"))
+            self.assertFalse(cdb.undo_correction(row, "MSG_A"))      # second press: nothing left
+
+
+class TestReplyToUnrecordedMessage(unittest.TestCase):
+    """01-11 04:09 "Team already cleared." quoted a message the bot never received."""
+
+    def test_cleaning_reply_quoting_unrecorded_message_closes_the_task(self):
+        c = "Cleaning Matters at Meydan"
+        m = ReportsManager()
+        msgs = [_wa_msg("K1", 31, 8, 5, 0, c, "Namara", "P building ground floor inside male washroom it's dirty too much and front of the recipient too much trash need to clean properly"),
+                _wa_msg("K2", 31, 8, 9, 0, c, "Rajesh", "Team already cleared.", quoted="NEVER_RECORDED_ID")]
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            text = m.generate_cleaning(target_date="31-10-2026")["text"]
+        self.assertIn("✅ Done", text)
+        self.assertIn("Completed: 1 of 1", text)
+
+    def test_long_explanation_quoting_unrecorded_message_does_not_close_a_ticket(self):
+        # 27-10 09:46 (Prakash): about an old job, quoting a message the bot never received
+        g = "Meydan FM Team💪"
+        m = ReportsManager()
+        msgs = [_wa_msg("T1", 27, 9, 30, 0, g, "Ihsan", "Q Building 3rd floor staircase light is not working need to check"),
+                _wa_msg("R1", 27, 9, 46, 0, g, "Prakash", "Dear security team\n\nThis work was done but we keep receiving email everyday for this",
+                        quoted="NEVER_RECORDED_ID")]
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            m.generate_maintenance(target_date="27-10-2026", target_shift="Full")
+        items = {t["message_id"]: t for t in m.last_items.get("maintenance", [])}
+        self.assertEqual(items["T1"]["status"], "Pending")
+
+    def test_reply_quoting_a_recorded_non_ticket_still_does_not_link(self):
+        g = "Meydan FM Team💪"
+        m = ReportsManager()
+        msgs = [_wa_msg("T1", 28, 9, 0, 0, g, "Akash", "Q building 3rd floor male washroom 1 ceiling light is not working need to check"),
+                _wa_msg("Q1", 28, 9, 5, 0, g, "Prakash", "@Shahid pls respond"),
+                _wa_msg("R1", 28, 9, 10, 0, g, "Shahid", "Done", quoted="Q1")]
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            m.generate_maintenance(target_date="28-10-2026", target_shift="Full")
+        items = {t["message_id"]: t for t in m.last_items.get("maintenance", [])}
+        self.assertEqual(items["T1"]["status"], "Pending")
+
+
+class TestReviewCandidates(unittest.TestCase):
+    """Weekly keyword-review list (owner, 02-11): a short list instead of reading every message."""
+
+    def test_finds_missed_fault_new_vendor_and_skips_dear_team(self):
+        import re
+        from datetime import timedelta
+        from reports_engine.review_candidates import generate_review_candidates
+        from reports_engine.date_utils import now_dubai
+        now = now_dubai()
+
+        def msg(mid, hours_ago, group, sender, text, quoted=""):
+            dt = now - timedelta(hours=hours_ago)
+            return {"message_id": mid, "datetime": dt, "raw_datetime": dt.strftime("%m/%d/%Y, %I:%M:%S %p"),
+                    "group_name": group, "sender": sender, "text": text, "media_type": "💬 Text",
+                    "photo_preview": "", "photos_data": [], "photo_ref": "N/A", "quoted_message_id": quoted}
+        msgs = [
+            msg("F1", 30, "Meydan FM Team💪", "Peace", "Q building 2nd floor pantry sink tap is wobbling"),
+            msg("S1", 29, "Meydan - Security Team", "Guard", "M building first floor. Zentro company's vandors are here for tomorrow"),
+            msg("S2", 28, "Meydan - Security Team", "Akash", "Dear Team, Kindly find the day off roaster."),
+        ]
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            res = generate_review_candidates(m)
+        text = res["text"]
+        self.assertIn("sink tap is wobbling", text)
+        self.assertIn("Zentro", res["metrics"]["new_vendors"])
+        self.assertNotIn("day off roaster", text)
+        self.assertIsNone(re.search(r"[؀-ۿ]", text), "owner outputs are English only")
+
+
+class TestVehiclesAllowedToday(unittest.TestCase):
+    """Owner, 02-11: 07:00 list of every car whose entry dates (as written in the request) cover today."""
+
+    def test_entry_dates_as_written(self):
+        from datetime import date
+        from reports_engine.vehicles_today import permission_period as pp
+        sent = date(2026, 10, 27)
+        cases = {
+            "Kindly allow this vehicle in parking slot ( M 148) from 02/11/2026 until ( 11/11/2026 ).": ((2026, 11, 2), (2026, 11, 11)),
+            "Kindly allow this vehicle in Parking slot ( P 76 ) from (26/10/2026) till (06 /11/2026)": ((2026, 10, 26), (2026, 11, 6)),
+            "Kindly allow this vehicle in Parking slot ( N 198 ) for 28/10/2026 until 30/10/2026.": ((2026, 10, 28), (2026, 10, 30)),
+            "Kindly allow the following vehicles to be parked in parking slot( M 15 ) from 20/10/2026 to 28/10/2026": ((2026, 10, 20), (2026, 10, 28)),
+            "Kindly allow this vehicle in VIP parking for 20 /10/2026": ((2026, 10, 20), (2026, 10, 20)),
+            "Kindly allow this vehicle in Smart parking for tomorrow (09/10/2026)": ((2026, 10, 9), (2026, 10, 9)),
+            "Kindly allow this vehicle in parking slot ( M 133 ) for this week only.": ((2026, 10, 27), (2026, 11, 1)),
+            "Kindly allow this vehicle in parking slot (M 107) onlybfor today": ((2026, 10, 27), (2026, 10, 27)),
+            "Kindly allow this vehicle in VIP parking slot.\n\nPlate no : 4 / 69888\nCar make :GMC": ((2026, 10, 27), (2026, 10, 27)),
+        }
+        for text, (start, end) in cases.items():
+            with self.subTest(text=text):
+                p = pp(text, sent)
+                self.assertEqual(p["kind"], "dated")
+                self.assertEqual((p["start"], p["end"]), (date(*start), date(*end)))
+        days = pp("Kindly allow this vehicle in podium for 27th & 28th October 2026", sent)
+        self.assertEqual(days["days"], {date(2026, 10, 27), date(2026, 10, 28)})
+        for text in ("Kindly allow this vehicle in podium until further notice.",
+                     "Please allocate this parking slot( M 18 ) for below mentioned staff"):
+            with self.subTest(text=text):
+                self.assertEqual(pp(text, sent)["kind"], "long_term")
+
+    def test_daily_list_uses_written_dates_not_send_day(self):
+        import re
+        from reports_engine.vehicles_today import generate_vehicles_today
+        g = "Parking Team at Meydan"
+        msgs = [
+            _wa_msg("V1", 27, 11, 6, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in parking slot ( M 148) from 30/10/2026 until ( 11/11/2026 ).\n\nPlate no : B 54812\nCar make : Mercedes"),
+            _wa_msg("V2", 30, 6, 30, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in VIP parking slot only for today.\n\nPlate no : I 49415\nCar make : BMW"),
+            _wa_msg("V3", 29, 7, 31, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in VIP parking slot only for today.\n\nPlate no : K 23104"),
+            _wa_msg("V4", 28, 8, 48, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in podium until further notice.\n\nPlate no : FF 71016\nCar make :Jetour"),
+        ]
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs):
+            res = generate_vehicles_today(m, "30-10-2026")
+        text = res["text"]
+        self.assertIn("B 54812", text)        # sent 27-10, entry from 30-10
+        self.assertIn("I 49415", text)        # today only, sent today
+        self.assertNotIn("K 23104", text)     # today only, but that was 29-10
+        self.assertIn("Long-term", text)
+        self.assertIn("FF 71016", text)
+        self.assertEqual((res["today"], res["long_term"]), (2, 1))
+        self.assertIsNone(re.search(r"[؀-ۿ]", text), "owner outputs are English only")

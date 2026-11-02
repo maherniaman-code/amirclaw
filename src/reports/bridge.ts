@@ -40,7 +40,7 @@ export interface OverdueTicket {
 }
 
 export async function runReportEngine(
-    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'owner_kpis' | 'morning_digest' | 'overdue' | 'dq_daily' | 'dashboard' | 'list_corrections',
+    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'owner_kpis' | 'morning_digest' | 'overdue' | 'dq_daily' | 'dashboard' | 'review_candidates' | 'vehicles_today' | 'list_corrections',
     options?: { slot?: string; date?: string; shift?: 'Day' | 'Night'; excelPath?: string }
 ): Promise<ReportResult> {
     const pythonBin = config.pythonPath || 'python3';
@@ -128,7 +128,7 @@ export async function saveCorrection(
     targetStatus?: string,
     correctedBy?: string,
     notes?: string,
-): Promise<boolean> {
+): Promise<number | null> {
     const pythonBin = config.pythonPath || 'python3';
     const args = ['-m', 'reports_engine.cli', '--report', 'list_corrections',
         '--msg-id', messageId, '--target-report', targetReport];
@@ -137,9 +137,23 @@ export async function saveCorrection(
     if (notes) args.push('--notes', notes);
     try {
         const { stdout } = await execFileAsync(pythonBin, args, { cwd: ROOT_DIR, timeout: 20000, env: { ...process.env } });
-        return stdout.includes('"correction_saved": true');
+        const line = stdout.trim().split('\n').reverse().find((l) => l.includes('"correction_saved": true'));
+        return line ? Number(JSON.parse(line).row_id) : null;
     } catch (err: any) {
         console.error('Error saving correction:', err.message);
+        return null;
+    }
+}
+
+/** Deletes a correction saved from a button, only if it is still that message's correction. */
+export async function undoCorrection(rowId: number, messageId: string): Promise<boolean> {
+    const pythonBin = config.pythonPath || 'python3';
+    const args = ['-m', 'reports_engine.cli', '--report', 'list_corrections', '--undo-id', String(rowId), '--msg-id', messageId];
+    try {
+        const { stdout } = await execFileAsync(pythonBin, args, { cwd: ROOT_DIR, timeout: 20000, env: { ...process.env } });
+        return stdout.includes('"correction_undone": true');
+    } catch (err: any) {
+        console.error('Error undoing correction:', err.message);
         return false;
     }
 }

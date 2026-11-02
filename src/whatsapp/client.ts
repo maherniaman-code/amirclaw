@@ -28,35 +28,89 @@ const MEDIA_DIR = path.join(WORKSPACE_DIR, 'whatsapp_media');
 if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
 if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
-let waSocket: WASocket | null = null;
-let currentStatus: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
-let statusSince = Date.now();
-let loggedOut = false;
+type WaStatus = 'disconnected' | 'connecting' | 'connected';
+
+// One linked WhatsApp number. The main number records every group; a second number
+// (WHATSAPP2_GROUPS in .env) records only the groups listed there.
+interface WaAccount {
+    name: string;
+    sessionDir: string;
+    sock: WASocket | null;
+    status: WaStatus;
+    statusSince: number;
+    loggedOut: boolean;
+    qr: Buffer | null;
+    groupCache: Map<string, string>;
+    allowedGroups: string[] | null;     // normalized names; null = every group
+    ignoredGroups: Set<string>;
+}
+
+function newAccount(name: string, sessionDir: string, allowedGroups: string[] | null): WaAccount {
+    if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+    return {
+        name, sessionDir, sock: null, status: 'disconnected', statusSince: Date.now(), loggedOut: false,
+        qr: null, groupCache: new Map(), allowedGroups, ignoredGroups: new Set(),
+    };
+}
+
+export function normalizeGroupName(name: string): string {
+    return name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+
+/** "Podium Parking Access 🚗" matches the configured "podium Parking Access". */
+export function groupAllowed(groupName: string, allowed: string[] | null): boolean {
+    if (!allowed) return true;
+    const g = normalizeGroupName(groupName);
+    return allowed.some((a) => a && g.includes(a));
+}
+
+const mainAccount = newAccount('main', SESSION_DIR, null);
+const SECOND_GROUPS = (process.env.WHATSAPP2_GROUPS || '').split(',').map(normalizeGroupName).filter(Boolean);
+const secondAccount: WaAccount | null = SECOND_GROUPS.length
+    ? newAccount('second', path.join(WORKSPACE_DIR, 'whatsapp_session_2'), SECOND_GROUPS)
+    : null;
 
 // statusSince = when we last went from connected to not-connected (or back). Reconnect
 // attempts flip disconnected <-> connecting every few seconds and must not reset it.
-function setStatus(next: 'disconnected' | 'connecting' | 'connected'): void {
-    if ((next === 'connected') !== (currentStatus === 'connected')) statusSince = Date.now();
-    currentStatus = next;
+function setStatus(acc: WaAccount, next: WaStatus): void {
+    if ((next === 'connected') !== (acc.status === 'connected')) acc.statusSince = Date.now();
+    acc.status = next;
 }
-let currentQrBuffer: Buffer | null = null;
-let currentQrText: string | null = null;
-let groupMetadataCache: Map<string, string> = new Map();
 let activeBackfill: VideoBackfill | null = null;
 let backfillScheduled = false;
 
-export function getWhatsAppStatus() {
+function statusOf(acc: WaAccount) {
     return {
-        status: currentStatus,
-        statusSince,
-        loggedOut,
-        hasQr: !!currentQrBuffer,
+        status: acc.status,
+        statusSince: acc.statusSince,
+        loggedOut: acc.loggedOut,
+        hasQr: !!acc.qr,
         excelPath: EXCEL_PATH,
     };
 }
 
+export function getWhatsAppStatus() {
+    return statusOf(mainAccount);
+}
+
 export function getWhatsAppQrImage(): Buffer | null {
-    return currentQrBuffer;
+    return mainAccount.qr;
+}
+
+export function isSecondWhatsAppConfigured(): boolean {
+    return !!secondAccount;
+}
+
+export function secondWhatsAppGroups(): string[] {
+    return (process.env.WHATSAPP2_GROUPS || '').split(',').map((g) => g.trim()).filter(Boolean);
+}
+
+export function getSecondWhatsAppStatus() {
+    return secondAccount ? statusOf(secondAccount) : null;
+}
+
+export function getSecondWhatsAppQrImage(): Buffer | null {
+    return secondAccount?.qr || null;
 }
 
 function unwrapMessage(msg: proto.IWebMessageInfo): any {
@@ -88,18 +142,18 @@ export function extractQuotedMessageId(m: any): string {
     return (ctx && ctx.stanzaId) ? String(ctx.stanzaId) : '';
 }
 
-async function getGroupNameWithTimeout(jid: string): Promise<string> {
-    const cached = groupMetadataCache.get(jid);
+async function getGroupNameWithTimeout(acc: WaAccount, jid: string): Promise<string> {
+    const cached = acc.groupCache.get(jid);
     if (cached) return cached;
-    if (!waSocket) return 'مجموعة واتساب';
+    if (!acc.sock) return 'مجموعة واتساب';
 
     try {
         const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
-        const metaPromise = waSocket.groupMetadata(jid);
+        const metaPromise = acc.sock.groupMetadata(jid);
         const meta = await Promise.race([metaPromise, timeoutPromise]);
         if (meta && (meta as any).subject) {
             const subject = (meta as any).subject;
-            groupMetadataCache.set(jid, subject);
+            acc.groupCache.set(jid, subject);
             return subject;
         }
     } catch {
@@ -108,7 +162,7 @@ async function getGroupNameWithTimeout(jid: string): Promise<string> {
     return 'مجموعة واتساب';
 }
 
-async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: boolean = true): Promise<void> {
+async function processGroupMessage(acc: WaAccount, msg: proto.IWebMessageInfo, downloadMedia: boolean = true): Promise<void> {
     try {
         const jid = msg.key.remoteJid;
         if (!jid) return;
@@ -145,7 +199,16 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
         });
 
         // Fetch or cache group name (with safe 3s timeout)
-        const groupName = await getGroupNameWithTimeout(jid);
+        const groupName = await getGroupNameWithTimeout(acc, jid);
+        // The second number records only its configured groups; nothing else is downloaded or stored
+        if (!groupAllowed(groupName, acc.allowedGroups)) {
+            if (!acc.ignoredGroups.has(groupName)) {
+                acc.ignoredGroups.add(groupName);
+                console.log(`🔕 [${acc.name}] ignoring group not in WHATSAPP2_GROUPS: ${groupName}`);
+            }
+            return;
+        }
+        const waSocket = acc.sock;
 
         // Sender identification
         let senderDisplay: string;
@@ -313,6 +376,7 @@ async function processGroupMessage(msg: proto.IWebMessageInfo, downloadMedia: bo
 
 /** Old messages of the report groups and pictures of old videos (see video_backfill.ts). */
 async function runVideoBackfill(): Promise<void> {
+    const waSocket = mainAccount.sock;
     if (getMeta('history_backfill_done') === '1' || !waSocket) return;
     const attempt = Number(getMeta('history_backfill_attempts') || 0) + 1;
     if (attempt > MAX_ATTEMPTS) return;
@@ -388,34 +452,44 @@ async function reprocessReports(): Promise<void> {
 const WAIT_FOR_LATE_HISTORY_MS = 30_000;
 
 export async function startWhatsAppClient(): Promise<void> {
+    return startAccount(mainAccount);
+}
+
+/** Links / reconnects the second number (only when WHATSAPP2_GROUPS is set). */
+export async function startSecondWhatsAppClient(): Promise<void> {
+    if (secondAccount) return startAccount(secondAccount);
+}
+
+async function startAccount(acc: WaAccount): Promise<void> {
+    const isMain = acc === mainAccount;
     // Ensure Excel file exists right away
     await ensureExcelInitialized();
 
-    if (waSocket && currentStatus === 'connected') {
-        console.log('WhatsApp client is already connected.');
+    if (acc.sock && acc.status === 'connected') {
+        console.log(`WhatsApp client [${acc.name}] is already connected.`);
         return;
     }
 
-    setStatus('connecting');
-    console.log('🟢 Initializing WhatsApp Read-Only Client (Baileys)...');
+    setStatus(acc, 'connecting');
+    console.log(`🟢 Initializing WhatsApp Read-Only Client (Baileys) [${acc.name}]...`);
 
     // Clean up old socket if any
     try {
-        if (waSocket) {
-            waSocket.ev.removeAllListeners('connection.update');
-            waSocket.ev.removeAllListeners('messages.upsert');
-            waSocket.end(undefined);
-            waSocket = null;
+        if (acc.sock) {
+            acc.sock.ev.removeAllListeners('connection.update');
+            acc.sock.ev.removeAllListeners('messages.upsert');
+            acc.sock.end(undefined);
+            acc.sock = null;
         }
     } catch {}
 
-    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+    const { state, saveCreds } = await useMultiFileAuthState(acc.sessionDir);
 
-    waSocket = makeWASocket({
+    const waSocket = makeWASocket({
         auth: state,
         printQRInTerminal: false,
         logger: pino({ level: 'silent' }), // Silent logs to prevent spam
-        browser: ['amirClaw Reader', 'Desktop', '1.0.0'],
+        browser: [isMain ? 'amirClaw Reader' : 'amirClaw Reader 2', 'Desktop', '1.0.0'],
         syncFullHistory: false,
         // Without this Baileys drops the answers to our history requests (old messages / video pictures)
         shouldSyncHistoryMessage: (msg) => acceptHistorySync(msg as any),
@@ -425,6 +499,7 @@ export async function startWhatsAppClient(): Promise<void> {
         connectTimeoutMs: 60_000,
         getMessage: async () => undefined,
     });
+    acc.sock = waSocket;
 
     waSocket.ev.on('creds.update', saveCreds);
 
@@ -433,38 +508,39 @@ export async function startWhatsAppClient(): Promise<void> {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-            currentQrText = qr;
-            console.log('\n📱 WhatsApp QR Code generated! Scan it with your phone:\n');
+            console.log(`\n📱 WhatsApp QR Code generated [${acc.name}]! Scan it with your phone:\n`);
             qrcodeTerminal.generate(qr, { small: true });
 
             // Generate image buffer for Telegram delivery
             try {
-                currentQrBuffer = await QRCode.toBuffer(qr, { width: 350 });
+                acc.qr = await QRCode.toBuffer(qr, { width: 350 });
             } catch (err) {
                 console.error('Error rendering QR image buffer:', err);
             }
         }
 
         if (connection === 'close') {
-            setStatus('disconnected');
-            currentQrBuffer = null;
+            setStatus(acc, 'disconnected');
+            acc.qr = null;
             const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-            loggedOut = !shouldReconnect;
-            console.log(`❌ WhatsApp disconnected (code: ${statusCode}). Reconnecting: ${shouldReconnect}`);
+            acc.loggedOut = !shouldReconnect;
+            console.log(`❌ WhatsApp [${acc.name}] disconnected (code: ${statusCode}). Reconnecting: ${shouldReconnect}`);
 
             if (shouldReconnect) {
-                setTimeout(() => startWhatsAppClient(), 4000);
+                setTimeout(() => startAccount(acc), 4000);
+            } else if (!isMain) {
+                // The main number has its own watchdog (startWhatsAppWatchdog)
+                await alertOwner('whatsapp2-logged-out', 'The second WhatsApp number was logged out. Send /whatsapp2 to link it again.');
             }
         } else if (connection === 'open') {
-            setStatus('connected');
-            loggedOut = false;
-            currentQrBuffer = null;
-            currentQrText = null;
-            console.log('✅ WhatsApp connected successfully! Now listening to group messages in READ-ONLY mode.');
+            setStatus(acc, 'connected');
+            acc.loggedOut = false;
+            acc.qr = null;
+            console.log(`✅ WhatsApp [${acc.name}] connected successfully! Now listening to group messages in READ-ONLY mode.`);
             // Old-message recovery is off by default (WhatsApp did not answer on the server, 15-10);
             // HISTORY_BACKFILL=on in .env turns it back on
-            if (!backfillScheduled && process.env.HISTORY_BACKFILL === 'on') {
+            if (isMain && !backfillScheduled && process.env.HISTORY_BACKFILL === 'on') {
                 backfillScheduled = true;
                 setTimeout(() => { runVideoBackfill().catch((e) => console.warn('Video backfill failed:', e?.message || e)); }, 60_000);
             }
@@ -474,22 +550,22 @@ export async function startWhatsAppClient(): Promise<void> {
     // History sync listener
     waSocket.ev.on('messaging-history.set', ({ messages }) => {
         if (!messages || messages.length === 0) return;
-        console.log(`📥 History sync: ${messages.length} messages (processing in background)`);
+        console.log(`📥 History sync [${acc.name}]: ${messages.length} messages (processing in background)`);
         // Process history non-blocking so real-time messages are not delayed
         setImmediate(async () => {
             for (const msg of messages) {
-                await processGroupMessage(msg, false).catch(() => {});
+                await processGroupMessage(acc, msg, false).catch(() => {});
             }
             await flushWhatsAppMessages().catch(() => {});
-            if (activeBackfill) await activeBackfill.onHistory(messages).catch(() => {});
+            if (isMain && activeBackfill) await activeBackfill.onHistory(messages).catch(() => {});
         });
     });
 
     // Message listener for real-time messages
     waSocket.ev.on('messages.upsert', async ({ messages, type }) => {
-        console.log(`📨 Received ${messages.length} WhatsApp event(s) (type: ${type})`);
+        console.log(`📨 Received ${messages.length} WhatsApp event(s) [${acc.name}] (type: ${type})`);
         for (const msg of messages) {
-            await processGroupMessage(msg, true);
+            await processGroupMessage(acc, msg, true);
         }
         // Immediately flush any captured messages to Excel
         await flushWhatsAppMessages();

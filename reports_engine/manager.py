@@ -594,13 +594,31 @@ class ReportsManager:
         date = target_date or now.strftime("%d-%m-%Y")
         return f"{shift.title()} Shift ({date})"
 
+    def _recorded_message_ids(self) -> set:
+        """Ids of every message the bot has recorded (all dates), cached per loaded message list."""
+        msgs = self.parser.load_messages()
+        key = (id(msgs), len(msgs))
+        if getattr(self, "_recorded_ids_key", None) != key:
+            self._recorded_ids = {m["message_id"] for m in msgs}
+            self._recorded_ids_key = key
+        return self._recorded_ids
+
     def _link_reply(
-        self, tickets: Dict[str, Dict[str, Any]], ev: Dict[str, Any], quoted_id: str
+        self, tickets: Dict[str, Dict[str, Any]], ev: Dict[str, Any], quoted_id: str, is_fix: bool = False
     ) -> Tuple[Optional[Dict[str, Any]], str]:
         """Ticket a reply belongs to: quoted Reply, else shared word within hours, else latest open within minutes."""
         target = find_ticket_by_id(tickets, quoted_id)
-        if target or quoted_id:
+        if target:
             return target, "quoted"
+        # A short fix ("Team already cleared.") quoting a message the bot never received (offline,
+        # decrypt failure) is linked like an unquoted reply. Longer texts quoting the unknown are
+        # explanations ("This work was done but we keep receiving email ..."), and a chain of
+        # recorded replies to an old ticket is handled by _orphan_fix_from_chain.
+        direct_quote = ev.get("quoted_message_id", "")
+        unrecorded_fix = (is_fix and bool(direct_quote) and len(ev["text"].split()) <= 6
+                          and direct_quote not in self._recorded_message_ids())
+        if quoted_id and not unrecorded_fix:
+            return None, "quoted"
         # Several confirmations of one repair ("Light replaced", "Done", photo "Light replaced")
         # from the same person minutes apart belong to the ticket they just closed.
         ev_dt = ev.get("datetime")
@@ -762,7 +780,8 @@ class ReportsManager:
 
             if is_closure or is_progress or is_ack or is_followup or is_empty_or_image:
                 # "Ok" under "Work in progress" under "Follow up" belongs to the ticket at the top of the chain
-                target_ticket, link_method = self._link_reply(tickets, ev, _resolve_quote_chain(tickets, chain, quoted_id))
+                target_ticket, link_method = self._link_reply(tickets, ev, _resolve_quote_chain(tickets, chain, quoted_id),
+                                                              is_fix=is_closure or is_progress)
                 if target_ticket:
                     if is_closure:
                         target_ticket["status"] = "Done"
@@ -1018,7 +1037,7 @@ class ReportsManager:
             is_empty_or_image = text.strip() in ["(Image)", ""] or (len(text.strip()) <= 4 and not re.search(r"\w{3,}", text))
 
             if is_closure or is_progress or is_ack or is_followup or is_fyi or is_empty_or_image:
-                target_ticket, link_method = self._link_reply(tickets, ev, quoted_id)
+                target_ticket, link_method = self._link_reply(tickets, ev, quoted_id, is_fix=is_closure or is_progress)
                 if target_ticket:
                     if is_closure:
                         target_ticket["status"] = "Done"
@@ -1758,7 +1777,7 @@ class ReportsManager:
             is_progress = any(k in text_lower for k in in_progress_kws)
 
             if is_closure or is_progress:
-                target, link_method = self._link_reply(tickets, ev, quoted_id)
+                target, link_method = self._link_reply(tickets, ev, quoted_id, is_fix=is_closure or is_progress)
                 if target:
                     if is_closure:
                         target["status"] = "Done"

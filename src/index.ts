@@ -6,7 +6,8 @@ import { config, validateConfig } from './config.js';
 import { initDb, addMessage, getMessages, getMemoriesDb, clearMemoriesDb } from './db/index.js';
 import { availableTools, executeTool } from './tools/index.js';
 import { createChatCompletion, getActiveProviders } from './llm.js';
-import { startWhatsAppClient, getWhatsAppStatus, getWhatsAppQrImage } from './whatsapp/client.js';
+import { startWhatsAppClient, getWhatsAppStatus, getWhatsAppQrImage, startSecondWhatsAppClient, isSecondWhatsAppConfigured,
+    getSecondWhatsAppStatus, getSecondWhatsAppQrImage, secondWhatsAppGroups } from './whatsapp/client.js';
 import { ensureExcelInitialized } from './whatsapp/excel.js';
 import { textToSpeech, getUserVoiceSettings, setUserAlwaysVoice, setUserVoiceKey, ARABIC_VOICES } from './tts.js';
 import { startReminderScheduler, listUserReminders } from './reminders.js';
@@ -27,6 +28,11 @@ const whatsappCredsPath = path.join(process.cwd(), 'workspace', 'whatsapp_sessio
 if (fs.existsSync(whatsappCredsPath)) {
     console.log('🔄 Existing WhatsApp session found, connecting client automatically...');
     startWhatsAppClient().catch(console.error);
+}
+// Second number (read-only, only the groups in WHATSAPP2_GROUPS)
+if (isSecondWhatsAppConfigured() && fs.existsSync(path.join(process.cwd(), 'workspace', 'whatsapp_session_2', 'creds.json'))) {
+    console.log('🔄 Second WhatsApp session found, connecting it automatically...');
+    startSecondWhatsAppClient().catch(console.error);
 }
 
 const WORKSPACE_DIR = path.resolve(process.cwd(), 'workspace');
@@ -279,6 +285,44 @@ bot.command('whatsapp', async (ctx) => {
     setTimeout(sendQr, 3000); // Start checking after 3 seconds
 });
 
+// /whatsapp2 - Link the second number (reads only the groups in WHATSAPP2_GROUPS)
+bot.command('whatsapp2', async (ctx) => {
+    if (!isSecondWhatsAppConfigured()) {
+        await ctx.reply('The second WhatsApp number is not set up. Add WHATSAPP2_GROUPS to .env on the server and restart the bot.');
+        return;
+    }
+    const groups = secondWhatsAppGroups().join(', ');
+    if (getSecondWhatsAppStatus()?.status === 'connected') {
+        await ctx.reply(`✅ The second WhatsApp number is already linked.\nIt records only: ${groups}`);
+        return;
+    }
+    await ctx.reply('📱 Starting the second WhatsApp number (read-only)... the QR code follows in a few seconds.');
+    startSecondWhatsAppClient().catch(console.error);
+
+    let attempts = 0;
+    const sendQr = async () => {
+        if (getSecondWhatsAppStatus()?.status === 'connected') {
+            await ctx.reply(`✅ Second WhatsApp number linked. Recording only: ${groups}`);
+            return;
+        }
+        const qrImage = getSecondWhatsAppQrImage();
+        if (qrImage) {
+            await ctx.replyWithPhoto(new InputFile(qrImage, 'whatsapp2_qr.png'), {
+                caption:
+                    'Scan with the SECOND phone:\n\n'
+                    + '1. Open WhatsApp on the second phone\n'
+                    + '2. Settings > Linked devices > Link a device\n'
+                    + '3. Scan this code\n\n'
+                    + `Read-only: it never sends messages, and records only: ${groups}`,
+            });
+            return;
+        }
+        if (++attempts < 15) setTimeout(sendQr, 2000);
+        else await ctx.reply('⚠️ No QR code yet. Send /whatsapp2 again.');
+    };
+    setTimeout(sendQr, 3000);
+});
+
 // /whatsapp_status - Check WhatsApp connection status
 bot.command('whatsapp_status', async (ctx) => {
     const status = getWhatsAppStatus();
@@ -296,6 +340,12 @@ bot.command('whatsapp_status', async (ctx) => {
         text += 'استخدم /whatsapp\\_excel لتحميل ملف الإكسل.';
     } else if (status.status === 'disconnected') {
         text += '\nاستخدم /whatsapp لبدء الاتصال.';
+    }
+
+    const second = getSecondWhatsAppStatus();
+    if (second) {
+        text += `\n\nSecond number (${secondWhatsAppGroups().join(', ')}): ${statusEmoji[second.status] || second.status}`;
+        if (second.status !== 'connected') text += '\nSend /whatsapp2 to link it.';
     }
 
     await ctx.reply(text, { parse_mode: 'Markdown' });
