@@ -1626,3 +1626,74 @@ class TestUndoCorrection(unittest.TestCase):
             self.assertTrue(cdb.undo_correction(row, "MSG_A"))
             self.assertIsNone(cdb.get_correction_for_message("MSG_A"))
             self.assertFalse(cdb.undo_correction(row, "MSG_A"))      # second press: nothing left
+
+
+class TestReplyToUnrecordedMessage(unittest.TestCase):
+    """01-11 04:09 "Team already cleared." quoted a message the bot never received."""
+
+    def test_cleaning_reply_quoting_unrecorded_message_closes_the_task(self):
+        c = "Cleaning Matters at Meydan"
+        m = ReportsManager()
+        msgs = [_wa_msg("K1", 31, 8, 5, 0, c, "Namara", "P building ground floor inside male washroom it's dirty too much and front of the recipient too much trash need to clean properly"),
+                _wa_msg("K2", 31, 8, 9, 0, c, "Rajesh", "Team already cleared.", quoted="NEVER_RECORDED_ID")]
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            text = m.generate_cleaning(target_date="31-10-2026")["text"]
+        self.assertIn("✅ Done", text)
+        self.assertIn("Completed: 1 of 1", text)
+
+    def test_long_explanation_quoting_unrecorded_message_does_not_close_a_ticket(self):
+        # 27-10 09:46 (Prakash): about an old job, quoting a message the bot never received
+        g = "Meydan FM Team💪"
+        m = ReportsManager()
+        msgs = [_wa_msg("T1", 27, 9, 30, 0, g, "Ihsan", "Q Building 3rd floor staircase light is not working need to check"),
+                _wa_msg("R1", 27, 9, 46, 0, g, "Prakash", "Dear security team\n\nThis work was done but we keep receiving email everyday for this",
+                        quoted="NEVER_RECORDED_ID")]
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            m.generate_maintenance(target_date="27-10-2026", target_shift="Full")
+        items = {t["message_id"]: t for t in m.last_items.get("maintenance", [])}
+        self.assertEqual(items["T1"]["status"], "Pending")
+
+    def test_reply_quoting_a_recorded_non_ticket_still_does_not_link(self):
+        g = "Meydan FM Team💪"
+        m = ReportsManager()
+        msgs = [_wa_msg("T1", 28, 9, 0, 0, g, "Akash", "Q building 3rd floor male washroom 1 ceiling light is not working need to check"),
+                _wa_msg("Q1", 28, 9, 5, 0, g, "Prakash", "@Shahid pls respond"),
+                _wa_msg("R1", 28, 9, 10, 0, g, "Shahid", "Done", quoted="Q1")]
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            m.generate_maintenance(target_date="28-10-2026", target_shift="Full")
+        items = {t["message_id"]: t for t in m.last_items.get("maintenance", [])}
+        self.assertEqual(items["T1"]["status"], "Pending")
+
+
+class TestReviewCandidates(unittest.TestCase):
+    """Weekly keyword-review list (owner, 02-11): a short list instead of reading every message."""
+
+    def test_finds_missed_fault_new_vendor_and_skips_dear_team(self):
+        import re
+        from datetime import timedelta
+        from reports_engine.review_candidates import generate_review_candidates
+        from reports_engine.date_utils import now_dubai
+        now = now_dubai()
+
+        def msg(mid, hours_ago, group, sender, text, quoted=""):
+            dt = now - timedelta(hours=hours_ago)
+            return {"message_id": mid, "datetime": dt, "raw_datetime": dt.strftime("%m/%d/%Y, %I:%M:%S %p"),
+                    "group_name": group, "sender": sender, "text": text, "media_type": "💬 Text",
+                    "photo_preview": "", "photos_data": [], "photo_ref": "N/A", "quoted_message_id": quoted}
+        msgs = [
+            msg("F1", 30, "Meydan FM Team💪", "Peace", "Q building 2nd floor pantry sink tap is wobbling"),
+            msg("S1", 29, "Meydan - Security Team", "Guard", "M building first floor. Zentro company's vandors are here for tomorrow"),
+            msg("S2", 28, "Meydan - Security Team", "Akash", "Dear Team, Kindly find the day off roaster."),
+        ]
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            res = generate_review_candidates(m)
+        text = res["text"]
+        self.assertIn("sink tap is wobbling", text)
+        self.assertIn("Zentro", res["metrics"]["new_vendors"])
+        self.assertNotIn("day off roaster", text)
+        self.assertIsNone(re.search(r"[؀-ۿ]", text), "owner outputs are English only")

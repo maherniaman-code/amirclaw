@@ -318,6 +318,17 @@ function startWeeklyDataQualityReport(bot: Bot) {
             } else {
                 await alertOwner('report-owner-kpis', `Weekly owner KPI summary failed: ${kpi.error || 'no text'}`);
             }
+
+            // The few messages of the week the rules most likely got wrong (keyword review)
+            const review = await runReportEngine('review_candidates');
+            if (review.success && review.text) {
+                for (const userId of config.allowedUserIds) {
+                    await sendTelegramReport(bot, userId, review.text);
+                }
+                console.log(`🔎 Weekly keyword review list sent to ${config.allowedUserIds.length} owner(s).`);
+            } else {
+                await alertOwner('report-review-candidates', `Weekly keyword review list failed: ${review.error || 'no text'}`);
+            }
         } catch (err: any) {
             console.error('Error in weekly data quality report:', err.message);
         }

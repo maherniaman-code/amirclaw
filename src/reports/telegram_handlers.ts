@@ -502,6 +502,17 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
         return true;
     }
 
+    if (trimmed === '/review') {
+        await ctx.reply('🔎 Collecting the messages of the last 7 days to review...');
+        const res = await runReportEngine('review_candidates');
+        if (res.success && res.text) {
+            await replyReportTextAndExcel(ctx, res.text);
+        } else {
+            await ctx.reply(`❌ Keyword review list failed: ${res.error || 'unknown error'}`);
+        }
+        return true;
+    }
+
     return false;
 }
 
