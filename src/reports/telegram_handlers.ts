@@ -502,6 +502,16 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
         return true;
     }
 
+    if (trimmed === '/vehicles') {
+        const res = await runReportEngine('vehicles_today');
+        if (res.success && res.text) {
+            await replyReportTextAndExcel(ctx, res.text);
+        } else {
+            await ctx.reply(`❌ Vehicles allowed today failed: ${res.error || 'unknown error'}`);
+        }
+        return true;
+    }
+
     if (trimmed === '/review') {
         await ctx.reply('🔎 Collecting the messages of the last 7 days to review...');
         const res = await runReportEngine('review_candidates');

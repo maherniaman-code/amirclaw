@@ -206,6 +206,8 @@ function startOwnerDailyMessages(bot: Bot) {
     const overdueOn = process.env.ENABLE_OVERDUE_REMINDERS !== 'false';
     const dqOn = process.env.ENABLE_DAILY_DQ !== 'false';
     const digestHour = Number(process.env.MORNING_DIGEST_HOUR ?? 8);
+    const vehiclesOn = process.env.ENABLE_DAILY_VEHICLES !== 'false';
+    const vehiclesHour = Number(process.env.DAILY_VEHICLES_HOUR ?? 7);
     const overdueFrom = Number(process.env.OVERDUE_REMINDER_FROM_HOUR ?? 9);
     const overdueTo = Number(process.env.OVERDUE_REMINDER_TO_HOUR ?? 20);
 
@@ -226,6 +228,18 @@ function startOwnerDailyMessages(bot: Bot) {
                     console.log(`🌅 Morning digest sent to ${config.allowedUserIds.length} owner(s).`);
                 } else {
                     await alertOwner('report-morning-digest', `Morning digest failed: ${res.error || 'no text'}`);
+                }
+            }
+
+            // 07:00 vehicles whose entry permission covers today (dates as written in each request)
+            if (vehiclesOn && hour === vehiclesHour && !hasReportBeenSent(`vehicles_today_${date}`)) {
+                markReportAsSent(`vehicles_today_${date}`);
+                const res = await runReportEngine('vehicles_today');
+                if (res.success && res.text) {
+                    for (const userId of config.allowedUserIds) await sendTelegramReport(bot, userId, res.text);
+                    console.log(`🚗 Vehicles-allowed-today list sent to ${config.allowedUserIds.length} owner(s).`);
+                } else {
+                    await alertOwner('report-vehicles-today', `Vehicles allowed today failed: ${res.error || 'no text'}`);
                 }
             }
 

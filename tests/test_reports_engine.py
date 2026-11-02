@@ -1697,3 +1697,56 @@ class TestReviewCandidates(unittest.TestCase):
         self.assertIn("Zentro", res["metrics"]["new_vendors"])
         self.assertNotIn("day off roaster", text)
         self.assertIsNone(re.search(r"[؀-ۿ]", text), "owner outputs are English only")
+
+
+class TestVehiclesAllowedToday(unittest.TestCase):
+    """Owner, 02-11: 07:00 list of every car whose entry dates (as written in the request) cover today."""
+
+    def test_entry_dates_as_written(self):
+        from datetime import date
+        from reports_engine.vehicles_today import permission_period as pp
+        sent = date(2026, 10, 27)
+        cases = {
+            "Kindly allow this vehicle in parking slot ( M 148) from 02/11/2026 until ( 11/11/2026 ).": ((2026, 11, 2), (2026, 11, 11)),
+            "Kindly allow this vehicle in Parking slot ( P 76 ) from (26/10/2026) till (06 /11/2026)": ((2026, 10, 26), (2026, 11, 6)),
+            "Kindly allow this vehicle in Parking slot ( N 198 ) for 28/10/2026 until 30/10/2026.": ((2026, 10, 28), (2026, 10, 30)),
+            "Kindly allow the following vehicles to be parked in parking slot( M 15 ) from 20/10/2026 to 28/10/2026": ((2026, 10, 20), (2026, 10, 28)),
+            "Kindly allow this vehicle in VIP parking for 20 /10/2026": ((2026, 10, 20), (2026, 10, 20)),
+            "Kindly allow this vehicle in Smart parking for tomorrow (09/10/2026)": ((2026, 10, 9), (2026, 10, 9)),
+            "Kindly allow this vehicle in parking slot ( M 133 ) for this week only.": ((2026, 10, 27), (2026, 11, 1)),
+            "Kindly allow this vehicle in parking slot (M 107) onlybfor today": ((2026, 10, 27), (2026, 10, 27)),
+            "Kindly allow this vehicle in VIP parking slot.\n\nPlate no : 4 / 69888\nCar make :GMC": ((2026, 10, 27), (2026, 10, 27)),
+        }
+        for text, (start, end) in cases.items():
+            with self.subTest(text=text):
+                p = pp(text, sent)
+                self.assertEqual(p["kind"], "dated")
+                self.assertEqual((p["start"], p["end"]), (date(*start), date(*end)))
+        days = pp("Kindly allow this vehicle in podium for 27th & 28th October 2026", sent)
+        self.assertEqual(days["days"], {date(2026, 10, 27), date(2026, 10, 28)})
+        for text in ("Kindly allow this vehicle in podium until further notice.",
+                     "Please allocate this parking slot( M 18 ) for below mentioned staff"):
+            with self.subTest(text=text):
+                self.assertEqual(pp(text, sent)["kind"], "long_term")
+
+    def test_daily_list_uses_written_dates_not_send_day(self):
+        import re
+        from reports_engine.vehicles_today import generate_vehicles_today
+        g = "Parking Team at Meydan"
+        msgs = [
+            _wa_msg("V1", 27, 11, 6, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in parking slot ( M 148) from 30/10/2026 until ( 11/11/2026 ).\n\nPlate no : B 54812\nCar make : Mercedes"),
+            _wa_msg("V2", 30, 6, 30, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in VIP parking slot only for today.\n\nPlate no : I 49415\nCar make : BMW"),
+            _wa_msg("V3", 29, 7, 31, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in VIP parking slot only for today.\n\nPlate no : K 23104"),
+            _wa_msg("V4", 28, 8, 48, 0, g, "Akash", "Dear Team,\n\nKindly allow this vehicle in podium until further notice.\n\nPlate no : FF 71016\nCar make :Jetour"),
+        ]
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs):
+            res = generate_vehicles_today(m, "30-10-2026")
+        text = res["text"]
+        self.assertIn("B 54812", text)        # sent 27-10, entry from 30-10
+        self.assertIn("I 49415", text)        # today only, sent today
+        self.assertNotIn("K 23104", text)     # today only, but that was 29-10
+        self.assertIn("Long-term", text)
+        self.assertIn("FF 71016", text)
+        self.assertEqual((res["today"], res["long_term"]), (2, 1))
+        self.assertIsNone(re.search(r"[؀-ۿ]", text), "owner outputs are English only")

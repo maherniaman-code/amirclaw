@@ -860,6 +860,11 @@ vehicle_permission:
     - "acknowledged"
     - "received"
   reply_link_minutes: 120
+  # Daily 07:00 owner message "Vehicles allowed today" (reports_engine/vehicles_today.py):
+  # requests sent in the last daily_look_back_days whose written dates cover today, plus
+  # "until further notice" / permanent ones sent in the last daily_long_term_days.
+  daily_look_back_days: 120
+  daily_long_term_days: 60
   # Longer unquoted messages are status updates ("Actual Car Parked Inside at 1.30 PM ..."), not replies
   reply_max_words: 12
 

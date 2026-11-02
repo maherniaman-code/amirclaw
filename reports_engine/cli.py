@@ -16,7 +16,7 @@ from .dashboard import generate_dashboard
 
 def main():
     parser = argparse.ArgumentParser(description="Meydan Reports Generator CLI")
-    parser.add_argument("--report", choices=["parking", "maintenance", "fire_safety", "operations", "violations", "permissions", "cleaning", "data_quality", "owner_kpis", "morning_digest", "overdue", "dq_daily", "dashboard", "review_candidates", "list_corrections"], required=True)
+    parser.add_argument("--report", choices=["parking", "maintenance", "fire_safety", "operations", "violations", "permissions", "cleaning", "data_quality", "owner_kpis", "morning_digest", "overdue", "dq_daily", "dashboard", "review_candidates", "vehicles_today", "list_corrections"], required=True)
     parser.add_argument("--slot", default="latest", help="Parking slot time (e.g. 10:00, 12:00, 14:00, latest)")
     parser.add_argument("--date", default=None, help="Target report date (DD-MM-YYYY)")
     parser.add_argument("--shift", choices=["Day", "Night"], default=None, help="Shift for maintenance/fire_safety/operations (default: shift in progress)")
@@ -95,6 +95,9 @@ def main():
         elif args.report == "review_candidates":
             from .review_candidates import generate_review_candidates
             print(json.dumps(generate_review_candidates(manager), ensure_ascii=False, default=str))
+        elif args.report == "vehicles_today":
+            from .vehicles_today import generate_vehicles_today
+            print(json.dumps(generate_vehicles_today(manager, args.date), ensure_ascii=False, default=str))
         elif args.report == "list_corrections":
             corrs = list_corrections()
             print(json.dumps({"corrections": corrs}, ensure_ascii=False))

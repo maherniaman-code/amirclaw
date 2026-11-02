@@ -40,7 +40,7 @@ export interface OverdueTicket {
 }
 
 export async function runReportEngine(
-    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'owner_kpis' | 'morning_digest' | 'overdue' | 'dq_daily' | 'dashboard' | 'review_candidates' | 'list_corrections',
+    reportType: 'parking' | 'maintenance' | 'fire_safety' | 'operations' | 'violations' | 'permissions' | 'cleaning' | 'data_quality' | 'owner_kpis' | 'morning_digest' | 'overdue' | 'dq_daily' | 'dashboard' | 'review_candidates' | 'vehicles_today' | 'list_corrections',
     options?: { slot?: string; date?: string; shift?: 'Day' | 'Night'; excelPath?: string }
 ): Promise<ReportResult> {
     const pythonBin = config.pythonPath || 'python3';
