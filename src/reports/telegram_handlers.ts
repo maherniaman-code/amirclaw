@@ -189,6 +189,12 @@ const COR_REPORTS: Record<string, { code: string; label: string; doneStatus: str
     fire_safety: { code: 'f', label: 'fire_safety', doneStatus: 'Done', openStatus: 'Pending' },
     operations: { code: 'o', label: 'operations', doneStatus: 'Completed', openStatus: 'Reported' },
 };
+// Operations items are activities, not tickets: ❌ there means "remove from the report" (owner, 02-11)
+function correctionLegend(engine: string): string {
+    return engine === 'operations'
+        ? '✅ completed   ↩️ still ongoing   ❌ remove from report   🔁 duplicate'
+        : '✅ fixed   ↩️ still open   ❌ not a ticket   🔁 duplicate';
+}
 const COR_BY_CODE = Object.fromEntries(Object.entries(COR_REPORTS).map(([engine, v]) => [v.code, { engine, ...v }]));
 const MAX_CORRECTION_ROWS = 25; // 4 buttons per row, Telegram allows 100 per message
 
@@ -233,7 +239,7 @@ async function sendCorrectionButtons(ctx: any, engine: string, items?: { no: num
     if (!kb) return;
     await ctx.reply(
         '✏️ Quick corrections — item numbers as in the report:\n' +
-        '✅ fixed   ↩️ still open   ❌ not a ticket   🔁 duplicate\n' +
+        `${correctionLegend(engine)}\n` +
         'Corrections are saved and applied to every later report.',
         { reply_markup: kb },
     );
@@ -257,7 +263,7 @@ export async function handleCorrectionCallback(ctx: any, data: string): Promise<
         label = 'marked still open';
     } else if (action === 'x') {
         ok = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: not a ticket');
-        label = 'removed (not a ticket)';
+        label = r.engine === 'operations' ? 'removed from report' : 'removed (not a ticket)';
     } else if (action === 'u') {
         ok = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: duplicate');
         label = 'removed (duplicate)';
@@ -354,7 +360,8 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
         await ctx.reply(
             '✏️ Correct classification\n\n' +
             'Request a Maintenance, Fire & Safety or Operations report from the buttons. After the report you get buttons for every item:\n' +
-            '✅ fixed   ↩️ still open   ❌ not a ticket   🔁 duplicate\n\n' +
+            `Maintenance / Fire & Safety: ${correctionLegend('maintenance')}\n` +
+            `Operations: ${correctionLegend('operations')}\n\n` +
             'Corrections are saved and applied to every later report.',
         );
         return true;
