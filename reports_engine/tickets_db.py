@@ -7,6 +7,7 @@ from typing import Optional, List, Dict, Any
 
 from .config_loader import BASE_DIR
 from .date_utils import DUBAI_TZ, now_dubai, parse_datetime
+from .sqlite_util import connect as _sqlite_connect
 
 DEFAULT_DB_PATH = os.environ.get("TICKETS_DB_PATH") or str(BASE_DIR / "workspace" / "tickets.db")
 
@@ -67,7 +68,7 @@ def same_issue(text_a: str, text_b: str) -> bool:
 
 
 def _conn(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
-    c = sqlite3.connect(db_path)
+    c = _sqlite_connect(db_path)
     c.row_factory = sqlite3.Row
     return c
 

@@ -29,6 +29,7 @@ from typing import Dict, List, Optional, Tuple
 from .config_loader import get_config
 from .date_utils import ARABIC_TO_WESTERN_DIGITS, DUBAI_TZ
 from . import messages_db
+from .sqlite_util import connect as _sqlite_connect
 
 THUMB_BOX = (221, 163)   # same box as the bot's thumbnails
 
@@ -194,7 +195,7 @@ def _group_for(export_name: str, override: Optional[str]) -> Optional[str]:
 def import_exports(paths: List[Path], db_path: Path, since: Optional[datetime] = None, apply: bool = False,
                    group_override: Optional[str] = None) -> Dict[str, Dict[str, int]]:
     summary: Dict[str, Dict[str, int]] = {}
-    with sqlite3.connect(str(db_path)) as c:
+    with _sqlite_connect(str(db_path)) as c:
         messages_db.ensure_schema(c)
         for path in paths:
             for export_name, chat, media in _read_export(path):

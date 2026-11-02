@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .manager import ReportsManager
+from .sqlite_util import connect as _sqlite_connect
 
 REPORTS = ("maintenance", "fire_safety", "operations", "violations", "permissions")
 
@@ -75,7 +76,7 @@ def _corrections(db_path: Optional[str] = None) -> List[Dict[str, Any]]:
     path = db_path or os.environ.get("REPORTS_DB_PATH") or DEFAULT_DB_PATH
     if not Path(path).exists():
         return []
-    with sqlite3.connect(path) as c:
+    with _sqlite_connect(path) as c:
         c.row_factory = sqlite3.Row
         rows = c.execute("SELECT * FROM manual_corrections ORDER BY id").fetchall()
     latest: Dict[str, Dict[str, Any]] = {}

@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import openpyxl
 
 from .config_loader import BASE_DIR
+from .sqlite_util import connect as _sqlite_connect
 
 EXCEL_FILE = BASE_DIR / "workspace" / "whatsapp_messages.xlsx"
 BACKFILL_KEY = "excel_backfill_done"
@@ -72,7 +73,7 @@ def is_ready(db_path: Path) -> bool:
     if not db_path.exists():
         return False
     try:
-        with sqlite3.connect(str(db_path)) as c:
+        with _sqlite_connect(str(db_path)) as c:
             return c.execute("SELECT 1 FROM meta WHERE key=?", (BACKFILL_KEY,)).fetchone() is not None
     except sqlite3.Error:
         return False
@@ -96,7 +97,7 @@ def read_rows(
     images: Dict[int, List[Dict[str, Any]]] = {}
     ts_by_row: Dict[int, int] = {}
     thumb_col = "thumb_jpeg" if load_images else "NULL"
-    with sqlite3.connect(str(db_path)) as c:
+    with _sqlite_connect(str(db_path)) as c:
         cols = {r[1] for r in c.execute("PRAGMA table_info(messages)")}
         ts_col = "ts_utc_ms" if "ts_utc_ms" in cols else "NULL"
         cur = c.execute(
@@ -133,7 +134,7 @@ def import_excel(excel_path: Path = EXCEL_FILE, db_path: Optional[Path] = None) 
     """
     db_path = db_path or db_path_for(excel_path)
     rows = _excel_rows(excel_path)
-    with sqlite3.connect(str(db_path)) as c:
+    with _sqlite_connect(str(db_path)) as c:
         c.execute("PRAGMA journal_mode=WAL")
         ensure_schema(c)
         c.execute("DROP TABLE IF EXISTS messages_new")
@@ -187,7 +188,7 @@ def import_excel(excel_path: Path = EXCEL_FILE, db_path: Optional[Path] = None) 
 
 def fill_missing_ts(db_path: Path) -> int:
     """Give rows stored before ts_utc_ms existed a time parsed from their text. Returns rows updated."""
-    with sqlite3.connect(str(db_path)) as c:
+    with _sqlite_connect(str(db_path)) as c:
         ensure_schema(c)
         missing = c.execute("SELECT message_id, timestamp_text FROM messages WHERE ts_utc_ms IS NULL").fetchall()
         c.executemany("UPDATE messages SET ts_utc_ms = ? WHERE message_id = ?",
@@ -209,7 +210,7 @@ def _ticket_status(tickets_path: Optional[Path]) -> Dict[str, Tuple[str, str]]:
     if not tickets_path or not Path(tickets_path).exists():
         return {}
     try:
-        with sqlite3.connect(str(tickets_path)) as c:
+        with _sqlite_connect(str(tickets_path)) as c:
             return {r[0]: (r[1] or "", r[2] or "") for r in c.execute("SELECT message_id, report_type, status FROM tickets")}
     except sqlite3.Error:
         return {}
@@ -245,7 +246,7 @@ def export_excel(out_path: Path, db_path: Path, days: Optional[int] = None,
     ws.freeze_panes = "A2"
 
     since_ms = int((datetime.now(timezone.utc).timestamp() - days * 86400) * 1000) if days else None
-    with sqlite3.connect(str(db_path)) as c:
+    with _sqlite_connect(str(db_path)) as c:
         ensure_schema(c)
         resolver = SenderResolver()
         for (sender,) in c.execute("SELECT DISTINCT sender FROM messages"):
@@ -309,7 +310,7 @@ def purge_hr(db_path: Path, retention_days: Optional[int], markers: List[str]) -
         return 0
     cutoff_ms = int((datetime.now(timezone.utc).timestamp() - retention_days * 86400) * 1000)
     where = " OR ".join("lower(text) LIKE ?" for _ in markers)
-    with sqlite3.connect(str(db_path)) as c:
+    with _sqlite_connect(str(db_path)) as c:
         ensure_schema(c)
         n = c.execute(
             f"DELETE FROM messages WHERE ts_utc_ms IS NOT NULL AND ts_utc_ms < ? AND ({where})",

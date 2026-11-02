@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional
 
 from .date_utils import parse_datetime
 from .tickets_db import DEFAULT_DB_PATH
+from .sqlite_util import connect as _sqlite_connect
 
 COLUMNS = ("first_seen", "last_seen")
 
@@ -43,7 +44,7 @@ def repair_tickets(db_path: str = DEFAULT_DB_PATH, apply: bool = False) -> Dict[
     fixed: List[Dict[str, Any]] = []
     unparseable: List[Dict[str, Any]] = []
 
-    with sqlite3.connect(db_path) as c:
+    with _sqlite_connect(db_path) as c:
         c.row_factory = sqlite3.Row
         rows = c.execute(f"SELECT message_id, {', '.join(COLUMNS)} FROM tickets").fetchall()
         for row in rows:
@@ -77,7 +78,7 @@ def main() -> int:
 
     if args.apply:
         backup = f"{args.db}.bak-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        with sqlite3.connect(args.db) as src, sqlite3.connect(backup) as dst:
+        with _sqlite_connect(args.db) as src, _sqlite_connect(backup) as dst:
             src.backup(dst)  # consistent snapshot even if the bot writes meanwhile
         print(f"Backup written: {backup}")
 

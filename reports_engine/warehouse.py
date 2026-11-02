@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 
 from .config_loader import BASE_DIR
 from .date_utils import now_dubai
+from .sqlite_util import connect as _sqlite_connect
 
 RULES_FILE = BASE_DIR / "config" / "meydan_rules.yaml"
 
@@ -89,7 +90,7 @@ def _iso(dt: Any) -> Optional[str]:
 def _connect() -> sqlite3.Connection:
     path = db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    c = sqlite3.connect(str(path))
+    c = _sqlite_connect(str(path))
     c.executescript(SCHEMA)
     return c
 
