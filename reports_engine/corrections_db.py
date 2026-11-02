@@ -124,9 +124,13 @@ def get_correction_for_message(message_id: str, group_name: str = "", text: str 
     return None
 
 
-def undo_correction(correction_id: int) -> bool:
+def undo_correction(correction_id: int, message_id: Optional[str] = None) -> bool:
+    """Deletes one correction; with message_id it only deletes it if it belongs to that message."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM manual_corrections WHERE id = ?", (correction_id,))
+        if message_id:
+            cursor.execute("DELETE FROM manual_corrections WHERE id = ? AND message_id = ?", (correction_id, message_id))
+        else:
+            cursor.execute("DELETE FROM manual_corrections WHERE id = ?", (correction_id,))
         conn.commit()
         return cursor.rowcount > 0

@@ -1,7 +1,7 @@
 import { Keyboard, InlineKeyboard, InputFile } from 'grammy';
 import path from 'path';
 import fs from 'fs';
-import { runReportEngine, saveCorrection, exportMessagesExcel, type OverdueTicket } from './bridge.js';
+import { runReportEngine, saveCorrection, undoCorrection, exportMessagesExcel, type OverdueTicket } from './bridge.js';
 import { config } from '../config.js';
 import { EXCEL_PATH, ensureExcelInitialized, flushWhatsAppMessages } from '../whatsapp/excel.js';
 
@@ -245,49 +245,87 @@ async function sendCorrectionButtons(ctx: any, engine: string, items?: { no: num
     );
 }
 
+// The pressed item's row after a save: a visible record plus an Undo for that one correction
+export function savedCorrectionRow(num: string, label: string, code: string, rowId: number, messageId: string): any[] {
+    return [
+        { text: `✔ ${num} ${label}`, callback_data: `${COR_CB_PREFIX}:noop` },
+        { text: '↩️ Undo', callback_data: `${COR_CB_PREFIX}:${code}:z:${rowId}.${messageId}` },
+    ];
+}
+
+// After an undo the item gets its four buttons back, so the right choice can be made
+export function itemCorrectionRow(num: string, code: string, messageId: string): any[] {
+    const base = `${COR_CB_PREFIX}:${code}`;
+    return [
+        { text: `${num} ✅`, callback_data: `${base}:d:${messageId}` },
+        { text: `${num} ↩️`, callback_data: `${base}:p:${messageId}` },
+        { text: `${num} ❌`, callback_data: `${base}:x:${messageId}` },
+        { text: `${num} 🔁`, callback_data: `${base}:u:${messageId}` },
+    ];
+}
+
+async function replacePressedRow(ctx: any, data: string, makeRow: (num: string) => any[]) {
+    try {
+        const rows: any[][] = ctx.callbackQuery?.message?.reply_markup?.inline_keyboard || [];
+        const updated = rows.map((row) => {
+            if (!row.some((b: any) => b.callback_data === data)) return row;
+            const num = (String(row[0]?.text || '').match(/#\d+/) || [''])[0];
+            return makeRow(num);
+        });
+        if (rows.length) await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: updated } });
+    } catch (_) {}
+}
+
 export async function handleCorrectionCallback(ctx: any, data: string): Promise<boolean> {
     const parts = data.split(':');
     if (parts[0] !== COR_CB_PREFIX || parts.length !== 4) return false;
-    const [, code, action, messageId] = parts;
+    const [, code, action, payload] = parts;
     const r = COR_BY_CODE[code];
-    if (!r || !messageId) return false;
+    if (!r || !payload) return false;
 
+    if (action === 'z') {
+        const dot = payload.indexOf('.');
+        const rowId = Number(payload.slice(0, dot));
+        const messageId = payload.slice(dot + 1);
+        if (dot < 1 || !Number.isInteger(rowId) || !messageId) return false;
+        const undone = await undoCorrection(rowId, messageId);
+        try {
+            await ctx.answerCallbackQuery({
+                text: undone ? '↩️ Undone. The item is back to the automatic result.' : '❌ Could not undo (already undone?)',
+                show_alert: !undone,
+            });
+        } catch (_) {}
+        if (undone) await replacePressedRow(ctx, data, (num) => itemCorrectionRow(num, code, messageId));
+        return true;
+    }
+
+    const messageId = payload;
     const by = ctx.from?.username || ctx.from?.first_name || String(ctx.from?.id || 'telegram');
-    let ok = false;
+    let rowId: number | null = null;
     let label = '';
     if (action === 'd') {
-        ok = await saveCorrection(messageId, r.label, r.doneStatus, by, 'telegram: done');
-        label = 'marked fixed';
+        rowId = await saveCorrection(messageId, r.label, r.doneStatus, by, 'telegram: done');
+        label = r.engine === 'operations' ? 'marked completed' : 'marked fixed';
     } else if (action === 'p') {
-        ok = await saveCorrection(messageId, r.label, r.openStatus, by, 'telegram: still open');
-        label = 'marked still open';
+        rowId = await saveCorrection(messageId, r.label, r.openStatus, by, 'telegram: still open');
+        label = r.engine === 'operations' ? 'marked ongoing' : 'marked still open';
     } else if (action === 'x') {
-        ok = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: not a ticket');
+        rowId = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: not a ticket');
         label = r.engine === 'operations' ? 'removed from report' : 'removed (not a ticket)';
     } else if (action === 'u') {
-        ok = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: duplicate');
+        rowId = await saveCorrection(messageId, 'ignore', undefined, by, 'telegram: duplicate');
         label = 'removed (duplicate)';
     } else {
         return false;
     }
+    const ok = rowId !== null;
     try {
         await ctx.answerCallbackQuery({
             text: ok ? `✔ Saved: ${label}. Request the report again to see it.` : '❌ Could not save the correction',
             show_alert: !ok,
         });
     } catch (_) {}
-    // Keep a visible record on the message itself: the pressed item's buttons become "✔ #n <label>"
-    if (ok) {
-        try {
-            const rows: any[][] = ctx.callbackQuery?.message?.reply_markup?.inline_keyboard || [];
-            const updated = rows.map((row) => {
-                if (!row.some((b: any) => b.callback_data === data)) return row;
-                const num = String(row[0]?.text || '').split(' ')[0];
-                return [{ text: `✔ ${num} ${label}`, callback_data: `${COR_CB_PREFIX}:noop` }];
-            });
-            if (rows.length) await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: updated } });
-        } catch (_) {}
-    }
+    if (ok) await replacePressedRow(ctx, data, (num) => savedCorrectionRow(num, label, code, rowId!, messageId));
     return true;
 }
 

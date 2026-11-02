@@ -1612,3 +1612,17 @@ class TestDataQualityReport(unittest.TestCase):
         if m["messages"] and m["reply_captured"] / m["messages"] < 0.8:
             self.assertNotIn("More replies were linked by inference", self.res["text"])
             self.assertIn("not reliable yet", self.res["text"])
+
+
+class TestUndoCorrection(unittest.TestCase):
+    def test_undo_deletes_only_that_messages_correction(self):
+        from reports_engine import corrections_db as cdb
+        import os
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"REPORTS_DB_PATH": str(Path(tmp) / "c.db")}):
+            cdb.init_corrections_table()
+            row = cdb.save_correction("MSG_A", "ignore", notes="telegram: not a ticket")
+            self.assertFalse(cdb.undo_correction(row, "MSG_B"))      # wrong message: kept
+            self.assertIsNotNone(cdb.get_correction_for_message("MSG_A"))
+            self.assertTrue(cdb.undo_correction(row, "MSG_A"))
+            self.assertIsNone(cdb.get_correction_for_message("MSG_A"))
+            self.assertFalse(cdb.undo_correction(row, "MSG_A"))      # second press: nothing left

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from .manager import ReportsManager
-from .corrections_db import save_correction, list_corrections
+from .corrections_db import save_correction, list_corrections, undo_correction
 from .data_quality import generate_data_quality
 from .owner_kpis import generate_owner_kpis
 from .owner_digest import generate_morning_digest, generate_overdue
@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--target-status", default=None, help="Target status for correction")
     parser.add_argument("--corrected-by", default="cli", help="Who made the correction")
     parser.add_argument("--notes", default=None, help="Free-text note for the correction")
+    parser.add_argument("--undo-id", type=int, default=None, help="Delete this correction id (with --msg-id: only if it is that message's)")
 
     args = parser.parse_args()
 
@@ -35,6 +36,11 @@ def main():
     manager = ReportsManager(excel_path)
 
     try:
+        if args.undo_id is not None:
+            ok = undo_correction(args.undo_id, args.msg_id)
+            print(json.dumps({"correction_undone": ok, "row_id": args.undo_id}, ensure_ascii=False))
+            return
+
         # Manual correction mode
         if args.msg_id and args.target_report:
             row_id = save_correction(
