@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 from . import warehouse
 from .date_utils import now_dubai
 from .manager import ReportsManager
+from .sqlite_util import connect as _sqlite_connect
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS dq_daily (
@@ -50,7 +51,7 @@ def compute_day(manager: ReportsManager, date: str) -> Dict[str, float]:
 
 
 def _store(day_iso: str, metrics: Dict[str, float]) -> None:
-    with sqlite3.connect(str(warehouse.db_path())) as c:
+    with _sqlite_connect(str(warehouse.db_path())) as c:
         c.executescript(SCHEMA)
         c.executemany("INSERT OR REPLACE INTO dq_daily (day, metric, value) VALUES (?,?,?)",
                       [(day_iso, k, float(v)) for k, v in metrics.items()])
@@ -58,7 +59,7 @@ def _store(day_iso: str, metrics: Dict[str, float]) -> None:
 
 
 def _history(day_iso: str, days: int = 7) -> Dict[str, List[float]]:
-    with sqlite3.connect(str(warehouse.db_path())) as c:
+    with _sqlite_connect(str(warehouse.db_path())) as c:
         c.executescript(SCHEMA)
         rows = c.execute(
             "SELECT metric, value FROM dq_daily WHERE day < ? AND day >= date(?, ?)",

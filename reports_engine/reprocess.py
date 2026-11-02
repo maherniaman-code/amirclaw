@@ -30,6 +30,7 @@ from . import excel_exporter, tickets_db, warehouse
 from .config_loader import BASE_DIR
 from .date_utils import now_dubai
 from .dq_metrics import _store as store_dq_day, compute_day
+from .sqlite_util import connect as _sqlite_connect
 
 
 # Reports and reminders only look back report_history_days (30): rebuilding the last 60 days is enough
@@ -41,7 +42,7 @@ def _ticket_rows(path: Path) -> Dict[Tuple[str, str], Tuple[str, str]]:
     """(message id, report) -> (status, text) of a tickets.db; empty when it does not exist."""
     if not path.exists():
         return {}
-    with sqlite3.connect(str(path)) as c:
+    with _sqlite_connect(str(path)) as c:
         try:
             rows = c.execute("SELECT message_id, report_type, status, text_snippet FROM tickets").fetchall()
         except sqlite3.OperationalError:

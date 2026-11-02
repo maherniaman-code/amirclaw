@@ -1750,3 +1750,25 @@ class TestVehiclesAllowedToday(unittest.TestCase):
         self.assertIn("FF 71016", text)
         self.assertEqual((res["today"], res["long_term"]), (2, 1))
         self.assertIsNone(re.search(r"[؀-ۿ]", text), "owner outputs are English only")
+
+
+class TestSqliteConnectionsClose(unittest.TestCase):
+    """02-11: reprocess failed on the server with "Too many open files" (Python 3.14 frees them late)."""
+
+    def test_with_block_closes_the_connection(self):
+        import sqlite3
+        from reports_engine.sqlite_util import connect
+        with tempfile.TemporaryDirectory() as tmp:
+            with connect(str(Path(tmp) / "t.db")) as c:
+                c.execute("CREATE TABLE t (x)")
+                c.execute("INSERT INTO t VALUES (1)")
+            with self.assertRaises(sqlite3.ProgrammingError):
+                c.execute("SELECT 1")
+            with connect(str(Path(tmp) / "t.db")) as c2:     # the insert was committed before closing
+                self.assertEqual(c2.execute("SELECT COUNT(*) FROM t").fetchone()[0], 1)
+
+    def test_no_plain_with_sqlite3_connect_left(self):
+        import re
+        root = Path(__file__).resolve().parent.parent / "reports_engine"
+        offenders = [p.name for p in root.glob("*.py") if p.name != "sqlite_util.py" and re.search(r"with sqlite3\.connect\(", p.read_text(encoding="utf-8"))]
+        self.assertEqual(offenders, [])

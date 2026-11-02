@@ -596,7 +596,8 @@ class ReportsManager:
 
     def _recorded_message_ids(self) -> set:
         """Ids of every message the bot has recorded (all dates), cached per loaded message list."""
-        msgs = self.parser.load_messages()
+        # The report already loaded them: reuse that list instead of re-checking the store per reply
+        msgs = self.parser.raw_messages or self.parser.load_messages()
         key = (id(msgs), len(msgs))
         if getattr(self, "_recorded_ids_key", None) != key:
             self._recorded_ids = {m["message_id"] for m in msgs}
