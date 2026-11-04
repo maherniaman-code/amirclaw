@@ -124,6 +124,24 @@ async function checkWatchedGroups(acc: WaAccount): Promise<void> {
     }
 }
 
+/**
+ * The only message the bot ever sends on WhatsApp: a report the owner approved with a Telegram button.
+ * Sent from the number that is in the group (second number first). Returns the group name it went to.
+ */
+export async function sendTextToGroup(groupName: string, text: string): Promise<string> {
+    const wanted = [normalizeGroupName(groupName)];
+    for (const acc of [secondAccount, mainAccount]) {
+        if (!acc?.sock || acc.status !== 'connected') continue;
+        const groups = Object.values(await acc.sock.groupFetchAllParticipating()) as any[];
+        const group = groups.find((g) => groupAllowed(String(g.subject || ''), wanted));
+        if (!group) continue;
+        await acc.sock.sendMessage(group.id, { text });
+        console.log(`📤 [${acc.name}] sent the approved report to ${group.subject}`);
+        return String(group.subject);
+    }
+    throw new Error(`No connected WhatsApp number is in a group named "${groupName}"`);
+}
+
 export function getSecondWhatsAppQrImage(): Buffer | null {
     return secondAccount?.qr || null;
 }

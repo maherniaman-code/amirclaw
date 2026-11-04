@@ -458,7 +458,13 @@ class ReportsManager:
             if not rumble_data and grp == pt_grp and m_dt and m_dt.date() == d_obj:
                 parsed_rumble = self.parser.parse_rumble_area(txt)
                 if parsed_rumble:
-                    if is_within_freshness(m_dt, slot_dt, freshness_mins):
+                    # By the time written ("Time 09:30AM") like the podium post: on 03-11 it was sent at 10:29
+                    rumble_dt = m_dt
+                    tw = re.match(r"(\d{1,2}):(\d{2})\s*([ap])m", str(parsed_rumble.get("time_written", "")), re.I)
+                    if tw and int(tw.group(1)) <= 12 and int(tw.group(2)) < 60:
+                        rh = int(tw.group(1)) % 12 + (12 if tw.group(3).lower() == "p" else 0)
+                        rumble_dt = datetime.combine(d_obj, time(rh, int(tw.group(2))), tzinfo=DUBAI_TZ)
+                    if is_within_freshness(rumble_dt, slot_dt, freshness_mins):
                         rumble_data = parsed_rumble
                         source_audit.append({
                             "source_id": m["message_id"],
@@ -508,6 +514,10 @@ class ReportsManager:
             "text": report_text,
             "excel_path": str(excel_path),
             "diagnostics": diagnostics,
+            # Parts not found yet: the owner's 10/12/14 message waits for them until the slot time
+            "missing": [name for name, found in (("Building figures", email_data), ("Smart Parking", smart_data),
+                                                 ("Ramp Area & Service Road", ramp_data), ("Rumble Area", rumble_data))
+                        if not found],
             "audit_count": len(source_audit),
         }
 

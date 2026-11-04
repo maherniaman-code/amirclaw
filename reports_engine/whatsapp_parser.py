@@ -65,6 +65,13 @@ def extract_xlsx_images(xlsx_path: Path) -> Dict[int, List[Dict[str, Any]]]:
     return row_images
 
 
+def is_finished_parking_report(text: str) -> bool:
+    """The combined report the bot builds ("🅿️ *MEYDAN PARKING* ... Ramp Area ... Rumble Area"). The owner posts
+    it in the Control Room group (03-11); it is our output, not the teams' source post, so it must not be read
+    back as the podium or Rumble figures."""
+    return bool(re.search(r"MEYDAN\s+PARKING", text, re.IGNORECASE))
+
+
 class WhatsAppParser:
     def __init__(self, excel_path: Optional[Path] = None):
         self.excel_path = excel_path or EXCEL_FILE
@@ -322,6 +329,8 @@ class WhatsAppParser:
     def parse_ramp_service_road(self, text: str) -> Optional[Dict[str, Any]]:
         """Parses the Ramp / Service Road occupancy report ("*Parking Occupany Report* ... Podium Parking
         Total Slots :127 Customer and visitor cars : 87 ... Partially Blocked Parking. :04")."""
+        if is_finished_parking_report(text):
+            return None
         has_heading = re.search(r"Parking\s+Oc+up[a-z]*", text, re.IGNORECASE)
         has_body = re.search(r"ramp\s+area", text, re.IGNORECASE) and re.search(r"service\s+road", text, re.IGNORECASE)
         if not (has_heading or has_body) or not re.search(r"\d", text):
@@ -465,12 +474,12 @@ class WhatsAppParser:
 
     def parse_rumble_area(self, text: str) -> Optional[Dict[str, Any]]:
         """Parses Rumble Area count from Parking Team at Meydan."""
-        if "rumble area" not in text.lower():
+        if "rumble area" not in text.lower() or is_finished_parking_report(text):
             return None
 
         t = text.translate(ARABIC_TO_WESTERN_DIGITS)
         cars_m = re.search(r"(?:are\s+)?(\d+)\s*cars?", t, re.IGNORECASE)
-        bus_m = re.search(r"bus.*?(\d+)\s*car", t, re.IGNORECASE)
+        bus_m = re.search(r"\bbus\b\D*(\d+)", t, re.IGNORECASE)   # "Bus 🚌  00 car", "Bus 🚌  00 csr" (04-11)
         time_m = re.search(r"tim[e]?\s*(\d{1,2}:\d{2}\s*[ap]m)", t, re.IGNORECASE)
         date_m = re.search(r"date\s*(\d+(?:st|nd|rd|th)?\s*\w+\s*\d{4})", t, re.IGNORECASE)
 

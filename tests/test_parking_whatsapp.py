@@ -115,6 +115,31 @@ class TestParkingFromWhatsApp(unittest.TestCase):
         r = self.report([("R3", "Oyp", RAMP.replace("9:30.  AM", "11:30 AM"), (11, 31))])
         self.assertIn("- Customer and Visitors: N/A", r["text"])
 
+    def test_owner_finished_report_is_not_read_back(self):
+        # 03-11: the owner posted the bot's report in the Control Room group after the podium post; the
+        # report was read as the newest "podium" and "Rumble" message and every Ramp / Rumble line became N/A
+        done = self.report([("B1", "Parking Team at Meydan", BLD, (10, 2)), ("R1", "Parking Team at Meydan", RUM, (9, 36)),
+                            ("R2", "Podium Parking Access", RAMP, (9, 31)),
+                            ("S1", "Multistory Parking Building Meydan", SMART, (10, 1))])["text"]
+        r = self.report([("O1", "Control Room Specialization Group", done.replace("*", ""), (10, 15))])
+        self.assertNotIn("N/A", r["text"])
+        self.assertIn("- Customer and Visitors: 35", r["text"])
+        self.assertIn("• Total Cars: 168 🚗", r["text"])
+        self.assertEqual(r["missing"], [])
+
+    def test_rumble_bus_with_a_typo(self):
+        r = self.report([("R1", "Parking Team at Meydan", RUM.replace("00car", "00 csr"), (9, 36))])
+        self.assertIn("• Bus 🚌: 0", r["text"])
+
+    def test_rumble_sent_late_counts_by_its_written_time(self):
+        # 03-11: "Time 09:30AM" sent at 10:29 belongs to the 10:00 report
+        r = self.report([("R1", "Parking Team at Meydan", RUM.replace("9:35am", "09:30AM"), (10, 29))])
+        self.assertIn("• Total Cars: 168 🚗", r["text"])
+
+    def test_missing_parts_are_listed(self):
+        r = self.report([("R2", "Podium Parking Access", RAMP, (9, 31))])
+        self.assertEqual(r["missing"], ["Building figures", "Smart Parking", "Rumble Area"])
+
     def test_other_slot_figures_are_not_used(self):
         r = self.report([("B2", "Parking Team at Meydan", BLD.replace("Time: 10:00", "Time: 14:00"), (14, 1))])
         self.assertIn("• Cars Parked: N/A 🚗", r["text"])

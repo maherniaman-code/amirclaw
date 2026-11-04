@@ -27,6 +27,8 @@ export interface ReportResult {
     overdue?: OverdueTicket[];
     // Daily data-quality problems (owner alert)
     anomalies?: string[];
+    // Parking: parts not received yet (owner's 10/12/14 message waits for them)
+    missing?: string[];
     htmlPath?: string;
 }
 
@@ -107,6 +109,7 @@ export async function runReportEngine(
             items: Array.isArray(parsed.items) ? parsed.items : [],
             overdue: Array.isArray(parsed.overdue) ? parsed.overdue : [],
             anomalies: Array.isArray(parsed.anomalies) ? parsed.anomalies : [],
+            missing: Array.isArray(parsed.missing) ? parsed.missing : undefined,
             htmlPath: parsed.html_path,
         };
     } catch (err: any) {

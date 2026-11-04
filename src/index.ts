@@ -12,6 +12,7 @@ import { ensureExcelInitialized } from './whatsapp/excel.js';
 import { textToSpeech, getUserVoiceSettings, setUserAlwaysVoice, setUserVoiceKey, ARABIC_VOICES } from './tts.js';
 import { startReminderScheduler, listUserReminders } from './reminders.js';
 import { startMeydanScheduler } from './reports/scheduler.js';
+import { startOwnerParkingReports, handleParkingDraftCallback } from './reports/parking_drafts.js';
 import { handleReportAction, handleReportCallback, handleCorrectionCallback, sendWhatsAppExcel } from './reports/telegram_handlers.js';
 import { startCloudBackupScheduler } from './cloud/backup.js';
 import { initAlerts, startWhatsAppWatchdog } from './monitoring/alerts.js';
@@ -53,6 +54,7 @@ const groq = new Groq({ apiKey: config.groqApiKey || 'placeholder' });
 startReminderScheduler(bot);
 // Start Meydan Reports Automation Scheduler (Dubai shifts & parking slots)
 startMeydanScheduler(bot);
+startOwnerParkingReports(bot);
 // Daily Firestore backup of session, databases and media
 startCloudBackupScheduler();
 
@@ -774,6 +776,7 @@ bot.on('callback_query:data', async (ctx) => {
     try {
         const data = ctx.callbackQuery.data || '';
         const handled = (await handlePythonCallback(ctx, data))
+            || (await handleParkingDraftCallback(ctx, data))
             || (await handleCorrectionCallback(ctx, data)) || (await handleReportCallback(ctx, data));
         if (!handled) {
             try { await ctx.answerCallbackQuery(); } catch (_) {}
