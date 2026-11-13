@@ -126,16 +126,17 @@ class TestCliCorrectionFlow(CliTestCase):
         return next((i for i in res["items"] if i["id"] == msg_id), None)
 
     def test_done_correction_shows_in_next_report(self):
-        _, before, _ = self.run_cli("--report", "maintenance", "--date", "13-10-2026", "--shift", "Day")
+        _, before, _ = self.run_cli("--report", "maintenance", "--date", "14-10-2026", "--shift", "Day")
         target = next(i for i in before["items"] if i["status"] == "Pending")
-        # carried-over tickets leave the report once fixed; use one reported in this shift
+        # carried-over tickets leave the report once fixed; use one reported in this shift (14-10: the
+        # only one on 13-10, the speed gate, now closes with its repeat report)
         manager = manager_mod.ReportsManager(self.workbook)
         with contextlib.redirect_stdout(io.StringIO()):
-            manager.generate_maintenance(target_date="13-10-2026", target_shift="Day")
+            manager.generate_maintenance(target_date="14-10-2026", target_shift="Day")
         in_shift = next(t for t in manager.last_items["maintenance"]
                         if not t.get("is_carry_over") and t["status"] == "Pending")
         self.save(in_shift["message_id"], "maintenance", "Done")
-        _, after, _ = self.run_cli("--report", "maintenance", "--date", "13-10-2026", "--shift", "Day")
+        _, after, _ = self.run_cli("--report", "maintenance", "--date", "14-10-2026", "--shift", "Day")
         self.assertEqual(self.item(after, in_shift["message_id"])["status"], "Done")
         self.assertIn("(manual)", after["text"])
         self.assertEqual(after["completed"], before["completed"] + 1)

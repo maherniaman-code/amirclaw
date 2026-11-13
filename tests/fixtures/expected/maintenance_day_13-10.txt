@@ -44,11 +44,11 @@
 9. Q building first floor Speed Gate is out of service
    ⏰ Reported: 13-10-2026 10:52
    🕐 Open: 2.0d
-   ⚠️ Pending
+   ✅ Done — Person 26
 
 ━━━━━━━━━━
 🎯 Summary
-• Completed: 1 of 9
-• Open: 8
+• Completed: 2 of 9
+• Open: 7
 • Safety priority: 3 tickets
 • Teams: N/A

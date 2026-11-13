@@ -331,6 +331,14 @@ closure_exact:
 # within reply_link_minutes.
 reply_link_hours: 12
 reply_link_minutes: 60
+# Fixes reported in these groups close the maintenance ticket they clearly name (same building,
+# same broken object, 2+ place words) within fix_link_days. A fault reported again is closed with
+# the report that got fixed (owner, 13-11).
+fix_report_groups:
+  - "Meydan - Security Team"
+  - "Parking Team at Meydan"
+  - "Control Room Specialization Group"
+fix_link_days: 3
 
 in_progress:
   - "checking"
