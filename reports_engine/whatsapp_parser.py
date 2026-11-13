@@ -9,7 +9,7 @@ import openpyxl
 
 from . import master_data, messages_db
 from .config_loader import get_config, BASE_DIR
-from .date_utils import parse_datetime, DUBAI_TZ, ARABIC_TO_WESTERN_DIGITS
+from .date_utils import parse_datetime, DUBAI_TZ, ARABIC_TO_WESTERN_DIGITS, daytime_hour
 from .sender_resolver import SenderResolver
 
 import zipfile
@@ -381,6 +381,7 @@ class WhatsAppParser:
                 hh += 12
             elif ampm == "AM" and hh == 12:
                 hh = 0
+            hh = daytime_hour(hh)
             if hh < 24 and mm < 60:
                 time_written = f"{hh:02d}:{mm:02d}"
 

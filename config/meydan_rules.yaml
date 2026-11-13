@@ -26,6 +26,8 @@ timing:
   timezone: "Asia/Dubai"
   parking_slots: ["10:00", "12:00", "14:00"]
   freshness_window_minutes: 60
+  # Podium / Rumble counts written up to this long after the slot still belong to it ("10:15" -> 10:00; owner 13-11)
+  slot_grace_after_minutes: 15
   # Reports read their period plus this many days before it (replies, carry-over of open
   # tickets). Keeps reports fast with years of imported chat history; older open tickets drop off.
   report_history_days: 30

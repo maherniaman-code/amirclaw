@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getSchedulerDb } from '../src/reports/scheduler.js';
-import { slotAction, draftKey, saveDraft, getDraft, draftMessage, handleParkingDraftCallback } from '../src/reports/parking_drafts.js';
+import { slotAction, draftKey, saveDraft, getDraft, draftMessage, hasNewFigures, handleParkingDraftCallback } from '../src/reports/parking_drafts.js';
 
 function assert(cond: boolean, msg: string) {
     if (!cond) throw new Error(`Assertion failed: ${msg}`);
@@ -37,6 +37,9 @@ async function run() {
     assert(slotAction(ten + 61, ten, 0, now, true) === 'wait', 'for up to an hour');
 
     assert(draftKey('04-11-2026', '10:00') === '04-11-2026_1000', 'draft key');
+    const old = 'Customer: N/A\nStaff: N/A\nRumble: N/A';
+    assert(hasNewFigures('Customer: 45\nStaff: 110\nRumble: N/A', old), 'one late part arrived: an update is sent');
+    assert(!hasNewFigures(old, old), 'nothing new: no update');
     const note = draftMessage({ success: true, text: 'REPORT', missing: ['Rumble Area'] });
     assert(note === 'REPORT\n\n⚠️ Not received yet: Rumble Area', 'the owner sees what is missing');
     assert(draftMessage({ success: true, text: 'REPORT', missing: [] }) === 'REPORT', 'no note when complete');
