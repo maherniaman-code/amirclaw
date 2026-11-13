@@ -1,7 +1,8 @@
 // Owner-only parking report at 10:00 / 12:00 / 14:00 (owner, 04-11). Sent to the owner on Telegram as
 // soon as every part has arrived (from 30 minutes before the slot), or at the slot time with the parts
-// still missing; then, for up to an hour, again once the late parts arrive (teams sometimes post after the
-// slot). Nothing goes to WhatsApp until the owner presses "Send to Control Room".
+// still missing; then, for up to an hour, again each time a late part arrives (teams sometimes post after
+// the slot). Nothing goes to WhatsApp until the owner presses "Send to Control Room", which always posts
+// the newest version.
 // Independent of ENABLE_AUTOMATED_REPORTS (which governs team-facing reports).
 import { Bot, InlineKeyboard } from 'grammy';
 import { config } from '../config.js';
@@ -91,6 +92,12 @@ export function slotAction(nowMinute: number, slotMinute: number, lastPollMs: nu
     return due ? 'poll' : 'wait';
 }
 
+/** Fewer N/A lines than the version the owner has: a late part arrived (11-11: podium came at 14:08). */
+export function hasNewFigures(newText: string, oldText: string): boolean {
+    const na = (t: string) => (t.match(/N\/A/g) || []).length;
+    return na(newText) < na(oldText);
+}
+
 export function draftKeyboard(key: string): InlineKeyboard {
     return new InlineKeyboard()
         .text('📤 Send to Control Room', `${PARKING_CB_PREFIX}:s:${key}`)
@@ -114,7 +121,8 @@ async function sendOrEdit(send: (opts: any) => Promise<any>, opts: any): Promise
 export async function sendParkingDraft(bot: Bot, date: string, slot: string, res: ReportResult, update = false): Promise<void> {
     const key = draftKey(date, slot);
     saveDraft(key, String(res.text));
-    const text = (update ? '✅ All parts received — updated report\n\n' : '') + draftMessage(res);
+    const header = !update ? '' : res.missing?.length ? '🔄 New figures arrived — updated report\n\n' : '✅ All parts received — updated report\n\n';
+    const text = header + draftMessage(res);
     for (const userId of config.allowedUserIds) {
         try {
             await sendOrEdit((o) => bot.api.sendMessage(userId, text, o), { reply_markup: draftKeyboard(key) });
@@ -219,8 +227,9 @@ export function startOwnerParkingReports(bot: Bot): void {
                 const sentIncomplete = hasReportBeenSent(sentKey);
                 const action = slotAction(nowMinute, minute, lastPoll.get(sentKey) || 0, Date.now(), sentIncomplete);
                 if (action === 'wait') continue;
+                const draft = sentIncomplete ? getDraft(draftKey(date, slot)) : null;
                 // The owner already posted the incomplete one: no update
-                if (sentIncomplete && getDraft(draftKey(date, slot))?.sent_at) {
+                if (draft?.sent_at) {
                     markReportAsSent(completeKey);
                     continue;
                 }
@@ -228,7 +237,8 @@ export function startOwnerParkingReports(bot: Bot): void {
 
                 const res = await runReportEngine('parking', { slot, date });
                 const complete = res.success && !!res.text && Array.isArray(res.missing) && res.missing.length === 0;
-                if (action === 'poll' && !complete) continue;
+                const newFigures = !!draft && !!res.text && hasNewFigures(res.text, draft.text);
+                if (action === 'poll' && !complete && !newFigures) continue;
                 markReportAsSent(sentKey);
                 if (complete) markReportAsSent(completeKey);
                 if (res.success && res.text) await sendParkingDraft(bot, date, slot, res, sentIncomplete);

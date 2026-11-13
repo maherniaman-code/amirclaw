@@ -119,10 +119,15 @@ def get_shift_for_timestamp(dt: datetime) -> Tuple[str, str]:
             return "Night", dt_dubai.strftime("%d-%m-%Y")
 
 
-def is_within_freshness(msg_dt: datetime, slot_dt: datetime, window_minutes: int = 60) -> bool:
-    """Checks if message is at or before slot time within freshness window."""
+def is_within_freshness(msg_dt: datetime, slot_dt: datetime, window_minutes: int = 60, after_minutes: int = 0) -> bool:
+    """Checks if message is at or before slot time within freshness window (or up to after_minutes past it)."""
     diff_seconds = (slot_dt - msg_dt).total_seconds()
-    return 0 <= diff_seconds <= (window_minutes * 60)
+    return -(after_minutes * 60) <= diff_seconds <= (window_minutes * 60)
+
+
+def daytime_hour(hour: int) -> int:
+    """Parking counts are posted in the day only: "Time 01:30AM" (11-11) is 13:30."""
+    return hour + 12 if 1 <= hour <= 6 else hour
 
 
 def format_report_timestamp(dt: Any) -> str:

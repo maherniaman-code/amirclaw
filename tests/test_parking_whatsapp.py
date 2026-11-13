@@ -76,7 +76,7 @@ class TestParkingFromWhatsApp(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def report(self, msgs):
+    def report(self, msgs, slot="10:00"):
         with sqlite3.connect(self.tmp / "whatsapp_messages.db") as c:
             messages_db.ensure_schema(c)
             c.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('excel_backfill_done', '1')")
@@ -86,7 +86,7 @@ class TestParkingFromWhatsApp(unittest.TestCase):
                           (mid, dt.strftime("%m/%d/%Y, %I:%M:%S %p"), g, "Tester (1)", t, "💬 Text", "", None, None,
                            int(dt.timestamp() * 1000)))
         from reports_engine.manager import ReportsManager
-        return ReportsManager(self.tmp / "whatsapp_messages.xlsx").generate_parking("10:00", "16-10-2026")
+        return ReportsManager(self.tmp / "whatsapp_messages.xlsx").generate_parking(slot, "16-10-2026")
 
     def test_every_section_filled_from_whatsapp(self):
         r = self.report([("B1", "Parking Team at Meydan", BLD, (10, 2)), ("R1", "Parking Team at Meydan", RUM, (9, 36)),
@@ -135,6 +135,23 @@ class TestParkingFromWhatsApp(unittest.TestCase):
         # 03-11: "Time 09:30AM" sent at 10:29 belongs to the 10:00 report
         r = self.report([("R1", "Parking Team at Meydan", RUM.replace("9:35am", "09:30AM"), (10, 29))])
         self.assertIn("• Total Cars: 168 🚗", r["text"])
+
+    def test_rumble_written_am_for_the_afternoon(self):
+        # 11-11: "Time 01:30AM" posted at 13:40 is the 14:00 count
+        rum = RUM.replace("9:35am", "01:30AM")
+        r = self.report([("R1", "Parking Team at Meydan", rum, (13, 40))], slot="14:00")
+        self.assertIn("• Total Cars: 168 🚗", r["text"])
+
+    def test_counts_written_just_after_the_slot_are_used(self):
+        # Owner 13-11: a count written up to 15 minutes after the slot still belongs to it
+        r = self.report([("R1", "Parking Team at Meydan", RUM.replace("9:35am", "10:15am"), (10, 16)),
+                         ("R2", "Podium Parking Access", RAMP.replace("9:30.  AM", "10:10 AM"), (10, 12))])
+        self.assertIn("• Total Cars: 168 🚗", r["text"])
+        self.assertIn("- Customer and Visitors: 35", r["text"])
+
+    def test_counts_written_more_than_15_minutes_after_are_not_used(self):
+        r = self.report([("R3", "Podium Parking Access", RAMP.replace("9:30.  AM", "10:20 AM"), (10, 21))])
+        self.assertIn("- Customer and Visitors: N/A", r["text"])
 
     def test_missing_parts_are_listed(self):
         r = self.report([("R2", "Podium Parking Access", RAMP, (9, 31))])

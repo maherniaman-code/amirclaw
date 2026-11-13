@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 from .config_loader import get_config, BASE_DIR
-from .date_utils import DUBAI_TZ, now_dubai, parse_datetime, is_within_freshness, format_report_timestamp
+from .date_utils import DUBAI_TZ, now_dubai, parse_datetime, is_within_freshness, format_report_timestamp, daytime_hour
 from .whatsapp_parser import WhatsAppParser
 from .deduplicator import deduplicate_events
 from .email_reader import fetch_parking_email_from_imap, parse_parking_email_body
@@ -319,6 +319,7 @@ class ReportsManager:
 
         slots = self.config.get("timing", {}).get("parking_slots", ["10:00", "12:00", "14:00"])
         freshness_mins = self.config.get("timing", {}).get("freshness_window_minutes", 60)
+        grace_after = self.config.get("timing", {}).get("slot_grace_after_minutes", 15)
 
         # Resolve target slot
         target_slot = "14:00"
@@ -441,7 +442,7 @@ class ReportsManager:
                     if parsed_ramp.get("time_written"):
                         wh, wm = map(int, parsed_ramp["time_written"].split(":"))
                         ramp_dt = datetime.combine(d_obj, time(wh, wm), tzinfo=DUBAI_TZ)
-                    if is_within_freshness(ramp_dt, slot_dt, freshness_mins):
+                    if is_within_freshness(ramp_dt, slot_dt, freshness_mins, grace_after):
                         ramp_data = parsed_ramp
                         source_audit.append({
                             "source_id": m["message_id"],
@@ -462,9 +463,9 @@ class ReportsManager:
                     rumble_dt = m_dt
                     tw = re.match(r"(\d{1,2}):(\d{2})\s*([ap])m", str(parsed_rumble.get("time_written", "")), re.I)
                     if tw and int(tw.group(1)) <= 12 and int(tw.group(2)) < 60:
-                        rh = int(tw.group(1)) % 12 + (12 if tw.group(3).lower() == "p" else 0)
+                        rh = daytime_hour(int(tw.group(1)) % 12 + (12 if tw.group(3).lower() == "p" else 0))
                         rumble_dt = datetime.combine(d_obj, time(rh, int(tw.group(2))), tzinfo=DUBAI_TZ)
-                    if is_within_freshness(rumble_dt, slot_dt, freshness_mins):
+                    if is_within_freshness(rumble_dt, slot_dt, freshness_mins, grace_after):
                         rumble_data = parsed_rumble
                         source_audit.append({
                             "source_id": m["message_id"],
