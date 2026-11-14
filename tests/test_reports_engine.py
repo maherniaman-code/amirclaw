@@ -1500,6 +1500,41 @@ class TestMessages26Oct2Nov(unittest.TestCase):
         self.assertEqual(self._items("generate_operations", "operations", msgs, 30, target_shift="Full"), {})
 
 
+class TestAutoCloseAfterSevenDays(unittest.TestCase):
+    """Owner, 14-11: a ticket still Pending 7 days after it was reported closes as Auto (no reply)."""
+
+    def _items(self, fn, key, msgs, day):
+        m = ReportsManager()
+        self.saved = {}
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)), \
+                mock.patch("reports_engine.manager.enrich_ticket", side_effect=lambda t, *a: self.saved.update({t["message_id"]: dict(t)})):
+            getattr(m, fn)(target_date=f"{day:02d}-10-2026", target_shift="Full")
+        return {t["message_id"]: t for t in m.last_items.get(key, [])}
+
+    def test_pending_ticket_closes_after_seven_days(self):
+        g = "Meydan FM Team💪"
+        msgs = [_wa_msg("P1", 3, 9, 0, 0, g, "Sunil", "N building 2nd floor corridor light is not working need to fix"),
+                _wa_msg("P2", 3, 9, 5, 0, g, "Sunil", "Q building 4th floor pantry tap is leaking need to fix"),
+                _wa_msg("P3", 3, 9, 10, 0, g, "Imran", "Checking", quoted="P2"),
+                _wa_msg("P4", 12, 9, 0, 0, g, "Sunil", "M building lobby door is not closing need to fix")]
+        items = self._items("generate_maintenance", "maintenance", msgs, 12)
+        self.assertNotIn("P1", items)                                      # closed on 10-10: no longer carried over
+        self.assertEqual((self.saved["P1"]["status"], self.saved["P1"]["resolved_by"]), ("Done", "Auto (no reply 7 days)"))
+        self.assertEqual(self.saved["P1"]["closed_at"].day, 10)           # saved closed, so reminders stop
+        self.assertTrue(items["P2"]["status"].startswith("In Progress"))   # someone replied: stays open
+        self.assertEqual(items["P4"]["status"], "Pending")                 # reported today
+        # A past day's report still shows it open: judged at the end of that day
+        self.assertEqual(self._items("generate_maintenance", "maintenance", msgs[:1], 9)["P1"]["status"], "Pending")
+
+    def test_fire_safety_ticket_closes_after_seven_days(self):
+        g = "Fire & Safety Team Meydan"
+        msgs = [_wa_msg("F1", 3, 9, 0, 0, g, "Peace", "N building 3rd floor emergency exit light is not working")]
+        self.assertEqual(self._items("generate_fire_safety", "fire_safety", msgs, 9)["F1"]["status"], "Pending")
+        self._items("generate_fire_safety", "fire_safety", msgs, 10)
+        self.assertEqual(self.saved["F1"]["status"], "Done")
+
+
 class TestSlaHiddenFromReports(unittest.TestCase):
     def test_sla_breach_not_rendered_in_report_text(self):
         item = {
