@@ -352,6 +352,23 @@ class ReportsManager:
     # ─────────────────────────────────────────────────────────────
     # REPORT 1: PARKING REPORT
     # ─────────────────────────────────────────────────────────────
+    def _auto_close_stale(self, tickets: Dict[str, Dict[str, Any]], period_end: datetime) -> None:
+        """
+        A ticket still Pending auto_close_days after it was reported, with no reply that closed or
+        progressed it, is closed as "Auto (no reply)" (owner, 14-11): technicians often fix without
+        replying. Judged at the end of the report's period (never later than now), so a past day's
+        report keeps showing what was open then. The owner's ↩️ correction reopens it.
+        """
+        days = self.config.get("timing", {}).get("auto_close_days", 0)
+        if not days:
+            return
+        ref = min(period_end, now_dubai()) if isinstance(period_end, datetime) else now_dubai()
+        for t in tickets.values():
+            dt = t.get("datetime")
+            if t.get("status") == "Pending" and isinstance(dt, datetime) and dt + timedelta(days=days) <= ref:
+                t.update(status="Done", resolved_by=f"Auto (no reply {days} days)", closed_at=dt + timedelta(days=days),
+                         auto_closed=True)
+
     def _is_ac_adjustment(self, t_low: str) -> bool:
         """An AC temperature request ("increase the AC") without a real fault in the same message."""
         pattern = self.config.get("ac_adjust_auto_close")
@@ -1001,6 +1018,7 @@ class ReportsManager:
         for t in tickets.values():
             if t.get("ac_adjustment") and t["status"] == "Pending":
                 t.update(status="Done", resolved_by="Auto (AC adjustment)", closed_at=t.get("datetime"))
+        self._auto_close_stale(tickets, self._resolve_date_range(target_date, target_shift)[1])
         ticket_list = self._apply_manual_corrections(list(tickets.values()))
         unique_tickets, flagged_dups = deduplicate_events(ticket_list)
 
@@ -1032,6 +1050,11 @@ class ReportsManager:
         shift_label = self._date_range_label(target_date, target_shift)
         for t in unique_tickets:
             enrich_ticket(t, "maintenance", fm_grp, shift_label, now_iso)
+        # Closed by the 7-day rule before this period: not shown, but saved so reminders stop
+        shown = {t["message_id"] for t in unique_tickets}
+        for t in ticket_list:
+            if t.get("auto_closed") and t["message_id"] not in shown and "done" in t["status"].lower():
+                enrich_ticket(t, "maintenance", fm_grp, shift_label, now_iso)
 
         # Summary metrics
         completed = sum(1 for t in unique_tickets if "done" in t["status"].lower())
@@ -1223,6 +1246,7 @@ class ReportsManager:
             })
 
         _close_repeats(tickets)
+        self._auto_close_stale(tickets, self._resolve_date_range(target_date, target_shift)[1])
         ticket_list = self._apply_manual_corrections(list(tickets.values()))
         unique_tickets, flagged_dups = deduplicate_events(ticket_list)
 
@@ -1254,6 +1278,11 @@ class ReportsManager:
         shift_label = self._date_range_label(target_date, target_shift)
         for t in unique_tickets:
             enrich_ticket(t, "fire_safety", fs_grp, shift_label, now_iso)
+        # Closed by the 7-day rule before this period: not shown, but saved so reminders stop
+        shown = {t["message_id"] for t in unique_tickets}
+        for t in ticket_list:
+            if t.get("auto_closed") and t["message_id"] not in shown and "done" in t["status"].lower():
+                enrich_ticket(t, "fire_safety", fs_grp, shift_label, now_iso)
 
         completed = sum(1 for t in unique_tickets if "done" in t["status"].lower())
         total = len(unique_tickets)

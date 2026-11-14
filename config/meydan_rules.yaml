@@ -31,6 +31,9 @@ timing:
   # Reports read their period plus this many days before it (replies, carry-over of open
   # tickets). Keeps reports fast with years of imported chat history; older open tickets drop off.
   report_history_days: 30
+  # Maintenance / fire & safety tickets still Pending this many days after they were reported,
+  # with no closing or progress reply, close as "Auto (no reply N days)" (owner, 14-11). 0 = off.
+  auto_close_days: 7
   email_slot_tolerance_minutes: 5 # Configurable tolerance for matching email timestamp to slot (±5 mins)
   email_poll_interval_seconds: 60
   email_poll_timeout_minutes: 5
