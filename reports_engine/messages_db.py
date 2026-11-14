@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import openpyxl
 
 from .config_loader import BASE_DIR
+from .date_utils import now_dubai
 from .sqlite_util import connect as _sqlite_connect
 
 EXCEL_FILE = BASE_DIR / "workspace" / "whatsapp_messages.xlsx"
@@ -245,7 +246,7 @@ def export_excel(out_path: Path, db_path: Path, days: Optional[int] = None,
         ws.column_dimensions[col].width = width
     ws.freeze_panes = "A2"
 
-    since_ms = int((datetime.now(timezone.utc).timestamp() - days * 86400) * 1000) if days else None
+    since_ms = int((now_dubai().timestamp() - days * 86400) * 1000) if days else None
     with _sqlite_connect(str(db_path)) as c:
         ensure_schema(c)
         resolver = SenderResolver()
