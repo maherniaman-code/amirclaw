@@ -80,14 +80,6 @@
   "text": "N Building Ground Floor Lift Loby Area infront Of Reception one Cielling light i"
  },
  {
-  "id": "AC1899EE707ED9FA0DD3EB7873FAE87A",
-  "report": "maintenance",
-  "building": "Q",
-  "hours_open": 49.1,
-  "reported": "13-10-2026 10:52",
-  "text": "Q building first floor Speed Gate is out of service"
- },
- {
   "id": "A517D3D44E1E659F891D09FF61EC2E81",
   "report": "fire_safety",
   "building": "N",

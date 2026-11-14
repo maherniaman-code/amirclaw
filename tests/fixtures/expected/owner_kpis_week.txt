@@ -2,9 +2,9 @@
 📅 08-10-2026 → 15-10-2026
 
 🔧 *Maintenance*
-   • Tickets this week: 16 — closed 5, open 11
-   • Average time to close: 1.3 h (over 5 tickets)
-   ⚠️ Open more than 24 h (SLA): 8
+   • Tickets this week: 16 — closed 6, open 10
+   • Average time to close: 5.9 h (over 6 tickets)
+   ⚠️ Open more than 24 h (SLA): 7
    • Busiest buildings: N: 6, M: 5, Q: 4
    • Repeated faults: 2
    🔴 Oldest open tickets (more than 48 h):

@@ -12,7 +12,7 @@ from .deduplicator import deduplicate_events
 from .email_reader import fetch_parking_email_from_imap, parse_parking_email_body
 from .corrections_db import get_correction_for_message
 from .corrections_db import get_correction_for_message as _correction_for
-from .tickets_db import enrich_ticket, same_issue, issue_words, CHRONIC_HOURS
+from .tickets_db import enrich_ticket, same_issue, issue_words, floor_of, CHRONIC_HOURS
 from . import warehouse
 from .report_generators import (
     generate_parking_report_text,
@@ -271,6 +271,53 @@ def _is_exact_closure(text: str, exact_closures: List[str]) -> bool:
         return " ".join(re.sub(r"[^\w\s]", " ", s.lower()).split())
     # Entries are normalized the same way, so "it's working" in the config matches the reply "It's working"
     return norm(text) in {norm(e) for e in exact_closures}
+
+
+def _place_words(text: str) -> set:
+    """Content words that tell faults apart (place and object), without @mentions and reply chatter."""
+    return _content_words(re.sub(r"@\S+", " ", text.lower()))
+
+
+def _same_fault(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
+    """
+    Two reports of one fault: same building, same floor (or neither names one), a common broken
+    object and most place words in common ("N building 1st floor exit staircase door to ramp Area,
+    1 emergency exit light is not working" on 12-10 and again on 26-10).
+    """
+    if not a.get("building") or a.get("building") != b.get("building"):
+        return False
+    if floor_of(a["text"]) != floor_of(b["text"]):
+        return False
+    if not issue_words(a["text"]) & issue_words(b["text"]):
+        return False
+    wa, wb = _place_words(a["text"]), _place_words(b["text"])
+    shared = wa & wb
+    # Most of the shorter description, not just "main entrance door": the 1st floor "reception main
+    # entrance door" and "main lift lobby entrance door" (P building, 30-10 / 04-11) may be two doors
+    need = 3 if floor_of(a["text"]) is not None else 4
+    return len(shared) >= need and len(shared) >= 0.6 * min(len(wa), len(wb))
+
+
+def _close_repeats(tickets: Dict[str, Dict[str, Any]], max_days: int = 21) -> int:
+    """
+    A fault reported again stays one fault: when either report is fixed, the other one, reported
+    before that fix, is fixed too. A report after the fix is a new failure and stays open.
+    """
+    fixed = [t for t in tickets.values() if "done" in str(t.get("status", "")).lower()
+             and isinstance(t.get("closed_at"), datetime) and not str(t.get("resolved_by", "")).startswith("Auto")]
+    closed = 0
+    for t in tickets.values():
+        if "done" in str(t.get("status", "")).lower() or not isinstance(t.get("datetime"), datetime):
+            continue
+        for d in sorted(fixed, key=lambda x: x["closed_at"]):
+            if d is t or not t["datetime"] < d["closed_at"] <= t["datetime"] + timedelta(days=max_days):
+                continue
+            if _same_fault(t, d):
+                t.update(status="Done", resolved_by=d.get("resolved_by"), closed_at=d["closed_at"],
+                         closed_with=d["message_id"])
+                closed += 1
+                break
+    return closed
 
 
 def find_open_ticket_by_shared_word(
@@ -659,6 +706,45 @@ class ReportsManager:
         )
         return target, "proximity"
 
+    def _close_from_other_groups(self, tickets: Dict[str, Dict[str, Any]], msgs: List[Dict[str, Any]],
+                                 closure_kws: List[str], fault_kws: List[str]) -> List[Dict[str, Any]]:
+        """
+        Fixes reported in another group ("NOTE : procurement Store door handle has been replaced", Parking
+        Team, 02-11) close the open ticket they clearly name: same building when the fix names one, the
+        same broken object and at least 2 place words (3 without a building), within fix_link_days.
+        """
+        groups = set(self.config.get("fix_report_groups", []))
+        max_days = self.config.get("fix_link_days", 3)
+        audit = []
+        for m in msgs:
+            dt, t_low = m.get("datetime"), m["text"].lower()
+            if m["group_name"] not in groups or not isinstance(dt, datetime) or not is_closure_text(t_low, closure_kws):
+                continue
+            # "door handle is cracked and broken need to maintenance or fixed" (Security, 29-10) reports a fault
+            if any(k in t_low for k in fault_kws):
+                continue
+            bld = self.parser.extract_building_and_floor(m["text"])[0]
+            words, objects = _place_words(m["text"]), issue_words(m["text"])
+            best, best_shared = None, 1
+            for t in tickets.values():
+                t_dt = t.get("datetime")
+                if "done" in str(t.get("status", "")).lower() or not isinstance(t_dt, datetime):
+                    continue
+                if not t_dt < dt <= t_dt + timedelta(days=max_days) or (bld and t.get("building") != bld):
+                    continue
+                if not objects & issue_words(t["text"]):
+                    continue
+                shared = len(words & _place_words(t["text"]))
+                if shared >= (2 if bld else 3) and (shared > best_shared or (shared == best_shared and best and t_dt > best["datetime"])):
+                    best, best_shared = t, shared
+            if best:
+                best.update(status="Done", resolved_by=m["sender"], closed_at=dt)
+                best.setdefault("closure_texts", []).append(t_low)
+                audit.append({"message_id": m["message_id"], "group_name": m["group_name"], "sender": m["sender"],
+                              "raw_datetime": m["raw_datetime"], "quoted_message_id": m.get("quoted_message_id", ""),
+                              "audit_status": f"Linked (fix in other group) -> Ticket {best['message_id']}"})
+        return audit
+
     def _filter_to_period(
         self, items: List[Dict[str, Any]], target_date: Optional[str]
     ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
@@ -907,6 +993,9 @@ class ReportsManager:
                 "audit_status": "Valid Ticket (reported fixed)" if self_fixed else "Valid Ticket",
             })
 
+        source_audit.extend(self._close_from_other_groups(tickets, all_msgs, closure_kws, fault_kws))
+        _close_repeats(tickets)
+
         # "Increase / reduce the AC": the technician adjusts it and usually never replies (owner, 16-10),
         # so a request still open after all replies closes itself. A technician's reply keeps their name.
         for t in tickets.values():
@@ -1133,6 +1222,7 @@ class ReportsManager:
                 "audit_status": "Valid Ticket",
             })
 
+        _close_repeats(tickets)
         ticket_list = self._apply_manual_corrections(list(tickets.values()))
         unique_tickets, flagged_dups = deduplicate_events(ticket_list)
 

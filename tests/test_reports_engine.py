@@ -1772,3 +1772,71 @@ class TestSqliteConnectionsClose(unittest.TestCase):
         root = Path(__file__).resolve().parent.parent / "reports_engine"
         offenders = [p.name for p in root.glob("*.py") if p.name != "sqlite_util.py" and re.search(r"with sqlite3\.connect\(", p.read_text(encoding="utf-8"))]
         self.assertEqual(offenders, [])
+
+
+class TestClosingRepeatsAndFixesElsewhere(unittest.TestCase):
+    """Owner 13-11: smarter ticket closing (repeat reports, fixes posted in other groups)."""
+
+    FM, SEC, PT = "Meydan FM Team💪", "Meydan - Security Team", "Parking Team at Meydan"
+
+    def _items(self, msgs):
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs), tempfile.TemporaryDirectory() as tmp, \
+                mock.patch("reports_engine.excel_exporter.OUTPUT_DIR", Path(tmp)):
+            m.generate_maintenance(target_date="all")
+        return {t["message_id"]: t for t in m.last_items["maintenance"]}
+
+    def test_fixing_a_repeat_report_closes_the_earlier_one(self):
+        # 13-10 / 14-10: "Speed Gate is out of service" twice, "Ok now" under the second
+        text = "Q building first floor Speed Gate is out of service"
+        items = self._items([
+            _wa_msg("A1", 13, 10, 52, 0, self.FM, "Peace", text),
+            _wa_msg("A2", 14, 15, 2, 0, self.FM, "Peace", text),
+            _wa_msg("A3", 14, 15, 38, 0, self.FM, "Shahid", "Ok now", quoted="A2"),
+        ])
+        self.assertEqual(items["A2"]["status"], "Done")
+        self.assertEqual(items["A1"]["status"], "Done")
+        self.assertEqual(items["A1"]["closed_with"], "A2")
+
+    def test_report_after_the_fix_is_a_new_failure(self):
+        text = "N building 1st floor exit staircase door to ramp Area, 1 emergency exit light is not working"
+        items = self._items([
+            _wa_msg("B1", 8, 19, 40, 0, self.FM, "Najeeb", text),
+            _wa_msg("B2", 8, 20, 30, 0, self.FM, "Shahid", "Done", quoted="B1"),
+            _wa_msg("B3", 14, 19, 40, 0, self.FM, "Najeeb", text),
+        ])
+        self.assertEqual(items["B1"]["status"], "Done")
+        self.assertEqual(items["B3"]["status"], "Pending")
+
+    def test_other_floor_or_other_door_stays_open(self):
+        items = self._items([
+            _wa_msg("C1", 12, 7, 0, 0, self.FM, "Najeeb", "Q building 3rd floor male washroom 1 ceiling light is not working"),
+            _wa_msg("C2", 12, 9, 0, 0, self.FM, "Akash", "Q building 4th floor male washroom 1 ceiling light is not working"),
+            _wa_msg("C3", 12, 9, 30, 0, self.FM, "Shahid", "Done", quoted="C2"),
+            _wa_msg("D1", 11, 7, 47, 0, self.FM, "Najeeb", "P building\n\n1st floor reception main entrance door is making loud noise while closing. Kindly check it"),
+            _wa_msg("D2", 13, 7, 20, 0, self.FM, "Najeeb", "P building\n\n1st floor main lift lobby entrance door is not closing properly. Door is not touching the magnet"),
+            _wa_msg("D3", 13, 9, 0, 0, self.FM, "Shahid", "Done", quoted="D2"),
+        ])
+        self.assertEqual(items["C2"]["status"], "Done")
+        self.assertEqual(items["C1"]["status"], "Pending")
+        self.assertEqual(items["D2"]["status"], "Done")
+        self.assertEqual(items["D1"]["status"], "Pending")
+
+    def test_fix_posted_in_another_group_closes_the_ticket(self):
+        # 01-11 / 02-11: the door handle fix was written in the Security Team and Parking Team groups
+        items = self._items([
+            _wa_msg("E1", 12, 20, 56, 0, self.FM, "Peace", "P building ground floor procurement store door handle has broke, need to fix"),
+            _wa_msg("E2", 13, 11, 46, 0, self.PT, "Akash", "NOTE : procurement Store door handle has been replaced, thus door handle is now functioning properly"),
+            _wa_msg("F1", 12, 21, 0, 0, self.FM, "Peace", "M building 2nd floor pantry door handle is loose"),
+        ])
+        self.assertEqual(items["E1"]["status"], "Done")
+        self.assertEqual(items["E1"]["resolved_by"], "Akash")
+        self.assertEqual(items["F1"]["status"], "Pending")   # another store, another building
+
+    def test_fault_report_in_another_group_does_not_close(self):
+        # Security 29-10: "... door handle is cracked and broken need to maintenance or fixed"
+        items = self._items([
+            _wa_msg("G1", 12, 14, 28, 0, self.FM, "Najeeb", "P building\n\nGround floor procurement store. Door handle is broken"),
+            _wa_msg("G2", 13, 1, 4, 0, self.SEC, "Guard", "P building ground floor procurement store out side next to main entrance The door handle is cracked and broken need to maintenance or fixed"),
+        ])
+        self.assertEqual(items["G1"]["status"], "Pending")
