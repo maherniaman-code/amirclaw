@@ -234,9 +234,11 @@ function startOwnerDailyMessages(bot: Bot) {
             // 07:00 vehicles whose entry permission covers today (dates as written in each request)
             if (vehiclesOn && hour === vehiclesHour && !hasReportBeenSent(`vehicles_today_${date}`)) {
                 markReportAsSent(`vehicles_today_${date}`);
-                const res = await runReportEngine('vehicles_today');
+                const res = await runReportEngine('vehicles_today', { date });
                 if (res.success && res.text) {
-                    for (const userId of config.allowedUserIds) await sendTelegramReport(bot, userId, res.text);
+                    // With a "Send to Parking Team" button: WhatsApp only on the owner's press
+                    const { sendVehiclesDraft } = await import('./parking_drafts.js');
+                    await sendVehiclesDraft(bot, date, res.text);
                     console.log(`🚗 Vehicles-allowed-today list sent to ${config.allowedUserIds.length} owner(s).`);
                 } else {
                     await alertOwner('report-vehicles-today', `Vehicles allowed today failed: ${res.error || 'no text'}`);

@@ -22,6 +22,45 @@ export function controlRoomGroup(): string {
     return process.env.CONTROL_ROOM_GROUP || 'Control Room Specialization';
 }
 
+// The 07:00 "Vehicles allowed today" list works the same way (owner, 14-11): it reaches the owner on
+// Telegram and goes to the Parking Team WhatsApp group only when the owner presses Send.
+export const VEHICLES_CB_PREFIX = 'vh';
+
+export function parkingTeamGroup(): string {
+    return process.env.PARKING_TEAM_GROUP || 'Parking Team at Meydan';
+}
+
+/** Today in Dubai as DD-MM-YYYY. */
+export function todayDubai(): string {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: config.timeZone, day: '2-digit', month: '2-digit',
+        year: 'numeric' }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+    return `${p.day}-${p.month}-${p.year}`;
+}
+
+/** "vehicles_14-11-2026" (the day's draft and callback key). */
+export function vehiclesKey(date: string): string {
+    return `vehicles_${date}`;
+}
+
+export function vehiclesKeyboard(key: string): InlineKeyboard {
+    return new InlineKeyboard()
+        .text('📤 Send to Parking Team', `${VEHICLES_CB_PREFIX}:s:${key}`)
+        .text('🔄 Refresh', `${VEHICLES_CB_PREFIX}:r:${key}`);
+}
+
+/** Saves the day's list and sends it to the owner with the Send / Refresh buttons. */
+export async function sendVehiclesDraft(bot: Bot, date: string, text: string): Promise<void> {
+    const key = vehiclesKey(date);
+    saveDraft(key, text);
+    for (const userId of config.allowedUserIds) {
+        try {
+            await sendOrEdit((o) => bot.api.sendMessage(userId, text, o), { reply_markup: vehiclesKeyboard(key) });
+        } catch (err: any) {
+            console.error(`Failed to send the vehicles list to ${userId}:`, err.message);
+        }
+    }
+}
+
 export interface ParkingDraft {
     draft_key: string;
     text: string;
@@ -146,7 +185,9 @@ export async function handleParkingDraftCallback(
     customDb?: any,
 ): Promise<boolean> {
     const [prefix, action, key] = data.split(':');
-    if (prefix !== PARKING_CB_PREFIX || !key) return false;
+    if ((prefix !== PARKING_CB_PREFIX && prefix !== VEHICLES_CB_PREFIX) || !key) return false;
+    const vehicles = prefix === VEHICLES_CB_PREFIX;
+    const target = vehicles ? { group: parkingTeamGroup(), label: 'Parking Team' } : { group: controlRoomGroup(), label: 'Control Room' };
     const draft = getDraft(key, customDb);
     if (!draft) {
         await answer(ctx, '❌ This report is no longer available. Request it again.', true);
@@ -164,17 +205,35 @@ export async function handleParkingDraftCallback(
             return true;
         }
         try {
-            const group = await sendToGroup(controlRoomGroup(), draft.text);
+            const group = await sendToGroup(target.group, draft.text);
             finishDraft(key, group, customDb);
             await answer(ctx, `✔ Sent to ${group}`);
             try {
                 await ctx.editMessageReplyMarkup({ reply_markup: new InlineKeyboard()
-                    .text(`✅ Sent to Control Room ${timeLabel(Date.now())}`, `${PARKING_CB_PREFIX}:d:${key}`) });
+                    .text(`✅ Sent to ${target.label} ${timeLabel(Date.now())}`, `${prefix}:d:${key}`) });
             } catch (_) {}
         } catch (err: any) {
             finishDraft(key, null, customDb);
             await answer(ctx, `❌ Not sent: ${err.message}`, true);
         }
+        return true;
+    }
+
+    if (action === 'r' && vehicles) {
+        const res = await runReportEngine('vehicles_today', { date: key.replace('vehicles_', '') });
+        if (!res.success || !res.text) {
+            await answer(ctx, `❌ Could not refresh: ${res.error || 'no text'}`, true);
+            return true;
+        }
+        saveDraft(key, res.text, customDb);
+        if (res.text === draft.text) {
+            await answer(ctx, 'No change.');
+            return true;
+        }
+        try {
+            await sendOrEdit((o) => ctx.editMessageText(res.text, o), { reply_markup: vehiclesKeyboard(key) });
+        } catch (_) {}
+        await answer(ctx, '🔄 Updated with the latest requests.');
         return true;
     }
 

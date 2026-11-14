@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getSchedulerDb } from '../src/reports/scheduler.js';
-import { slotAction, draftKey, saveDraft, getDraft, draftMessage, hasNewFigures, handleParkingDraftCallback } from '../src/reports/parking_drafts.js';
+import { slotAction, draftKey, saveDraft, getDraft, draftMessage, hasNewFigures, handleParkingDraftCallback, vehiclesKey } from '../src/reports/parking_drafts.js';
 
 function assert(cond: boolean, msg: string) {
     if (!cond) throw new Error(`Assertion failed: ${msg}`);
@@ -74,6 +74,19 @@ async function run() {
     assert(!getDraft(failKey, db)?.sent_at, 'and can be pressed again');
 
     assert(!(await handleParkingDraftCallback(fakeCtx(), 'cor:m:d:123', sender, db)), 'other buttons are not handled here');
+
+    console.log('\n[TEST: Send to Parking Team button on the vehicles list]');
+    const vKey = vehiclesKey('14-11-2026');
+    saveDraft(vKey, '🚗 *Vehicles allowed today — 14-11-2026*', db);
+    const ctx4 = fakeCtx();
+    await handleParkingDraftCallback(ctx4, `vh:s:${vKey}`, sender, db);
+    assert(sent.length === 2 && sent[1].group === 'Parking Team at Meydan', 'the vehicles list goes to Parking Team at Meydan');
+    assert(sent[1].text === '🚗 *Vehicles allowed today — 14-11-2026*', 'with the list as the owner saw it');
+    const label = ctx4.markups[0]?.inline_keyboard?.[0]?.[0]?.text || '';
+    assert(label.startsWith('✅ Sent to Parking Team'), 'the button changes to "Sent to Parking Team"');
+    const ctx5 = fakeCtx();
+    await handleParkingDraftCallback(ctx5, `vh:s:${vKey}`, sender, db);
+    assert(sent.length === 2 && ctx5.answers[0].startsWith('Already sent'), 'sent once only');
 
     console.log('ALL PARKING DRAFT TESTS PASSED');
     setTimeout(() => process.exit(0), 50);

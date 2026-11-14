@@ -166,10 +166,9 @@ def generate_vehicles_today(manager: ReportsManager, target_date: Optional[str] 
         else:
             until = "today only"
         make = p.get("car_make") or "N/A"
-        by = re.sub(r"\s*\(.*?\)\s*$", "", str(p.get("sender", ""))).strip()
+        # No sender name or send time (owner, 14-11): plate, car, place and dates only
         return [f"{n}. Plate: {p.get('plate_no') or 'N/A'} | Make: {make}",
-                f"   📍 {p['place']} | 📅 {until}",
-                f"   👤 {by} | 🕒 Sent {p['sent'].strftime('%d-%m %H:%M')}"]
+                f"   📍 {p['place']} | 📅 {until}"]
 
     lines = [f"🚗 *Vehicles allowed today — {day.strftime('%d-%m-%Y')}*", ""]
     n = 0
