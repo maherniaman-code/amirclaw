@@ -1785,6 +1785,8 @@ class TestVehiclesAllowedToday(unittest.TestCase):
         self.assertIn("Long-term", text)
         self.assertIn("FF 71016", text)
         self.assertEqual((res["today"], res["long_term"]), (2, 1))
+        self.assertNotIn("👤", text)          # no sender name (owner, 14-11)
+        self.assertNotIn("Sent ", text)       # and no send time
         self.assertIsNone(re.search(r"[؀-ۿ]", text), "owner outputs are English only")
 
 

@@ -503,9 +503,17 @@ export async function handleReportAction(ctx: any, input: string): Promise<boole
     }
 
     if (trimmed === '/vehicles') {
-        const res = await runReportEngine('vehicles_today');
+        const { todayDubai, vehiclesKey, vehiclesKeyboard, saveDraft } = await import('./parking_drafts.js');
+        const date = todayDubai();
+        const res = await runReportEngine('vehicles_today', { date });
         if (res.success && res.text) {
-            await replyReportTextAndExcel(ctx, res.text);
+            // Same Send to Parking Team button as the 07:00 list
+            saveDraft(vehiclesKey(date), res.text);
+            try {
+                await ctx.reply(res.text, { parse_mode: 'Markdown', reply_markup: vehiclesKeyboard(vehiclesKey(date)) });
+            } catch (_) {
+                await ctx.reply(res.text, { reply_markup: vehiclesKeyboard(vehiclesKey(date)) });
+            }
         } else {
             await ctx.reply(`❌ Vehicles allowed today failed: ${res.error || 'unknown error'}`);
         }
