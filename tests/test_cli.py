@@ -10,11 +10,13 @@ import json
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
 from reports_engine import cli, tickets_db
 from reports_engine import manager as manager_mod
+from reports_engine.date_utils import DUBAI_TZ
 
 from test_fixture_reports import build_fixture_db
 
@@ -209,6 +211,16 @@ class TestCommandLineTools(CliTestCase):
         code, out = self.call(evaluate, "--excel", str(self.workbook), "--diff", str(snap))
         self.assertEqual(code, 0)
         self.assertIn("0 message(s) changed decision", out)
+
+    def test_evaluate_recent_days_only(self):
+        from reports_engine import evaluate
+        manager = manager_mod.ReportsManager(self.workbook)
+        everything = evaluate.snapshot(manager_mod.ReportsManager(self.workbook))
+        recent = evaluate.snapshot(manager, days=2)   # REPORTS_NOW is 15-10 12:00: 13-10 onwards
+        self.assertTrue(recent)
+        self.assertLess(len(recent), len(everything))
+        self.assertTrue(all(m["datetime"] >= datetime(2026, 10, 13, 12, tzinfo=DUBAI_TZ)
+                            for m in manager.parser.raw_messages))
 
     def test_master_data_suggest(self):
         from reports_engine import master_data

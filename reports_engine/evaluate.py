@@ -3,6 +3,7 @@
     python3 -m reports_engine.evaluate                       # accuracy vs owner corrections
     python3 -m reports_engine.evaluate --save before.json    # snapshot every message's decision
     python3 -m reports_engine.evaluate --diff before.json    # what changed since that snapshot
+    add --days 120 to judge only recent messages (the full 2024-26 history takes 15+ minutes)
 
 Workflow for a keyword change: --save, edit config/meydan_rules.yaml, --diff, review, deploy.
 Snapshots and accuracy run with REPORTS_IGNORE_CORRECTIONS=1, i.e. the rules alone.
@@ -16,9 +17,11 @@ import os
 import sqlite3
 import sys
 from collections import Counter, defaultdict
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .date_utils import now_dubai
 from .manager import ReportsManager
 from .sqlite_util import connect as _sqlite_connect
 
@@ -31,9 +34,17 @@ def _decision_for_item(report: str, item: Dict[str, Any]) -> str:
     return f"{report}:{'closed' if closed else 'open'}"
 
 
-def snapshot(manager: Optional[ReportsManager] = None) -> Dict[str, List[str]]:
-    """message id -> sorted decisions, e.g. ["maintenance:open"], ["maintenance:reply"], ["operations:excluded"]."""
+def snapshot(manager: Optional[ReportsManager] = None, days: Optional[int] = None) -> Dict[str, List[str]]:
+    """message id -> sorted decisions, e.g. ["maintenance:open"], ["maintenance:reply"], ["operations:excluded"].
+    days: only messages of the last N days (same N for the before and after snapshots)."""
     m = manager or ReportsManager()
+    if days:
+        cutoff = now_dubai() - timedelta(days=days)
+        with contextlib.redirect_stdout(io.StringIO()):
+            recent = [x for x in m.parser.load_messages()
+                      if isinstance(x.get("datetime"), datetime) and x["datetime"] >= cutoff]
+        m.parser.load_messages = lambda *a, **k: recent
+        m.parser.raw_messages = recent
     prev = os.environ.get("REPORTS_IGNORE_CORRECTIONS")
     os.environ["REPORTS_IGNORE_CORRECTIONS"] = "1"
     try:
@@ -123,9 +134,10 @@ def main() -> int:
     ap.add_argument("--excel", default=None, help="Workbook to evaluate (default: live workspace)")
     ap.add_argument("--save", help="Write a snapshot JSON")
     ap.add_argument("--diff", help="Compare against a saved snapshot JSON")
+    ap.add_argument("--days", type=int, help="Only messages of the last N days (use the same N before and after)")
     args = ap.parse_args()
 
-    snap = snapshot(ReportsManager(Path(args.excel)) if args.excel else None)
+    snap = snapshot(ReportsManager(Path(args.excel)) if args.excel else None, days=args.days)
     print(f"📸 {len(snap)} classified messages "
           f"({sum(1 for d in snap.values() if any(x.endswith((':open', ':closed')) for x in d))} tickets/items)")
     if args.save:
