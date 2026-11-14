@@ -71,9 +71,9 @@ class TestGoldenReportsSuite(unittest.TestCase):
         self.assertIn("P building ground floor inside service lift", text)  # "not working properly" stays a fault
         # The M barrier (12-10 06:12) was fixed on 12-10 09:44 ("AVS ... put it back to normal"),
         # so it is no longer carried over into 13-10
-        self.assertIn("• Completed: 1 of 9", text)
+        self.assertIn("• Completed: 2 of 9", text)   # the speed gate closes with its 14-10 repeat ("Ok now")
         self.assertNotIn("barrier is not opening", text)
-        self.assertIn("• Open: 8", text)
+        self.assertIn("• Open: 7", text)
         self.assertIn("• Safety priority: 3 tickets", text)
 
     def test_report_3_fire_safety_day_shift_golden_output(self):

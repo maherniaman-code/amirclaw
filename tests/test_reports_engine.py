@@ -739,13 +739,14 @@ class TestManualCorrectionsAndOwnerKpis(unittest.TestCase):
     def test_report_returns_numbered_items_and_applies_correction(self):
         from reports_engine.corrections_db import save_correction
         m = ReportsManager()
-        res = m.generate_maintenance(target_date="13-10-2026", target_shift="Day")
+        # 14-10: the only open ticket reported on 13-10 (speed gate) now closes with its 14-10 repeat
+        res = m.generate_maintenance(target_date="14-10-2026", target_shift="Day")
         self.assertEqual([i["no"] for i in res["items"]], list(range(1, len(res["items"]) + 1)))
         in_shift = next(t for t in m.last_items["maintenance"] if not t.get("is_carry_over") and t["status"] == "Pending")
         carried = next(t for t in m.last_items["maintenance"] if t.get("is_carry_over") and t["status"] == "Pending")
         save_correction(in_shift["message_id"], "maintenance", target_status="Done", corrected_by="owner")
         save_correction(carried["message_id"], "maintenance", target_status="Done", corrected_by="owner")
-        res2 = m.generate_maintenance(target_date="13-10-2026", target_shift="Day")
+        res2 = m.generate_maintenance(target_date="14-10-2026", target_shift="Day")
         ids2 = {i["id"]: i["status"] for i in res2["items"]}
         self.assertEqual(ids2[in_shift["message_id"]], "Done")
         self.assertNotIn(carried["message_id"], ids2)  # a fixed old ticket no longer carries over
