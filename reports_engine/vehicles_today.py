@@ -153,6 +153,17 @@ def generate_vehicles_today(manager: ReportsManager, target_date: Optional[str] 
             key = (ev["message_id"], place)
         latest[key] = {**perm, "period": period, "place": place, "sent": ev["datetime"]}   # later request wins
 
+    # One request sent as two messages (details first, "Plate no : ..." a few minutes later):
+    # drop the plate-less row when the same sender gave a plate for the same place within 60 min
+    rows = list(latest.values())
+    def _split_part(p):
+        if str(p.get("plate_no") or "N/A") != "N/A":
+            return False
+        return any(o is not p and str(o.get("plate_no") or "N/A") != "N/A"
+                   and o["place"] == p["place"] and o["sender"] == p["sender"]
+                   and timedelta(0) <= o["sent"] - p["sent"] <= timedelta(minutes=60) for o in rows)
+    latest = {k: v for k, v in latest.items() if not _split_part(v)}
+
     today, long_term = [], []
     for p in sorted(latest.values(), key=lambda p: (_group_title(p["place"]), p["sent"])):
         (long_term if p["period"]["kind"] == "long_term" else today).append(p)
