@@ -1790,6 +1790,40 @@ class TestVehiclesAllowedToday(unittest.TestCase):
         self.assertIsNone(re.search(r"[؀-ۿ]", text), "owner outputs are English only")
 
 
+class TestVehiclesTodayNoEmptyPlates(unittest.TestCase):
+    """Owner 18-11: "Plate: N/A" rows in the 07:00 list."""
+
+    G = "Parking Team at Meydan"
+
+    def _text(self, msgs, day):
+        from reports_engine.vehicles_today import generate_vehicles_today
+        m = ReportsManager()
+        with mock.patch.object(m.parser, "load_messages", return_value=msgs):
+            return generate_vehicles_today(m, day)["text"]
+
+    def test_vehicle_no_label_is_a_plate(self):
+        msgs = [_wa_msg("P1", 4, 11, 10, 42, self.G, "Akash",
+                        "Dear Team,\n\nKindly assign this parking slot in ( P 107 ) Expectant mother parking from today 04/11/2026 until 05/02/2027.\n\nName : Test Person\nVehicle no : 54960\nCar make : H volestar")]
+        text = self._text(msgs, "10-11-2026")
+        self.assertIn("54960", text)
+        self.assertNotIn("Plate: N/A", text)
+
+    def test_request_split_in_two_messages_is_one_row(self):
+        msgs = [
+            _wa_msg("M1", 16, 11, 10, 14, self.G, "Akash", "Dear Team,\n\nKindly allow this vehicle in parking slot (M3 ) till 20/11/2026."),
+            _wa_msg("M2", 16, 11, 10, 21, self.G, "Akash", "Dear Team,\n\nKindly allow this vehicle in parking slot (M3 ) till 20/11/2026.\n\nPlate no : Abu Dhabi 20776"),
+        ]
+        text = self._text(msgs, "18-11-2026")
+        self.assertIn("Abu Dhabi 20776", text)
+        self.assertNotIn("Plate: N/A", text)
+
+    def test_own_daily_list_is_not_read_back(self):
+        msgs = [_wa_msg("O1", 17, 11, 7, 2, self.G, "Ma Noaman",
+                        "🚗 *Vehicles allowed today — 17-11-2026*\n\n📍 *Slot M3*\n1. Plate: N/A | Make: N/A\n   📍 Kindly allow this vehicle Slot M3 | 📅 until 20-11-2026")]
+        text = self._text(msgs, "18-11-2026")
+        self.assertNotIn("Plate: N/A", text)
+
+
 class TestSqliteConnectionsClose(unittest.TestCase):
     """02-11: reprocess failed on the server with "Too many open files" (Python 3.14 frees them late)."""
 
