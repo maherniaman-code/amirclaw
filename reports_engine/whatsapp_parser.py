@@ -642,7 +642,8 @@ class WhatsAppParser:
         # Where the car may park: podium, VIP slot, smart parking, a named slot or block
         area_m = re.search(r"\b(podium|vip\s+parking\s+slot|vip\s+slot|smart\s+parking|ramp\s+area|service\s+road)\b"
                            r"|parking\s+slot\s*\(?\s*([A-Z]\s*-?\s*\d+)\s*\)?|\bslot\s*\(?\s*([A-Z]\s*-\s*\d+)\s*\)?"
-                           r"|\bat\s+([PNMQ])\s+(?:block|building)\b", plain, re.IGNORECASE)
+                           r"|\bat\s+([PNMQ])\s+(?:block|building)\b"
+                           r"|\bat\s+([PNMQ])\s*-?\s*(\d{1,3})\b", plain, re.IGNORECASE)
         area = None
         if area_m:
             if area_m.group(1):
@@ -650,8 +651,10 @@ class WhatsAppParser:
                     re.sub(r"\s+", " ", area_m.group(1).lower()), area_m.group(1).title())
             elif area_m.group(2) or area_m.group(3):
                 area = "Slot " + re.sub(r"\s+", "", area_m.group(2) or area_m.group(3)).upper()
-            else:
+            elif area_m.group(4):
                 area = f"{area_m.group(4).upper()} Building"
+            else:
+                area = f"Slot {area_m.group(5).upper()}{area_m.group(6)}"   # "allow today below car at M 80"
 
         # Requester
         requester = event.get("sender", "Requester")
