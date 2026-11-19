@@ -1817,6 +1817,14 @@ class TestVehiclesTodayNoEmptyPlates(unittest.TestCase):
         self.assertIn("Abu Dhabi 20776", text)
         self.assertNotIn("Plate: N/A", text)
 
+    def test_at_m_80_is_a_slot_not_other(self):
+        # owner's own 06:53 post: "Kindky allow today below car at M 80"
+        msgs = [_wa_msg("S1", 15, 10, 6, 53, self.G, "Ma Noaman",
+                        "Dear Team,\n\nKindky allow today below car at M 80.\n\nPlate no :N 1888\nCar make : Toyota FJ")]
+        text = self._text(msgs, "15-10-2026")
+        self.assertIn("Slot M80", text)
+        self.assertNotIn("*Other*", text)
+
     def test_own_daily_list_is_not_read_back(self):
         msgs = [_wa_msg("O1", 17, 11, 7, 2, self.G, "Ma Noaman",
                         "🚗 *Vehicles allowed today — 17-11-2026*\n\n📍 *Slot M3*\n1. Plate: N/A | Make: N/A\n   📍 Kindly allow this vehicle Slot M3 | 📅 until 20-11-2026")]
