@@ -1825,6 +1825,19 @@ class TestVehiclesTodayNoEmptyPlates(unittest.TestCase):
         self.assertIn("Slot M80", text)
         self.assertNotIn("*Other*", text)
 
+    def test_more_plate_labels_and_q_bldg(self):
+        # live 18/20-11 and 11-11: "Car Plate:- F 51124", "- Plate no :K 92989 (Q 41)", "in Q bldg visitor parking"
+        msgs = [
+            _wa_msg("L1", 15, 10, 9, 29, self.G, "Ma Noaman", "Dear Team\n Please Allow below staff vehicle to park at Q parking only for today.\n\nCar Plate:- F 51124"),
+            _wa_msg("L2", 15, 10, 8, 38, self.G, "Akash", "Dear Team,\n\nKindly allow entry for the following vehicles in Q bldg today only.\n\n- Plate no :K 92989 (Q 41)\n     Car make :Tesla\n\n- Plate no : M 58711 (Q 42)\n     Car make : Black defender"),
+            _wa_msg("L3", 15, 10, 6, 35, self.G, "Akash", "Dear Team,\n\nKindly allow this vehicle in Q bldg visitor parking slot today.\n\nPlate no : M 22890\nCar make : BMW (Blue)"),
+        ]
+        text = self._text(msgs, "15-10-2026")
+        for plate in ("F 51124", "K 92989", "M 58711", "M 22890"):
+            self.assertIn(plate, text)
+        self.assertNotIn("Plate: N/A", text)
+        self.assertNotIn("*Other*", text)
+
     def test_own_daily_list_is_not_read_back(self):
         msgs = [_wa_msg("O1", 17, 11, 7, 2, self.G, "Ma Noaman",
                         "🚗 *Vehicles allowed today — 17-11-2026*\n\n📍 *Slot M3*\n1. Plate: N/A | Make: N/A\n   📍 Kindly allow this vehicle Slot M3 | 📅 until 20-11-2026")]

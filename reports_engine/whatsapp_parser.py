@@ -605,13 +605,13 @@ class WhatsAppParser:
         # ("Plate no : 18 AD 24939  (Q 41 )"); text after the plate on the same line is dropped
         plates = []
         for line in plain.splitlines():
-            m_line = re.match(r"\s*(?:plate\s*(?:no\.?|numbers?)?|(?:vehicle|car)\s*(?:no\.?|numbers?))\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9 /\-]*?)\s*(?:\(.*?\))?\s*(?:car\s*make.*)?(?:<.*?>)?\s*$",
+            m_line = re.match(r"\s*(?:[-•*]\s*)?(?:(?:car\s*)?plate\s*(?:no\.?|numbers?)?|(?:vehicle|car)\s*(?:no\.?|numbers?))\s*[:\-]*\s*([A-Za-z0-9][A-Za-z0-9 /\-]*?)\s*(?:\(.*?\))?\s*(?:car\s*make.*)?(?:<.*?>)?\s*$",
                               line, re.IGNORECASE)
             if m_line and re.search(r"\d", m_line.group(1)):
                 plates.append(m_line.group(1).strip())
         if not plates:
             # Same line as other fields ("Plate no : X 25854 Car make : GMC")
-            plate_m = re.search(r"(?:plate\s*(?:no\.?|number)?|(?:vehicle|car)\s*(?:no\.?|number))\s*[:\-]?\s*([A-Za-z0-9\s/]+?)(?=\s*car\s*make|\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
+            plate_m = re.search(r"(?:(?:car\s*)?plate\s*(?:no\.?|number)?|(?:vehicle|car)\s*(?:no\.?|number))\s*[:\-]*\s*([A-Za-z0-9\s/]+?)(?=\s*car\s*make|\s*valid|\s*only|\s*$|\n)", plain, re.IGNORECASE)
             if plate_m:
                 plates.append(plate_m.group(1).strip())
         if not plates:
@@ -642,7 +642,7 @@ class WhatsAppParser:
         # Where the car may park: podium, VIP slot, smart parking, a named slot or block
         area_m = re.search(r"\b(podium|vip\s+parking\s+slot|vip\s+slot|smart\s+parking|ramp\s+area|service\s+road)\b"
                            r"|parking\s+slot\s*\(?\s*([A-Z]\s*-?\s*\d+)\s*\)?|\bslot\s*\(?\s*([A-Z]\s*-\s*\d+)\s*\)?"
-                           r"|\bat\s+([PNMQ])\s+(?:block|building)\b"
+                           r"|\b(?:at|in)\s+([PNMQ])\s*(?:block|building|bldg|parking)\b"
                            r"|\bat\s+([PNMQ])\s*-?\s*(\d{1,3})\b", plain, re.IGNORECASE)
         area = None
         if area_m:
